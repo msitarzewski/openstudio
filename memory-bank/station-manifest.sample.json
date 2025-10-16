@@ -1,0 +1,26 @@
+{
+  "stationId": "openstudio-example",
+  "displayName": "OpenStudio Example Station",
+  "publicKey": "<ed25519-public-key>",
+  "signalEndpoint": "wss://your-domain.example/ws",
+  "iceServers": [
+    {
+      "urls": [
+        "stun:stun.l.google.com:19302"
+      ]
+    },
+    {
+      "urls": [
+        "turn:your-turn.example:3478"
+      ],
+      "username": "turnuser",
+      "credential": "turnpass"
+    }
+  ],
+  "icecast": {
+    "host": "localhost",
+    "port": 8000,
+    "mount": "/live.ogg",
+    "password": "sourcepass"
+  }
+}

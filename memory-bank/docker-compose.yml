@@ -1,0 +1,40 @@
+services:
+  icecast:
+    image: moul/icecast
+    container_name: openstudio-icecast
+    restart: unless-stopped
+    environment:
+      ICECAST_SOURCE_PASSWORD: sourcepass
+      ICECAST_ADMIN_PASSWORD: adminpass
+      ICECAST_PASSWORD: listenpass
+      ICECAST_HOSTNAME: localhost
+    ports:
+      - "8000:8000"
+
+  coturn:
+    image: instrumentisto/coturn
+    container_name: openstudio-coturn
+    restart: unless-stopped
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+      - "5349:5349/tcp"
+    command: >
+      --no-cli
+      --no-tls
+      --fingerprint
+      --no-software-attribute
+      --realm openstudio
+      --user turnuser:turnpass
+      --lt-cred-mech
+
+  signaling:
+    build: ./server
+    container_name: openstudio-signaling
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      TURN_URL: "turn:localhost:3478"
+      TURN_USER: "turnuser"
+      TURN_PASS: "turnpass"
