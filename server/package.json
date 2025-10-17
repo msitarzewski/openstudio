@@ -1,0 +1,26 @@
+{
+  "name": "openstudio-server",
+  "version": "0.1.0",
+  "description": "OpenStudio signaling server - WebRTC coordination and room management",
+  "type": "module",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "webrtc",
+    "signaling",
+    "websocket",
+    "broadcast"
+  ],
+  "author": "OpenStudio Contributors",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.18.0",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

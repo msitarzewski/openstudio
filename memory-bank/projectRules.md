@@ -211,6 +211,45 @@ try {
 - Document decisions, not just outcomes
 - Link to relevant code changes
 
+## Task Tracking & Progress
+
+### Release Task Files
+
+Release tasks are stored in `memory-bank/releases/VERSION/tasks/` as individual YAML files.
+
+**Naming Convention**:
+- Format: `NNN_descriptive_name.yml`
+- Example: `001_project_structure.yml`, `008_first_webrtc_connection.yml`
+
+**Completion Marker (X-Marker System)**:
+- When a task is **complete and documented**, rename the file to include `_X_` after the task number
+- Format: `NNN_X_descriptive_name.yml`
+- Example: `001_project_structure.yml` → `001_X_project_structure.yml`
+
+**Visual Progress Tracking**:
+```
+001_X_project_structure.yml          ✅ Complete
+002_X_docker_verification.yml        ✅ Complete
+003_signaling_server_skeleton.yml    ⏳ In progress
+004_station_manifest_integration.yml ⏸️  Pending
+...
+020_documentation_deployment.yml     ⏸️  Pending
+```
+
+**Benefits**:
+- Instant visual feedback via `ls` command
+- No database or tracking tools needed
+- File system is source of truth
+- Easy to count: `ls *_X_*.yml | wc -l`
+
+**Workflow**:
+1. Start task: Read `NNN_task.yml` file
+2. Implement according to specification
+3. User approves implementation
+4. Create task documentation in `memory-bank/tasks/YYYY-MM/`
+5. Update monthly README
+6. Rename task file: `NNN_task.yml` → `NNN_X_task.yml`
+
 ## Project-Specific Patterns
 
 ### Pattern: WebRTC Connection Setup

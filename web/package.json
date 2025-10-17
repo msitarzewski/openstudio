@@ -1,0 +1,17 @@
+{
+  "name": "openstudio-web",
+  "version": "0.1.0",
+  "description": "OpenStudio web client - Browser-based broadcast studio interface",
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 8080"
+  },
+  "keywords": [
+    "webrtc",
+    "broadcast",
+    "web-audio"
+  ],
+  "author": "OpenStudio Contributors",
+  "license": "MIT",
+  "dependencies": {}
+}
