@@ -1,0 +1,67 @@
+id: "005"
+title: "Implement WebSocket signaling protocol"
+component: "backend"
+estimated_hours: 4
+
+context: |
+  Define and implement the signaling message protocol for coordinating
+  WebRTC connections. This handles SDP offer/answer exchange and ICE
+  candidate relay between peers.
+
+  This is the core communication layer that makes peer connections possible.
+
+depends_on: ["004"]
+
+acceptance_criteria:
+  - Server handles 'offer' messages and relays to target peer
+  - Server handles 'answer' messages and relays to initiator
+  - Server handles 'ice-candidate' messages and relays to peer
+  - Each message includes sender ID and target peer ID
+  - Invalid messages logged and rejected (not relayed)
+  - Message format documented in code comments
+
+files_to_create:
+  - server/lib/signaling-protocol.js
+  - server/lib/message-validator.js
+
+files_to_modify:
+  - server/lib/websocket-server.js (add message routing)
+
+tests_required:
+  - "Manual: Connect 2 wscat clients, send offer from A, verify B receives it"
+  - "Manual: Send answer from B, verify A receives it"
+  - "Manual: Send ICE candidate, verify relay works"
+  - "Manual: Send malformed message, verify server rejects it"
+
+references:
+  - memory-bank/systemPatterns.md (Signaling Server - SDP exchange coordination)
+  - memory-bank/SIGNAL_FLOW.md (Session bring-up)
+
+notes: |
+  Message format examples:
+
+  Offer:
+  {
+    "type": "offer",
+    "from": "peer-a-id",
+    "to": "peer-b-id",
+    "sdp": "v=0\r\no=- ..."
+  }
+
+  Answer:
+  {
+    "type": "answer",
+    "from": "peer-b-id",
+    "to": "peer-a-id",
+    "sdp": "v=0\r\no=- ..."
+  }
+
+  ICE Candidate:
+  {
+    "type": "ice-candidate",
+    "from": "peer-a-id",
+    "to": "peer-b-id",
+    "candidate": {...}
+  }
+
+  Validation: Ensure 'from', 'to', and 'type' fields exist.

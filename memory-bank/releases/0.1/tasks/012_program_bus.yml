@@ -1,0 +1,58 @@
+id: "012"
+title: "Implement program bus routing"
+component: "frontend"
+estimated_hours: 4
+
+context: |
+  Create the program bus - the final audio mix that combines all participants.
+  This is what gets sent to Icecast and what hosts monitor.
+
+  Program Bus = sum of all participant outputs.
+
+depends_on: ["011"]
+
+acceptance_criteria:
+  - ChannelMergerNode created for program bus
+  - All participant compressor nodes connect to program bus
+  - Program bus connects to AudioContext.destination (for monitoring)
+  - Program bus also connects to MediaStreamDestination (for capture)
+  - Volume meter shows program bus level in real-time
+  - Adding/removing participants updates program bus correctly
+
+files_to_create:
+  - web/js/program-bus.js
+  - web/js/volume-meter.js
+
+files_to_modify:
+  - web/js/audio-graph.js (integrate program bus)
+  - web/js/participant-audio.js (connect participants to bus)
+  - web/index.html (add volume meter UI)
+
+tests_required:
+  - "Manual: Connect 3 peers, speak into mics, verify all voices in program bus"
+  - "Manual: Watch volume meter respond to audio"
+  - "Manual: Disconnect 1 peer, verify program bus still has remaining peers"
+  - "Manual: Adjust participant gain, verify program bus level changes"
+
+references:
+  - memory-bank/systemPatterns.md (Web Audio Graph - Program Bus)
+  - memory-bank/SIGNAL_FLOW.md (Program Bus)
+
+notes: |
+  Program bus structure:
+
+  const programBus = {
+    merger: audioContext.createChannelMerger(2), // stereo
+    destination: audioContext.createMediaStreamDestination(),
+    analyser: audioContext.createAnalyser() // for volume meter
+  };
+
+  Each participant connects:
+  participant.compressorNode.connect(programBus.merger);
+
+  Program bus outputs:
+  programBus.merger.connect(audioContext.destination); // local monitoring
+  programBus.merger.connect(programBus.analyser); // volume meter
+  programBus.merger.connect(programBus.destination); // for MediaRecorder (task 018)
+
+  Volume meter uses AnalyserNode.getByteTimeDomainData() for real-time visualization.

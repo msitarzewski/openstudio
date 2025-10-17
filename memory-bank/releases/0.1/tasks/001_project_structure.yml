@@ -1,0 +1,45 @@
+id: "001"
+title: "Set up project structure and dependencies"
+component: "infrastructure"
+estimated_hours: 2
+
+context: |
+  Establish the foundational directory structure for OpenStudio, configure
+  package.json files for both server and web client, and install core dependencies.
+
+  This task creates the skeleton that all subsequent tasks will build upon.
+
+depends_on: []
+
+acceptance_criteria:
+  - Directory structure created (server/, web/, shared/)
+  - server/package.json configured with ES modules ("type": "module")
+  - Core dependencies installed (ws, jsonwebtoken for server)
+  - web/package.json exists (minimal, may add bundler later)
+  - .gitignore properly excludes node_modules, logs, secrets
+  - All packages install without errors (npm install works)
+
+files_to_create:
+  - server/package.json
+  - server/.gitignore
+  - web/package.json
+  - web/.gitignore
+  - shared/.gitkeep
+  - .gitignore (root level)
+
+files_to_modify: []
+
+tests_required:
+  - "Manual: Run 'npm install' in server/ and web/, verify no errors"
+  - "Manual: Verify .gitignore excludes node_modules/"
+
+references:
+  - memory-bank/techContext.md (Technology Stack)
+  - memory-bank/projectRules.md (Code Organization, File Naming)
+
+notes: |
+  Use "type": "module" in package.json to enable ES modules.
+  Keep dependencies minimal - only add what's absolutely needed.
+
+  Server dependencies: ws (WebSocket), jsonwebtoken (JWT)
+  Web dependencies: None initially (browser-native APIs only)

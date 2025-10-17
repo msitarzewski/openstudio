@@ -1,0 +1,102 @@
+release: "0.1"
+name: "Core Loop MVP"
+target_date: "3 months from start"
+status: "planned"
+
+overview: |
+  Release 0.1 delivers the core loop: multi-host virtual studio with live callers,
+  mix-minus audio routing, per-participant mute controls, and Icecast streaming output.
+
+  This MVP proves the concept works and provides a solid foundation for distributed
+  features (0.2), call-in systems (0.3), and extended production features (0.4+).
+
+goals:
+  - N hosts + Y callers stable for 60+ minute sessions
+  - Mix-minus working (no self-echo for callers)
+  - Global mute/unmute with <150ms latency
+  - OGG/Opus stream playable via Icecast mountpoint
+  - Setup from fresh clone in <5 minutes
+
+acceptance_criteria:
+  functional:
+    - Signaling server coordinates WebRTC connections
+    - Web studio client runs in modern browsers
+    - Audio flows peer-to-peer between participants
+    - Mix-minus buses prevent caller self-echo
+    - Mute/unmute propagates to all peers
+    - Program bus streams to Icecast
+
+  quality:
+    - Zero audio dropouts in 60-minute test session
+    - Mute latency measured <150ms
+    - Supports 3 hosts + 5 callers simultaneously
+    - Works in Chrome, Firefox (Safari nice-to-have)
+
+  deployment:
+    - Docker Compose brings up all infrastructure
+    - Station manifest configurable
+    - Development setup documented
+    - Basic troubleshooting guide exists
+
+milestones:
+  - id: M1
+    name: "Foundation"
+    tasks: [001, 002, 003, 004]
+    goal: "Project structure, Docker verified, signaling server skeleton running"
+
+  - id: M2
+    name: "Basic Connection"
+    tasks: [005, 006, 007, 008]
+    goal: "Two peers can connect via WebRTC and exchange audio"
+
+  - id: M3
+    name: "Multi-Peer Audio"
+    tasks: [009, 010, 011, 012, 013]
+    goal: "Multiple participants mixed into program bus"
+
+  - id: M4
+    name: "Mix-Minus"
+    tasks: [014, 015, 016]
+    goal: "Callers hear everyone except themselves (no echo)"
+
+  - id: M5
+    name: "Production Ready"
+    tasks: [017, 018, 019, 020]
+    goal: "Mute controls, Icecast output, tested and documented"
+
+total_tasks: 20
+estimated_hours: 80-120
+
+tech_stack:
+  backend:
+    - Node.js 18+ (ES modules)
+    - ws (WebSocket library)
+    - jsonwebtoken (JWT for room tokens)
+
+  frontend:
+    - Vanilla JavaScript (ES modules)
+    - Web Audio API
+    - WebRTC API
+    - MediaRecorder API
+
+  infrastructure:
+    - Docker Compose
+    - Icecast
+    - coturn (STUN/TURN)
+
+success_metrics:
+  - All 20 tasks completed and marked with X
+  - Acceptance criteria verified
+  - End-to-end demo session recorded
+  - README updated with setup instructions
+  - First GitHub release tagged (v0.1.0)
+
+notes: |
+  Tasks are designed to be completed sequentially within each milestone,
+  but milestones M1-M2 (backend) and M3 (frontend) can be parallelized if desired.
+
+  Each task is scoped to 2-6 hours of focused work. If a task takes longer,
+  consider breaking it down further.
+
+  The X-marking system (renaming files) provides visual progress tracking.
+  When all files are marked 001_X_...yml through 020_X_...yml, Release 0.1 is complete.

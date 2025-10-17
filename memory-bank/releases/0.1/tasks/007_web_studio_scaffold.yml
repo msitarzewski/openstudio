@@ -1,0 +1,61 @@
+id: "007"
+title: "Create web studio HTML/CSS scaffold"
+component: "frontend"
+estimated_hours: 3
+
+context: |
+  Build the basic HTML structure and CSS for the web studio interface.
+  This provides the UI foundation for host controls and participant display.
+
+  Focus on clean, semantic HTML and functional layout. Polish comes later.
+
+depends_on: ["001"]
+
+acceptance_criteria:
+  - web/index.html exists with proper DOCTYPE and meta tags
+  - Basic layout: header, participant list area, controls area, status area
+  - CSS for responsive layout (works on desktop, scales down gracefully)
+  - Participant list shows placeholder cards (will populate dynamically)
+  - Control buttons for: Start Session, Mute/Unmute, End Session
+  - Connection status indicator (disconnected/connecting/connected)
+  - Styled with clean, minimalist design (no framework dependencies)
+
+files_to_create:
+  - web/index.html
+  - web/css/studio.css
+  - web/css/reset.css
+
+files_to_modify: []
+
+tests_required:
+  - "Manual: Open index.html in browser, verify layout renders correctly"
+  - "Manual: Resize browser window, verify responsive behavior"
+  - "Manual: Check no console errors on page load"
+
+references:
+  - memory-bank/projectRules.md (Code Style - HTML attributes use double quotes)
+
+notes: |
+  Keep it simple for MVP. Structure example:
+
+  <body>
+    <header>
+      <h1>OpenStudio</h1>
+      <div id="status">Disconnected</div>
+    </header>
+
+    <main>
+      <section id="participants">
+        <!-- Participant cards will be inserted here -->
+      </section>
+
+      <section id="controls">
+        <button id="start-session">Start Session</button>
+        <button id="toggle-mute" disabled>Mute</button>
+        <button id="end-session" disabled>End Session</button>
+      </section>
+    </main>
+  </body>
+
+  Use CSS Grid or Flexbox for layout.
+  No JavaScript in this task - just HTML/CSS structure.

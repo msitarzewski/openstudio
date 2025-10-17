@@ -1,0 +1,54 @@
+id: "009"
+title: "Set up Web Audio API foundation"
+component: "frontend"
+estimated_hours: 3
+
+context: |
+  Establish the Web Audio graph infrastructure. This replaces direct
+  audio playback with a routing graph that enables mixing, gain control,
+  and mix-minus calculation.
+
+  This is the foundation for all professional audio features.
+
+depends_on: ["008"]
+
+acceptance_criteria:
+  - AudioContext created and managed (single global instance)
+  - Audio graph structure defined and documented
+  - Destination node connected (for monitoring)
+  - Context state managed (suspended → running on user interaction)
+  - Browser compatibility handled (webkit prefix if needed)
+  - Audio routing visualized in browser dev tools
+
+files_to_create:
+  - web/js/audio-graph.js
+  - web/js/audio-context-manager.js
+
+files_to_modify:
+  - web/js/main.js (initialize audio system)
+
+tests_required:
+  - "Manual: Verify AudioContext created successfully"
+  - "Manual: Check AudioContext.state changes from suspended to running"
+  - "Manual: Inspect graph in browser dev tools (chrome://inspect)"
+
+references:
+  - memory-bank/systemPatterns.md (Web Audio Graph for Mixing)
+  - memory-bank/SIGNAL_FLOW.md (Audio routing)
+  - memory-bank/projectRules.md (Performance Guidelines - Web Audio)
+
+notes: |
+  AudioContext must be created AFTER user interaction (browser autoplay policy).
+
+  Basic graph structure:
+
+  [MediaStreamSource] → [GainNode] → [DynamicsCompressor] → [Destination]
+                                                           → [ProgramBus]
+                                                           → [MixMinusBus]
+
+  For this task, just create the foundation:
+  - AudioContext singleton
+  - Helper functions to create nodes
+  - Connection management utilities
+
+  Actual participant routing comes in task 010.

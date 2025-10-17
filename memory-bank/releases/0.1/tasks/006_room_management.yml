@@ -1,0 +1,52 @@
+id: "006"
+title: "Implement room management system"
+component: "backend"
+estimated_hours: 4
+
+context: |
+  Create the room management system that tracks participants, room state,
+  and coordinates membership. Rooms are the organizational unit for sessions.
+
+  Each room has a unique ID, a host, and a list of participants.
+
+depends_on: ["005"]
+
+acceptance_criteria:
+  - Server handles 'create-room' message, returns room ID and token
+  - Server handles 'join-room' message with room ID
+  - Room state tracks all participants with IDs and roles (host/caller)
+  - When peer joins, all existing participants notified via 'peer-joined' event
+  - When peer leaves, all remaining participants notified via 'peer-left' event
+  - Room automatically deleted when last participant leaves
+
+files_to_create:
+  - server/lib/room-manager.js
+  - server/lib/room.js
+
+files_to_modify:
+  - server/lib/websocket-server.js (integrate room events)
+  - server/lib/signaling-protocol.js (route messages within rooms)
+
+tests_required:
+  - "Manual: Send create-room, verify room ID returned"
+  - "Manual: Second peer joins room, verify first peer gets peer-joined event"
+  - "Manual: Disconnect peer, verify peer-left event sent to others"
+  - "Manual: Last peer leaves, verify room is deleted from memory"
+
+references:
+  - memory-bank/systemPatterns.md (Room State Management)
+  - memory-bank/SIGNAL_FLOW.md (Session bring-up)
+
+notes: |
+  Room state structure (in-memory):
+  {
+    roomId: "uuid-v4",
+    hostId: "peer-id",
+    participants: Map<peerId, { role: 'host'|'caller', connection: WebSocket }>
+  }
+
+  Events to broadcast:
+  - peer-joined: { type: 'peer-joined', peerId: 'abc', role: 'caller' }
+  - peer-left: { type: 'peer-left', peerId: 'abc' }
+
+  For MVP, store rooms in memory (Map). Persistence comes in later releases.

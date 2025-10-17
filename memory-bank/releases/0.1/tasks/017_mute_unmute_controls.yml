@@ -1,0 +1,79 @@
+id: "017"
+title: "Implement mute/unmute controls"
+component: "frontend"
+estimated_hours: 4
+
+context: |
+  Add producer-authoritative mute/unmute controls. The host can mute any
+  participant, and participants can self-mute. Mute state propagates via
+  signaling to keep all peers synchronized.
+
+  Essential for managing live sessions and preventing disruptions.
+
+depends_on: ["016"]
+
+acceptance_criteria:
+  - Each participant card has mute button (toggle)
+  - Host can mute any participant (producer-authoritative)
+  - Participant can self-mute (local, but reported to host)
+  - Mute state propagates via signaling to all peers
+  - Muted participant's GainNode set to 0
+  - Muted state visually indicated (red indicator, mic-slash icon)
+  - Mute/unmute latency <150ms (local action to audio change)
+  - Producer mute overrides self-unmute (conflict resolution)
+
+files_to_create:
+  - web/js/mute-manager.js
+
+files_to_modify:
+  - web/js/ui-controls.js (add mute buttons)
+  - web/js/signaling-client.js (add mute signaling messages)
+  - server/lib/signaling-protocol.js (relay mute state changes)
+  - web/css/studio.css (mute state styling)
+
+tests_required:
+  - "Manual: Host mutes caller, verify caller hears silence from their own mic"
+  - "Manual: Caller self-mutes, verify host sees muted indicator"
+  - "Manual: Measure mute latency (should be near-instant)"
+  - "Manual: Host mutes, caller tries to unmute, verify host state wins"
+
+references:
+  - memory-bank/systemPatterns.md (Producer-Authoritative Control)
+  - memory-bank/SIGNAL_FLOW.md (Mute semantics)
+  - memory-bank/techContext.md (Performance Targets - Mute latency)
+
+notes: |
+  Mute message format:
+
+  {
+    "type": "mute",
+    "peerId": "abc",
+    "muted": true,
+    "authority": "producer|self"
+  }
+
+  Conflict resolution:
+  - Producer mute = absolute (cannot be overridden)
+  - Self mute = local preference (producer can unmute)
+  - Last-write-wins if multiple producers (edge case, document limitation)
+
+  Implementation:
+  - Mute: Set gainNode.gain.value = 0
+  - Unmute: Restore to previous gain value
+
+  For smooth transitions:
+  gainNode.gain.setValueAtTime(currentValue, audioContext.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(
+    targetValue,
+    audioContext.currentTime + 0.05
+  );
+
+  Visual states:
+  - Unmuted: Green mic icon
+  - Self-muted: Yellow mic-slash icon
+  - Producer-muted: Red mic-slash icon
+
+  Latency optimization:
+  - Apply mute locally immediately (don't wait for signaling round-trip)
+  - Propagate via signaling for other peers
+  - If conflict detected, resolve and update UI

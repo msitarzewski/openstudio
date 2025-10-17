@@ -1,0 +1,51 @@
+id: "004"
+title: "Integrate station manifest configuration"
+component: "backend"
+estimated_hours: 2
+
+context: |
+  Load and validate station-manifest.json at server startup. This configuration
+  file contains the station identity, signaling URL, and ICE server details.
+
+  Proper configuration management now prevents hardcoding later.
+
+depends_on: ["003"]
+
+acceptance_criteria:
+  - Server reads station-manifest.json on startup
+  - Validates required fields (stationId, name, signaling.url, ice servers)
+  - Logs configuration errors clearly if manifest is invalid
+  - Exposes station info via GET /api/station endpoint
+  - Falls back to station-manifest.sample.json if main file missing (dev mode)
+
+files_to_create:
+  - server/lib/config-loader.js
+  - server/lib/validate-manifest.js
+  - station-manifest.json (if not exists, copy from sample)
+
+files_to_modify:
+  - server/index.js (load and validate config on startup)
+
+tests_required:
+  - "Manual: Start server, verify manifest loads without errors"
+  - "Manual: curl http://localhost:8080/api/station returns station info"
+  - "Manual: Rename manifest, verify server uses sample and logs warning"
+  - "Manual: Corrupt manifest JSON, verify server exits with clear error"
+
+references:
+  - memory-bank/quick-start.md (Station Manifest structure)
+  - memory-bank/projectRules.md (Error Handling Patterns)
+
+notes: |
+  Station manifest schema (JSON):
+  {
+    "stationId": "unique-id",
+    "name": "Station Name",
+    "signaling": { "url": "wss://localhost:8080" },
+    "ice": {
+      "stun": ["stun:localhost:3478"],
+      "turn": [{"urls": "turn:localhost:3478", "username": "user", "credential": "pass"}]
+    }
+  }
+
+  Validation should check all required fields exist and URLs are valid format.

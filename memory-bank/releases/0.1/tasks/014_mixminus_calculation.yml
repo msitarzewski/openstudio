@@ -1,0 +1,66 @@
+id: "014"
+title: "Implement mix-minus calculation logic"
+component: "frontend"
+estimated_hours: 5
+
+context: |
+  The technical centerpiece of OpenStudio: mix-minus buses prevent callers
+  from hearing themselves (which causes echo/feedback).
+
+  Mix-Minus_i = Program Bus - Participant_i
+
+  Each caller gets a personalized audio mix excluding their own voice.
+
+depends_on: ["012"]
+
+acceptance_criteria:
+  - For each participant, create dedicated mix-minus bus
+  - Mix-minus bus sums all participants EXCEPT the target participant
+  - Mix-minus calculation efficient (doesn't duplicate program bus computation)
+  - Mix-minus buses update when participants join/leave
+  - Audio graph structure documented and visualized
+  - No self-audio in any participant's mix-minus bus
+
+files_to_create:
+  - web/js/mix-minus.js
+
+files_to_modify:
+  - web/js/audio-graph.js (integrate mix-minus calculation)
+  - web/js/participant-audio.js (manage per-participant buses)
+
+tests_required:
+  - "Manual: Connect 3 peers (A, B, C)"
+  - "Manual: Verify A's mix-minus has B+C (not A)"
+  - "Manual: Verify B's mix-minus has A+C (not B)"
+  - "Manual: Verify C's mix-minus has A+B (not C)"
+  - "Manual: Speak into A's mic, verify A doesn't hear themselves"
+
+references:
+  - memory-bank/systemPatterns.md (Mix-Minus per Caller)
+  - memory-bank/SIGNAL_FLOW.md (Mix-Minus Bus per Caller)
+  - memory-bank/productContext.md (Mix-minus working - no self-echo)
+
+notes: |
+  Implementation strategy:
+
+  Naive approach (inefficient):
+  For each participant i, sum all other participants individually.
+
+  Better approach (efficient):
+  1. Program Bus = sum of all participants
+  2. For each participant i:
+     - Create GainNode with gain = -1 (invert phase)
+     - Connect participant_i.output → inverter
+     - Create mixer that sums Program Bus + inverted participant_i
+     - Result: MixMinus_i = Program + (-1 * participant_i) = Program - participant_i
+
+  Audio graph:
+  [Participant A] ──┬──> [Program Bus] ──┬──> [Mix-Minus B output]
+                    │                     │
+                    └──> [Inverter A] ────┘
+
+  [Participant B] ──┬──> [Program Bus] ──┬──> [Mix-Minus A output]
+                    │                     │
+                    └──> [Inverter B] ────┘
+
+  This scales O(N) instead of O(N²).

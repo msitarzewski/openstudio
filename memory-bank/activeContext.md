@@ -5,10 +5,41 @@
 ## Current Phase
 
 **Release**: 0.1 MVP (Core Loop)
-**Status**: Initialization
-**Focus**: Setting up project structure and Memory Bank system
+**Status**: Planning Complete → Ready for Implementation
+**Focus**: Executing Release 0.1 task breakdown (20 tasks, 5 milestones)
 
 ## Recent Decisions
+
+### 2025-10-16: Release 0.1 Task Breakdown Structure
+
+**Decision**: Create comprehensive YAML-based task breakdown with visual progress tracking
+
+**Rationale**:
+- Need granular, executable tasks for incremental development
+- File-based progress tracking provides visibility without tooling overhead
+- Individual task files enable focused implementation sessions
+- X-marker naming convention gives instant visual feedback
+- Complete task metadata ensures self-contained context
+
+**Implementation**:
+- Created `memory-bank/releases/0.1/` directory structure
+- 20 individual YAML task files (001-020)
+- 5 milestones: Foundation, Basic Connection, Multi-Peer Audio, Mix-Minus, Production Ready
+- Each task: 2-6 hours estimated, includes context, dependencies, acceptance criteria, tests, references
+- Progress tracking: rename `NNN_task.yml` → `NNN_X_task.yml` when complete
+- Workflow documented in releases/0.1/README.md
+
+**YAML Schema**:
+```yaml
+id, title, component, estimated_hours
+context (why it matters)
+depends_on (prerequisite tasks)
+acceptance_criteria (testable conditions)
+files_to_create, files_to_modify
+tests_required (manual procedures)
+references (Memory Bank docs)
+notes (implementation hints)
+```
 
 ### 2025-10-16: Memory Bank Initialization
 
@@ -37,48 +68,50 @@
 - station-manifest.sample.json - Configuration template
 
 **Next Steps**:
-- Implement signaling server
-- Build web studio client
-- Test basic WebRTC connection flow
+- Execute task 001: Project structure and dependencies
+- Follow sequential implementation through all 20 tasks
+- Mark tasks complete with X-marker as they finish
 
 ## Current Work Items
 
-### High Priority
+### Immediate - Milestone 1: Foundation (Tasks 001-004)
 
-1. **Signaling Server** (Release 0.1)
-   - WebSocket server implementation
-   - Room management
-   - SDP exchange coordination
-   - ICE candidate relay
+1. **Task 001**: Project structure and dependencies
+   - Directory structure (server/, web/, shared/)
+   - Package.json configuration with ES modules
+   - Core dependency installation
 
-2. **Web Studio Client** (Release 0.1)
-   - Basic UI for host controls
-   - WebRTC peer connection setup
-   - Web Audio graph construction
-   - Program bus routing
+2. **Task 002**: Docker infrastructure verification
+   - Verify Icecast and coturn start successfully
+   - Test connectivity and configuration
 
-3. **Mix-Minus Implementation** (Release 0.1)
-   - Per-caller audio graph calculation
-   - Return feed routing
-   - Test with multiple participants
+3. **Task 003**: Signaling server skeleton
+   - WebSocket server basic connectivity
+   - Health check endpoint
+   - Ping/pong messaging
 
-### Medium Priority
+4. **Task 004**: Station manifest integration
+   - Configuration loading and validation
+   - API endpoint for station info
 
-4. **Icecast Integration** (Release 0.1)
-   - MediaRecorder → encoder pipeline
-   - Mount point configuration
-   - Reconnection logic
+### Short Term - Milestone 2: Basic Connection (Tasks 005-008)
 
-5. **Mute/Unmute Controls** (Release 0.1)
-   - UI controls
-   - Signaling propagation
-   - Gain node manipulation
+5. **Task 005**: WebSocket signaling protocol (SDP/ICE relay)
+6. **Task 006**: Room management system
+7. **Task 007**: Web studio HTML/CSS scaffold
+8. **Task 008**: First WebRTC peer connection test
+
+### Medium Term - Milestone 3-5 (Tasks 009-020)
+
+- **M3**: Multi-Peer Audio (009-013) - Web Audio graph, gain controls, program bus
+- **M4**: Mix-Minus (014-016) - Per-caller mixes, return feeds, testing
+- **M5**: Production Ready (017-020) - Mute controls, Icecast, stability testing, docs
 
 ### Future Work (Post-MVP)
 
-- DHT station directory (0.2)
-- Waiting room / call screening (0.3)
-- Multi-track recording (0.4)
+- DHT station directory (Release 0.2)
+- Waiting room / call screening (Release 0.3)
+- Multi-track recording (Release 0.4)
 
 ## Open Questions
 
@@ -113,8 +146,10 @@
 
 1. Review this file first to understand current state
 2. Check tasks/2025-10/README.md for recent progress
-3. Reference systemPatterns.md for architectural decisions
-4. Follow PM → Dev → QA → PM workflow for implementation tasks
+3. **Start with task 001**: Read `memory-bank/releases/0.1/tasks/001_project_structure.yml`
+4. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
+5. Reference systemPatterns.md for architectural decisions
+6. Follow PM → Dev → QA → PM workflow for complex implementation tasks
 
 ## Context for Future Work
 

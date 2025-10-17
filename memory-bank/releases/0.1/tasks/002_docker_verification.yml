@@ -1,0 +1,44 @@
+id: "002"
+title: "Verify Docker infrastructure setup"
+component: "infrastructure"
+estimated_hours: 2
+
+context: |
+  Ensure docker-compose.yml is properly configured and all infrastructure
+  services (Icecast, coturn) start successfully. This verifies the foundation
+  is solid before building application code.
+
+depends_on: []
+
+acceptance_criteria:
+  - docker-compose.yml exists and is valid
+  - 'docker compose up -d' starts all services without errors
+  - Icecast accessible at http://localhost:8000
+  - coturn responds to STUN requests on port 3478
+  - Services persist after restart
+  - 'docker compose logs' shows no critical errors
+
+files_to_create: []
+
+files_to_modify:
+  - docker-compose.yml (if adjustments needed)
+
+tests_required:
+  - "Manual: Run 'docker compose up -d' and verify services start"
+  - "Manual: Access http://localhost:8000 and see Icecast admin page"
+  - "Manual: Check 'docker compose ps' shows all services 'Up'"
+  - "Manual: Run 'docker compose logs' and verify no errors"
+
+references:
+  - memory-bank/techContext.md (Media Infrastructure)
+  - memory-bank/quick-start.md (Docker Management)
+
+notes: |
+  If docker-compose.yml doesn't exist yet, create it with:
+  - Icecast service (port 8000)
+  - coturn service (ports 3478, 3479)
+  - signaling service placeholder (will implement in later tasks)
+
+  Default Icecast credentials (for development):
+  - Source: source/hackme
+  - Admin: admin/hackme

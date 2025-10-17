@@ -10,7 +10,7 @@
 - ARCHITECTURE.md with Mermaid diagrams
 - PRD.md with release roadmap
 - SIGNAL_FLOW.md with audio routing details
-- README.md with quick start
+- README.md with aspirational content and vision
 
 ✅ **Docker Infrastructure Defined**
 - docker-compose.yml configured
@@ -23,9 +23,15 @@
 - Task documentation structure established
 - Development workflow documented
 
+✅ **Release 0.1 Planning Complete**
+- 20 YAML task files created (001-020)
+- 5 milestones defined and documented
+- Visual progress tracking system (X-marker)
+- Comprehensive workflow guide in releases/0.1/README.md
+
 ### Code
 
-🚧 **Nothing Implemented Yet** - fresh project
+🚧 **Nothing Implemented Yet** - planning complete, ready for implementation
 
 ## What's Next
 
@@ -119,7 +125,14 @@
 - ✅ OGG/Opus stream playable via Icecast
 - ✅ Setup from clone < 5 min
 
-**Status**: 0% complete (initialization phase)
+**Status**: 0% complete (0/20 tasks) - **Planning complete, ready to start implementation**
+
+**Task Breakdown**: See `memory-bank/releases/0.1/` for detailed task files
+- **M1: Foundation** (001-004): Project structure, Docker, signaling skeleton
+- **M2: Basic Connection** (005-008): WebSocket, rooms, first peer connection
+- **M3: Multi-Peer Audio** (009-013): Web Audio graph, gain controls, program bus
+- **M4: Mix-Minus** (014-016): Per-caller mixes, return feeds, testing
+- **M5: Production Ready** (017-020): Mute controls, Icecast, stability testing, docs
 
 ### Release 0.2 - Distributed Stations (Target: +2 months)
 
@@ -200,6 +213,10 @@
 ✅ All core documentation files created
 ✅ Task documentation structure established
 ✅ Development workflow defined
+✅ Aspirational README created (captures vision and movement)
+✅ Release 0.1 task breakdown complete (20 tasks, 5 milestones)
+✅ YAML task schema designed with comprehensive metadata
+✅ Visual progress tracking system established (X-marker naming)
 
 ## Next Milestone
 

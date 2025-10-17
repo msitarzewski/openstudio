@@ -1,0 +1,58 @@
+id: "011"
+title: "Implement per-participant gain controls"
+component: "frontend"
+estimated_hours: 3
+
+context: |
+  Add UI controls to adjust volume (gain) for each participant independently.
+  This gives the host/producer mixing control.
+
+  Essential for balancing audio levels across participants.
+
+depends_on: ["010"]
+
+acceptance_criteria:
+  - Each participant card in UI shows gain slider (0-200%)
+  - Slider adjusts participant's GainNode.gain.value in real-time
+  - Gain value displayed numerically next to slider
+  - Default gain is 100% (1.0)
+  - Gain changes are smooth (no clicks/pops)
+  - Gain persists for duration of session (stored in participant state)
+
+files_to_create:
+  - web/js/ui-controls.js
+
+files_to_modify:
+  - web/css/studio.css (add slider styles)
+  - web/js/participant-audio.js (expose gain control API)
+  - web/js/main.js (wire up UI events)
+
+tests_required:
+  - "Manual: Connect 2 peers, adjust gain slider for peer A"
+  - "Manual: Verify volume changes smoothly without artifacts"
+  - "Manual: Set gain to 0%, verify silence"
+  - "Manual: Set gain to 200%, verify boost (may clip if source is loud)"
+
+references:
+  - memory-bank/systemPatterns.md (Per-participant gains/mutes)
+  - memory-bank/projectRules.md (Code Organization)
+
+notes: |
+  GainNode.gain is an AudioParam. For smooth changes:
+
+  // Good (smooth ramp):
+  gainNode.gain.setValueAtTime(currentValue, audioContext.currentTime);
+  gainNode.gain.linearRampToValueAtTime(newValue, audioContext.currentTime + 0.05);
+
+  // Bad (instant change, may cause clicks):
+  gainNode.gain.value = newValue;
+
+  UI structure for participant card:
+  <div class="participant-card" data-peer-id="abc">
+    <span class="peer-name">Caller 1</span>
+    <input type="range" class="gain-slider" min="0" max="200" value="100">
+    <span class="gain-value">100%</span>
+  </div>
+
+  For MVP, gain controls are local only (not synced to other peers).
+  Signaling gain changes comes in later releases if needed.

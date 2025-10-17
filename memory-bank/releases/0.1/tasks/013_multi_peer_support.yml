@@ -1,0 +1,58 @@
+id: "013"
+title: "Test and refine multi-peer support"
+component: "integration"
+estimated_hours: 4
+
+context: |
+  Ensure the system handles multiple peers robustly. Test edge cases,
+  improve connection handling, and verify stability with N hosts + Y callers.
+
+  This validates the architecture can scale to real-world usage.
+
+depends_on: ["012"]
+
+acceptance_criteria:
+  - 3 hosts + 5 callers connect successfully (8 total peers)
+  - All peers see each other in participant list
+  - All peers hear all other peers in program bus
+  - Participants can join/leave dynamically without breaking session
+  - Connection state indicators accurate for all peers
+  - No race conditions when multiple peers join simultaneously
+  - Performance acceptable (CPU <30%, no audio dropouts)
+
+files_to_create:
+  - web/js/connection-manager.js
+
+files_to_modify:
+  - web/js/rtc-manager.js (improve multi-peer coordination)
+  - web/js/signaling-client.js (handle concurrent events)
+
+tests_required:
+  - "Manual: Open 8 browser windows (different browsers if needed)"
+  - "Manual: All join same room, verify full mesh connections"
+  - "Manual: Speak in different windows, verify everyone hears everyone"
+  - "Manual: Close 2 windows, verify remaining peers unaffected"
+  - "Manual: Rejoin peers, verify reconnection works"
+  - "Manual: Monitor CPU/memory during test"
+
+references:
+  - memory-bank/systemPatterns.md (Media Mesh Limits)
+  - memory-bank/techContext.md (Performance Targets)
+  - memory-bank/projectRules.md (Error Handling Patterns)
+
+notes: |
+  WebRTC mesh topology scales to ~10-15 participants practically.
+
+  Challenges to address:
+  - Each peer maintains N-1 peer connections (8 peers = 7 connections each)
+  - SDP negotiation timing (race conditions if simultaneous)
+  - ICE candidate gathering latency
+  - Browser tab suspension (background tabs may suspend connections)
+
+  Improvements to consider:
+  - Connection retry logic with exponential backoff
+  - Better error messages for failed connections
+  - Logging for debugging multi-peer issues
+  - UI loading states during connection setup
+
+  For MVP, manual testing is sufficient. Automated testing comes later.

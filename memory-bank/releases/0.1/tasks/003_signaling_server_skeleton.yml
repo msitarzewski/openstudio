@@ -1,0 +1,48 @@
+id: "003"
+title: "Create signaling server skeleton"
+component: "backend"
+estimated_hours: 3
+
+context: |
+  Build the basic Node.js signaling server with WebSocket support.
+  This server will coordinate all WebRTC connections between peers.
+
+  At this stage, we just need a functioning WebSocket server that accepts
+  connections and responds to basic messages. Room management comes next.
+
+depends_on: ["001"]
+
+acceptance_criteria:
+  - WebSocket server listens on port 8080
+  - Accepts WebSocket connections from browsers
+  - Responds to 'ping' messages with 'pong'
+  - Health check endpoint at GET /health returns 200 OK
+  - Server logs connections and disconnections
+  - Graceful shutdown on SIGTERM/SIGINT
+
+files_to_create:
+  - server/index.js
+  - server/lib/websocket-server.js
+  - server/lib/logger.js
+
+files_to_modify:
+  - server/package.json (add start script)
+
+tests_required:
+  - "Manual: Start server with 'npm start', verify it listens on 8080"
+  - "Manual: Connect with wscat -c ws://localhost:8080"
+  - "Manual: Send ping message, receive pong response"
+  - "Manual: curl http://localhost:8080/health returns 200"
+
+references:
+  - memory-bank/systemPatterns.md (Signaling Server responsibilities)
+  - memory-bank/techContext.md (WebSocket Library)
+  - memory-bank/projectRules.md (Error Handling Patterns)
+
+notes: |
+  Use the 'ws' library (already installed in task 001).
+  Keep it simple - no authentication yet, just basic connectivity.
+
+  Example ping/pong message format:
+  Client sends: {"type": "ping"}
+  Server responds: {"type": "pong", "timestamp": 1234567890}

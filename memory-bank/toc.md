@@ -17,12 +17,21 @@
 - **SIGNAL_FLOW.md** - Audio routing and mix-minus implementation
 - **README.md** - Quick start and setup instructions
 
+## Release Plans
+
+### Release 0.1
+
+- **release.yml** - MVP overview and acceptance criteria
+- **README.md** - Workflow guide and progress tracking
+- **tasks/** - 20 individual task files (001-020)
+
 ## Task Documentation
 
 ### 2025-10
 
 - **README.md** - October 2025 summary
 - **161025_memory_bank_initialization.md** - Initial Memory Bank setup
+- **161025_release_01_task_breakdown.md** - Release 0.1 planning (20 tasks, 5 milestones)
 
 ## Quick References
 

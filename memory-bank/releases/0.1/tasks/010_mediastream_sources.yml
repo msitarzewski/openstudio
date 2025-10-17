@@ -1,0 +1,59 @@
+id: "010"
+title: "Create MediaStream source nodes per peer"
+component: "frontend"
+estimated_hours: 4
+
+context: |
+  Route each remote peer's audio track through the Web Audio graph.
+  Create a MediaStreamAudioSourceNode for each peer, replacing direct
+  playback from task 008.
+
+  This enables per-participant audio processing.
+
+depends_on: ["009"]
+
+acceptance_criteria:
+  - When remote track arrives, create MediaStreamAudioSourceNode
+  - Source node stored in participant map (peerId → sourceNode)
+  - Source connects to GainNode (created per participant)
+  - When peer disconnects, source node properly disconnected and cleaned up
+  - No audio memory leaks (nodes garbage collected)
+  - Multiple peers can connect simultaneously (3+ participants tested)
+
+files_to_create:
+  - web/js/participant-audio.js
+
+files_to_modify:
+  - web/js/audio-graph.js (add participant management)
+  - web/js/rtc-manager.js (route ontrack to audio graph)
+
+tests_required:
+  - "Manual: Connect 3 peers, verify each creates source node"
+  - "Manual: Disconnect peer, verify node cleaned up (check chrome://inspect)"
+  - "Manual: Monitor memory usage, verify no leaks after multiple connect/disconnect cycles"
+
+references:
+  - memory-bank/systemPatterns.md (Web Audio Graph structure)
+  - memory-bank/projectRules.md (Performance - Web Audio, disconnect unused nodes)
+
+notes: |
+  Structure per participant:
+
+  const participant = {
+    peerId: 'abc',
+    sourceNode: audioContext.createMediaStreamSource(remoteTrack.stream),
+    gainNode: audioContext.createGain(),
+    compressorNode: audioContext.createDynamicsCompressor()
+  };
+
+  participant.sourceNode
+    .connect(participant.gainNode)
+    .connect(participant.compressorNode);
+
+  On disconnect:
+  participant.sourceNode.disconnect();
+  participant.gainNode.disconnect();
+  participant.compressorNode.disconnect();
+  // Let garbage collector clean up
+
+  Store in Map: participants.set(peerId, participant);

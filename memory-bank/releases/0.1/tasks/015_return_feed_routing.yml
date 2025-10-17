@@ -1,0 +1,63 @@
+id: "015"
+title: "Route mix-minus as return feed to peers"
+component: "frontend"
+estimated_hours: 5
+
+context: |
+  Send each participant's personalized mix-minus back to them via a
+  dedicated WebRTC audio track. This closes the loop - callers now hear
+  everyone except themselves.
+
+  This requires adding outbound tracks to existing peer connections.
+
+depends_on: ["014"]
+
+acceptance_criteria:
+  - Capture mix-minus bus as MediaStream per participant
+  - Add mix-minus track to peer's RTCPeerConnection (outbound)
+  - Renegotiate connection to add new track (offer/answer)
+  - Remote peer receives return feed track
+  - Remote peer plays return feed (not program bus)
+  - Return feed updates when participants join/leave session
+
+files_to_create:
+  - web/js/return-feed.js
+
+files_to_modify:
+  - web/js/mix-minus.js (expose MediaStream for each mix-minus)
+  - web/js/rtc-manager.js (add return feed tracks to connections)
+  - web/js/signaling-client.js (handle renegotiation)
+
+tests_required:
+  - "Manual: Connect 2 peers (A, B)"
+  - "Manual: Speak into A's mic, verify B hears A but A doesn't hear themselves"
+  - "Manual: Speak into B's mic, verify A hears B but B doesn't hear themselves"
+  - "Manual: Add 3rd peer C, verify mix-minus updates for all"
+
+references:
+  - memory-bank/systemPatterns.md (Mix-minus sent back via dedicated RTC tracks)
+  - memory-bank/SIGNAL_FLOW.md (Route MixMinus_i back to caller i)
+
+notes: |
+  Capture mix-minus as MediaStream:
+
+  const mixMinusDest = audioContext.createMediaStreamDestination();
+  mixMinusBus.connect(mixMinusDest);
+  const returnFeedTrack = mixMinusDest.stream.getAudioTracks()[0];
+
+  Add to peer connection:
+  peerConnection.addTrack(returnFeedTrack, mixMinusDest.stream);
+
+  Renegotiation required:
+  - Create new offer with added track
+  - Send via signaling
+  - Remote peer receives, creates answer
+  - Connection updated with return feed
+
+  Track labeling:
+  Use track.label or transceiver direction to distinguish:
+  - Uplink: peer's microphone input
+  - Downlink: return feed (mix-minus for that peer)
+
+  For MVP, all peers get return feeds. Later: hosts might not need return feeds
+  (they monitor program bus directly).

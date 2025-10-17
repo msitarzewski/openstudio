@@ -1,0 +1,97 @@
+id: "020"
+title: "Complete documentation and deployment guide"
+component: "documentation"
+estimated_hours: 4
+
+context: |
+  Finalize all documentation for Release 0.1. Ensure new users can set up
+  OpenStudio in <5 minutes and troubleshoot common issues.
+
+  This is the polish that makes the MVP genuinely usable.
+
+depends_on: ["019"]
+
+acceptance_criteria:
+  - README.md updated with accurate setup instructions
+  - Quick start guide tested by new user (not familiar with codebase)
+  - Troubleshooting guide covers common issues from testing
+  - Architecture docs updated with actual implementation details
+  - All code has JSDoc comments for public APIs
+  - CHANGELOG.md created with Release 0.1 notes
+  - LICENSE file exists (MIT license)
+  - CONTRIBUTING.md guides future contributors
+  - GitHub release v0.1.0 tagged and published
+
+files_to_create:
+  - CHANGELOG.md
+  - CONTRIBUTING.md
+  - docs/TROUBLESHOOTING.md
+  - docs/ARCHITECTURE-IMPLEMENTATION.md
+
+files_to_modify:
+  - README.md (update with actual setup steps)
+  - memory-bank/quick-start.md (add real examples from implementation)
+  - memory-bank/progress.md (mark 0.1 complete, update metrics)
+
+tests_required:
+  - "Manual: Fresh user follows README, completes setup in <5 minutes"
+  - "Manual: Review all docs for accuracy and completeness"
+  - "Manual: Verify all links work (internal and external)"
+  - "Manual: Test deployment on clean system (fresh VM or container)"
+
+references:
+  - memory-bank/productContext.md (Use Cases)
+  - memory-bank/projectRules.md (Documentation Standards)
+  - README.md (existing aspirational content to preserve)
+
+notes: |
+  Documentation checklist:
+
+  1. README.md:
+     - Accurate quick start (copy station-manifest, docker compose up, npm start)
+     - Known limitations documented
+     - Browser compatibility matrix
+     - Link to detailed docs
+
+  2. TROUBLESHOOTING.md:
+     - WebRTC connection fails → check TURN/STUN config
+     - Audio not flowing → check mic permissions
+     - Echo/feedback → ensure headphones, check mix-minus
+     - Icecast not streaming → check credentials, network
+     - High CPU → reduce participant count, close other apps
+
+  3. ARCHITECTURE-IMPLEMENTATION.md:
+     - Actual code structure (vs planned in ARCHITECTURE.md)
+     - Key modules and their responsibilities
+     - Data flow diagrams (update Mermaid if needed)
+     - Extension points for future features
+
+  4. CHANGELOG.md format:
+     # Changelog
+
+     ## [0.1.0] - YYYY-MM-DD
+     ### Added
+     - WebRTC signaling server with room management
+     - Web Audio graph with mix-minus per caller
+     - Per-participant mute/unmute controls
+     - Icecast streaming output (OGG/Opus)
+     - Docker Compose deployment
+
+     ### Performance
+     - 60+ minute session stability
+     - <150ms mute latency
+     - Supports 3 hosts + 5 callers
+
+  5. GitHub release:
+     - Tag: v0.1.0
+     - Title: "OpenStudio 0.1 - Core Loop MVP"
+     - Description: Summary of features + link to CHANGELOG
+     - Attach: None (source code auto-attached by GitHub)
+
+  Final check:
+  - All 20 tasks marked complete (001_X through 020_X)
+  - Memory Bank updated
+  - Code committed and pushed
+  - Release published
+
+  🎉 Release 0.1 complete!

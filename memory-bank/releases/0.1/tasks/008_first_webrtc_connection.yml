@@ -1,0 +1,59 @@
+id: "008"
+title: "Test first WebRTC peer connection"
+component: "integration"
+estimated_hours: 5
+
+context: |
+  Implement the client-side JavaScript to establish the first WebRTC
+  connection between two peers. This proves the signaling works and
+  media can flow.
+
+  This is a critical milestone - once this works, everything else builds on it.
+
+depends_on: ["006", "007"]
+
+acceptance_criteria:
+  - Client connects to signaling server via WebSocket
+  - Client can create room and join room
+  - RTCPeerConnection created with ICE servers from manifest
+  - SDP offer/answer exchange completes successfully
+  - ICE candidates exchanged and connection established
+  - Audio track from local microphone sent to remote peer
+  - Connection state visible in chrome://webrtc-internals
+  - Two browser windows can connect and exchange audio
+
+files_to_create:
+  - web/js/signaling-client.js
+  - web/js/rtc-manager.js
+  - web/js/main.js
+
+files_to_modify:
+  - web/index.html (add script tags)
+
+tests_required:
+  - "Manual: Open 2 browser windows to index.html"
+  - "Manual: Window A creates room, Window B joins with room ID"
+  - "Manual: Verify both windows show 'connected' status"
+  - "Manual: Speak into mic on Window A, hear audio in Window B"
+  - "Manual: Check chrome://webrtc-internals shows active connection"
+
+references:
+  - memory-bank/systemPatterns.md (Peer-to-Peer Media)
+  - memory-bank/SIGNAL_FLOW.md (Session bring-up)
+  - memory-bank/quick-start.md (WebRTC Connection Flow)
+
+notes: |
+  Use vanilla JavaScript, ES modules.
+
+  Basic flow:
+  1. getUserMedia() to get local audio track
+  2. Create RTCPeerConnection with ICE servers
+  3. Add track to peer connection
+  4. Create offer (host) or wait for offer (caller)
+  5. Set local description, send via signaling
+  6. Receive remote SDP, set remote description
+  7. Exchange ICE candidates
+  8. Connection establishes, ontrack fires with remote audio
+
+  For MVP, auto-play remote audio to default output.
+  Audio routing to Web Audio graph comes in task 009.

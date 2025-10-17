@@ -1,0 +1,75 @@
+id: "018"
+title: "Integrate Icecast streaming output"
+component: "integration"
+estimated_hours: 5
+
+context: |
+  Encode the program bus to OGG/Opus and stream to Icecast server.
+  This enables listeners to tune in to the live broadcast.
+
+  This completes the broadcast pipeline: participants → mix → stream.
+
+depends_on: ["012"]
+
+acceptance_criteria:
+  - MediaRecorder captures program bus audio
+  - Opus codec configured (48kbps or 128kbps, configurable)
+  - Encoded audio chunks sent to Icecast mount point
+  - Stream playable in standard media players (VLC, browser)
+  - Stream has <5s latency (glass-to-glass: host mic → listener speaker)
+  - Reconnection logic if Icecast connection drops
+  - UI shows streaming status (not streaming / streaming / error)
+
+files_to_create:
+  - web/js/icecast-streamer.js
+  - web/js/stream-encoder.js
+
+files_to_modify:
+  - web/js/program-bus.js (expose MediaStreamDestination)
+  - web/index.html (add streaming controls and status)
+
+tests_required:
+  - "Manual: Start session, enable streaming"
+  - "Manual: Open Icecast web UI (http://localhost:8000)"
+  - "Manual: Verify mount point appears and is active"
+  - "Manual: Play stream in VLC or browser, verify audio plays"
+  - "Manual: Speak into mic, verify latency <5s"
+  - "Manual: Disconnect/reconnect Icecast, verify recovery"
+
+references:
+  - memory-bank/systemPatterns.md (Streaming Output - Icecast)
+  - memory-bank/SIGNAL_FLOW.md (Program bus captured for Icecast encoder pipeline)
+  - memory-bank/techContext.md (Icecast Output specifications)
+
+notes: |
+  MediaRecorder setup:
+
+  const programStream = programBus.destination.stream;
+  const recorder = new MediaRecorder(programStream, {
+    mimeType: 'audio/webm;codecs=opus',
+    audioBitsPerSecond: 128000 // 128kbps
+  });
+
+  recorder.ondataavailable = (event) => {
+    // Send event.data (Blob) to Icecast via HTTP PUT
+  };
+
+  recorder.start(1000); // 1s chunks
+
+  Icecast mount point:
+  - URL: http://localhost:8000/live.opus
+  - Source authentication: Basic Auth (source:hackme)
+  - Content-Type: audio/opus
+
+  Streaming pipeline:
+  1. MediaRecorder → chunks (every 1s)
+  2. Send chunks via fetch() or XHR PUT to Icecast
+  3. Icecast buffers and distributes to listeners
+
+  Reconnection logic:
+  - On error, wait 5s, retry
+  - Exponential backoff (5s, 10s, 20s, max 60s)
+  - UI shows reconnection attempts
+
+  For MVP, streaming is opt-in (host clicks "Start Streaming" button).
+  Auto-start can be added in later releases.
