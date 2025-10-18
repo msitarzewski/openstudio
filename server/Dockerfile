@@ -2,14 +2,17 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files from server directory
+COPY server/package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Copy application code (will be minimal for now)
-COPY . .
+# Copy station manifest files from project root
+COPY station-manifest*.json ../
+
+# Copy application code from server directory
+COPY server/ .
 
 # Expose signaling server port
 EXPOSE 3000

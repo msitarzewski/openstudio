@@ -1,0 +1,19 @@
+{
+  "stationId": "openstudio-dev",
+  "name": "OpenStudio Development Station",
+  "signaling": {
+    "url": "ws://localhost:3000"
+  },
+  "ice": {
+    "stun": [
+      "stun:localhost:3478"
+    ],
+    "turn": [
+      {
+        "urls": "turn:localhost:3478",
+        "username": "openstudio",
+        "credential": "hackme"
+      }
+    ]
+  }
+}

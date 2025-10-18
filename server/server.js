@@ -8,6 +8,16 @@
 import http from 'http';
 import * as logger from './lib/logger.js';
 import { createWebSocketServer } from './lib/websocket-server.js';
+import { loadConfig } from './lib/config-loader.js';
+
+// Load and validate station manifest (fail fast if invalid)
+let config;
+try {
+  config = loadConfig();
+} catch (error) {
+  logger.error('Failed to load station manifest:', error.message);
+  process.exit(1);
+}
 
 // Configuration
 const PORT = process.env.PORT || 3000;
@@ -20,6 +30,18 @@ const httpServer = http.createServer((req, res) => {
     const uptime = Math.floor((Date.now() - startTime) / 1000);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok', uptime }));
+    return;
+  }
+
+  // Station info endpoint
+  if (req.method === 'GET' && req.url === '/api/station') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      stationId: config.stationId,
+      name: config.name,
+      signaling: config.signaling,
+      ice: config.ice
+    }));
     return;
   }
 

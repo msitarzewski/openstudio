@@ -32,8 +32,8 @@ services:
 
   signaling:
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: server/Dockerfile
     container_name: openstudio-signaling
     ports:
       - "3000:3000"

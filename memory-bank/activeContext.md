@@ -5,10 +5,55 @@
 ## Current Phase
 
 **Release**: 0.1 MVP (Core Loop)
-**Status**: Implementation In Progress (3/20 tasks complete, 15%)
-**Focus**: Milestone 1 - Foundation (75% complete: tasks 001-003 done, 004 remaining)
+**Status**: Implementation In Progress (4/20 tasks complete, 20%)
+**Focus**: Milestone 2 - Basic Connection (0% complete: tasks 005-008 pending)
 
 ## Recent Decisions
+
+### 2025-10-18: Configuration Management (Task 004)
+
+**Decision**: Load and validate station-manifest.json on server startup, fail fast on errors
+
+**Rationale**:
+- Prevents server from running with invalid configuration
+- Provides clear error messages for configuration problems
+- Fallback to sample manifest enables easy development setup
+- Fail fast pattern aligns with projectRules.md error handling
+
+**Implementation**:
+- Created server/lib/validate-manifest.js (103 lines) - Schema validation
+- Created server/lib/config-loader.js (73 lines) - Load with fallback logic
+- Modified server/server.js - Load config before server starts, add /api/station endpoint
+- Updated Dockerfile and docker-compose.yml - Build context at project root to access manifest files
+- Created station-manifest.sample.json - Development configuration
+
+**Validation**:
+- Required fields: stationId, name, signaling.url, ice.stun array
+- Optional fields: ice.turn array (but validated if present)
+- URL format validation: WebSocket URLs (ws:// or wss://), STUN/TURN URLs
+- Clear error messages for each validation failure
+
+**Fallback Behavior**:
+- If station-manifest.json missing → Use station-manifest.sample.json with warning
+- If both missing → Exit with error
+- If JSON invalid → Exit with parse error details
+- If validation fails → Exit with all validation errors listed
+
+**Testing**:
+- Server loads manifest: ✅ Logs "Loaded station manifest: OpenStudio Development Station (openstudio-dev)"
+- /api/station endpoint: ✅ Returns complete config including ICE servers
+- Fallback to sample: ✅ Warning logged, server uses sample successfully
+- Corrupt JSON handling: ✅ Clear error "Invalid JSON in manifest file: Unexpected end of JSON input"
+
+**Files Created**:
+- station-manifest.sample.json
+- server/lib/validate-manifest.js
+- server/lib/config-loader.js
+
+**Files Modified**:
+- server/server.js (added config loading and /api/station endpoint)
+- server/Dockerfile (copy manifest files from project root)
+- docker-compose.yml (build context changed to project root)
 
 ### 2025-10-18: Signaling Server Port Configuration (Task 003)
 
@@ -127,7 +172,7 @@ notes (implementation hints)
 
 ## Current Work Items
 
-### Immediate - Milestone 1: Foundation (Tasks 003-004)
+### Completed - Milestone 1: Foundation (Tasks 001-004) ✅
 
 1. ✅ **Task 001**: Project structure and dependencies (COMPLETE)
    - Directory structure (server/, web/, shared/)
@@ -146,18 +191,20 @@ notes (implementation hints)
    - Graceful shutdown tested (SIGTERM)
    - Connection logging with client IPs
 
-4. **Task 004**: Station manifest integration (NEXT)
+4. ✅ **Task 004**: Station manifest integration (COMPLETE)
    - Configuration loading and validation
-   - API endpoint for station info
+   - API endpoint for station info (/api/station)
+   - Fallback to sample manifest
+   - Fail fast on invalid config
 
-### Short Term - Milestone 2: Basic Connection (Tasks 005-008)
+### Immediate - Milestone 2: Basic Connection (Tasks 005-008)
 
-5. **Task 005**: WebSocket signaling protocol (SDP/ICE relay)
+5. **Task 005**: WebSocket signaling protocol (SDP/ICE relay) - NEXT
 6. **Task 006**: Room management system
 7. **Task 007**: Web studio HTML/CSS scaffold
 8. **Task 008**: First WebRTC peer connection test
 
-### Medium Term - Milestone 3-5 (Tasks 009-020)
+### Short Term - Milestone 3-5 (Tasks 009-020)
 
 - **M3**: Multi-Peer Audio (009-013) - Web Audio graph, gain controls, program bus
 - **M4**: Mix-Minus (014-016) - Per-caller mixes, return feeds, testing
@@ -202,13 +249,15 @@ notes (implementation hints)
 
 1. Review this file first to understand current state
 2. Check tasks/2025-10/README.md for recent progress
-3. **Start with task 004**: Read `memory-bank/releases/0.1/tasks/004_station_manifest_integration.yml`
+3. **Start with task 005**: Read `memory-bank/releases/0.1/tasks/005_websocket_signaling_protocol.yml`
 4. Infrastructure operational: Icecast (8000), coturn (3478), signaling server (3000 WebSocket + HTTP)
-5. Signaling server ready: WebSocket accepts connections, ping/pong works, health check operational
-6. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
-7. Reference systemPatterns.md for architectural decisions
-8. Use `sudo docker compose` for all Docker commands (user not in docker group)
-9. Port 3000 is standard for signaling server (documented in task 003 and 004)
+5. Signaling server ready: WebSocket accepts connections, config loaded, two API endpoints operational
+6. **Milestone 1 (Foundation) complete**: Project structure, Docker, signaling skeleton, configuration management
+7. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
+8. Reference systemPatterns.md for architectural decisions
+9. Use `sudo docker compose` for all Docker commands (user not in docker group)
+10. Port 3000 is standard for signaling server (documented in tasks 003-004)
+11. Configuration available via GET /api/station (includes ICE servers for WebRTC)
 
 ## Context for Future Work
 

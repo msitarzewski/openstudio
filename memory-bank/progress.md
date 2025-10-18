@@ -31,43 +31,47 @@
 
 ### Code
 
-✅ **Foundation In Progress** (Milestone 1: 75% - Tasks 001-003)
+✅ **Milestone 1: Foundation Complete** (100% - Tasks 001-004)
 - Project structure: server/, web/, shared/ directories
 - Package.json files with ES modules (Node.js 18+)
 - Dependencies: ws ^8.18.0, jsonwebtoken ^9.0.2 (0 vulnerabilities)
 - Docker infrastructure: Icecast, coturn, signaling server
 - All services verified operational
+- Configuration management with validation
 
-✅ **Signaling Server** (Task 003 - Complete)
+✅ **Signaling Server** (Tasks 003-004 - Complete)
 - WebSocket server operational (port 3000)
 - HTTP server with health check endpoint
 - Ping/pong message protocol working
 - Graceful shutdown on SIGTERM/SIGINT
 - Connection logging with client IPs
-- Files: server.js, lib/logger.js, lib/websocket-server.js (256 lines total)
+- Station manifest loading and validation
+- API endpoint for station info (/api/station)
+- Files: server.js, lib/logger.js, lib/websocket-server.js, lib/config-loader.js, lib/validate-manifest.js (432 lines total)
 
-🚧 **Station Manifest Integration** (Task 004 - Next)
-- Configuration loading pending
-- Station info API endpoint pending
+🚧 **WebSocket Signaling Protocol** (Task 005 - Next)
+- SDP offer/answer relay pending
+- ICE candidate exchange pending
+- Message routing to peers pending
 
 ## What's Next
 
 ### Immediate (This Week)
 
-1. **Station Manifest Integration** (Task 004 - NEXT)
-   - Configuration loading and validation
-   - API endpoint for station info
-   - Fallback to sample manifest
-
-2. **WebSocket Signaling Protocol** (Task 005)
+1. **WebSocket Signaling Protocol** (Task 005 - NEXT)
    - SDP offer/answer relay
    - ICE candidate exchange
    - Message routing to peers
 
-3. **Room Management System** (Task 006)
+2. **Room Management System** (Task 006)
    - Create/join room functionality
    - Room state tracking
    - Participant list management
+
+3. **Web Studio HTML/CSS Scaffold** (Task 007)
+   - Basic HTML structure
+   - Minimal CSS styling
+   - WebSocket client connection
 
 4. **Test WebRTC Handshake** (Task 008)
    - Two-peer connection
@@ -147,7 +151,7 @@
 - ✅ OGG/Opus stream playable via Icecast
 - ✅ Setup from clone < 5 min
 
-**Status**: 15% complete (3/20 tasks) - **Milestone 1: Foundation 75% complete (3/4 tasks done)**
+**Status**: 20% complete (4/20 tasks) - **Milestone 1: Foundation 100% complete (4/4 tasks done)**
 
 **Task Breakdown**: See `memory-bank/releases/0.1/` for detailed task files
 - **M1: Foundation** (001-004): Project structure, Docker, signaling skeleton
@@ -229,7 +233,19 @@
 
 ## Recent Achievements
 
-### 2025-10-18
+### 2025-10-18 (Part 2)
+
+✅ **Task 004 Complete**: Station manifest integration operational
+✅ Created station-manifest.sample.json - Sample configuration with development credentials
+✅ Created station-manifest.json - Active configuration (copy of sample)
+✅ Created server/lib/validate-manifest.js - Schema validation (103 lines)
+✅ Created server/lib/config-loader.js - Configuration loader with fallback (73 lines)
+✅ Modified server/server.js - Load config on startup, add /api/station endpoint
+✅ Updated server/Dockerfile and docker-compose.yml - Build context at project root
+✅ All acceptance criteria validated: manifest loading, validation, fallback, API endpoint, error handling
+✅ **Milestone 1 (Foundation) now 100% complete (4/4 tasks)**
+
+### 2025-10-18 (Part 1)
 
 ✅ **Task 003 Complete**: Signaling server skeleton operational
 ✅ Created server/server.js - HTTP + WebSocket server (93 lines)
