@@ -6,9 +6,13 @@ import { WebSocketServer } from 'ws';
 import * as logger from './logger.js';
 import { PeerRegistry, relayMessage } from './signaling-protocol.js';
 import { validateSignalingMessage } from './message-validator.js';
+import { RoomManager } from './room-manager.js';
 
 // Global peer registry
 const peerRegistry = new PeerRegistry();
+
+// Global room manager
+const roomManager = new RoomManager();
 
 /**
  * Create and configure WebSocket server
@@ -38,8 +42,23 @@ export function createWebSocketServer(httpServer) {
 
     // Handle client disconnection
     ws.on('close', () => {
-      // Unregister peer if registered
-      peerRegistry.unregisterByConnection(ws);
+      const peerId = peerRegistry.getPeerId(ws);
+
+      if (peerId) {
+        // Remove peer from room and notify others
+        const result = roomManager.removePeerFromRoom(peerId);
+        if (result.success && result.room && !result.wasLastParticipant) {
+          // Broadcast peer-left to remaining participants
+          result.room.broadcast({
+            type: 'peer-left',
+            peerId: peerId
+          });
+        }
+
+        // Unregister peer
+        peerRegistry.unregisterByConnection(ws);
+      }
+
       logger.info('WebSocket client disconnected:', clientIp);
     });
 
@@ -91,6 +110,14 @@ function handleMessage(ws, message) {
         type: 'pong',
         timestamp: Date.now()
       }));
+      break;
+
+    case 'create-room':
+      handleCreateRoom(ws, message, peerId);
+      break;
+
+    case 'join-room':
+      handleJoinRoom(ws, message, peerId);
       break;
 
     case 'offer':
@@ -146,6 +173,87 @@ function handleSignalingMessage(ws, message, peerId) {
   }
   // Note: We don't send a success confirmation to avoid extra message traffic
   // The relay itself is the confirmation
+}
+
+/**
+ * Handle create-room message
+ * @param {import('ws').WebSocket} ws - WebSocket connection
+ * @param {object} message - Create room message
+ * @param {string} peerId - Peer ID
+ */
+function handleCreateRoom(ws, message, peerId) {
+  if (!peerId) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Must register before creating a room'
+    }));
+    return;
+  }
+
+  const result = roomManager.createRoom(peerId, ws);
+
+  if (result.success) {
+    ws.send(JSON.stringify({
+      type: 'room-created',
+      roomId: result.roomId,
+      hostId: peerId
+    }));
+  } else {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: result.error
+    }));
+  }
+}
+
+/**
+ * Handle join-room message
+ * @param {import('ws').WebSocket} ws - WebSocket connection
+ * @param {object} message - Join room message
+ * @param {string} peerId - Peer ID
+ */
+function handleJoinRoom(ws, message, peerId) {
+  if (!peerId) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Must register before joining a room'
+    }));
+    return;
+  }
+
+  if (!message.roomId) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Missing roomId field'
+    }));
+    return;
+  }
+
+  const result = roomManager.joinRoom(message.roomId, peerId, ws);
+
+  if (result.success) {
+    // Get participant list
+    const participants = result.room.getParticipants();
+
+    // Send room-joined confirmation to joiner
+    ws.send(JSON.stringify({
+      type: 'room-joined',
+      roomId: message.roomId,
+      participants: participants
+    }));
+
+    // Broadcast peer-joined to all existing participants (except the joiner)
+    result.room.broadcast({
+      type: 'peer-joined',
+      peerId: peerId,
+      role: 'caller'
+    }, peerId);
+  } else {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: result.error
+    }));
+  }
 }
 
 export default { createWebSocketServer };

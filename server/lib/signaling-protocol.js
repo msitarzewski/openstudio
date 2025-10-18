@@ -117,9 +117,10 @@ export class PeerRegistry {
  * @param {PeerRegistry} registry - Peer registry instance
  * @param {object} message - Message to relay (must have 'to' field)
  * @param {string} fromPeerId - Sender's peer ID
+ * @param {import('./room-manager.js').RoomManager} roomManager - Optional room manager for room validation
  * @returns {{success: boolean, error?: string}}
  */
-export function relayMessage(registry, message, fromPeerId) {
+export function relayMessage(registry, message, fromPeerId, roomManager = null) {
   const targetPeerId = message.to;
 
   // Check if target peer exists
@@ -130,6 +131,20 @@ export function relayMessage(registry, message, fromPeerId) {
       success: false,
       error: `Target peer "${targetPeerId}" is not connected`
     };
+  }
+
+  // If room manager provided, verify peers are in the same room
+  if (roomManager) {
+    const senderRoom = roomManager.getRoomForPeer(fromPeerId);
+    const targetRoom = roomManager.getRoomForPeer(targetPeerId);
+
+    if (senderRoom && targetRoom && senderRoom.roomId !== targetRoom.roomId) {
+      logger.warn(`Cannot relay message: peers in different rooms (${senderRoom.roomId} vs ${targetRoom.roomId})`);
+      return {
+        success: false,
+        error: `Target peer is in a different room`
+      };
+    }
   }
 
   // Check if target connection is still open
@@ -155,4 +170,15 @@ export function relayMessage(registry, message, fromPeerId) {
   }
 }
 
-export default { PeerRegistry, relayMessage };
+/**
+ * Broadcast a message to all participants in a room
+ * @param {import('./room.js').Room} room - Room instance
+ * @param {object} message - Message to broadcast
+ * @param {string|null} excludePeerId - Optional peer ID to exclude from broadcast
+ * @returns {number} Number of participants who received the message
+ */
+export function broadcastToRoom(room, message, excludePeerId = null) {
+  return room.broadcast(message, excludePeerId);
+}
+
+export default { PeerRegistry, relayMessage, broadcastToRoom };

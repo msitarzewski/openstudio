@@ -39,7 +39,7 @@
 - All services verified operational
 - Configuration management with validation
 
-✅ **Signaling Server** (Tasks 003-005 - Complete)
+✅ **Signaling Server** (Tasks 003-006 - Complete)
 - WebSocket server operational (port 3000)
 - HTTP server with health check endpoint
 - Ping/pong message protocol working
@@ -51,29 +51,28 @@
 - SDP offer/answer relay working
 - ICE candidate exchange working
 - Message routing with anti-spoofing validation
-- Files: server.js, lib/logger.js, lib/websocket-server.js, lib/config-loader.js, lib/validate-manifest.js, lib/message-validator.js, lib/signaling-protocol.js (800 lines total)
+- Room creation with UUID identifiers
+- Join room with participant list
+- Peer-joined/peer-left event broadcasts
+- Auto-cleanup when rooms become empty
+- Files: server.js, lib/logger.js, lib/websocket-server.js, lib/config-loader.js, lib/validate-manifest.js, lib/message-validator.js, lib/signaling-protocol.js, lib/room.js, lib/room-manager.js (1703 lines total)
 
-🚧 **Room Management System** (Task 006 - Next)
-- Create/join room functionality pending
-- Room state tracking pending
-- Participant list management pending
+🚧 **Web Studio HTML/CSS Scaffold** (Task 007 - Next)
+- Basic HTML structure pending
+- Minimal CSS styling pending
+- WebSocket client connection pending
 
 ## What's Next
 
 ### Immediate (This Week)
 
-1. **Room Management System** (Task 006 - NEXT)
-   - Create/join room functionality
-   - Room state tracking
-   - Participant list management
-   - Room-scoped message routing
-
-2. **Web Studio HTML/CSS Scaffold** (Task 007)
+1. **Web Studio HTML/CSS Scaffold** (Task 007 - NEXT)
    - Basic HTML structure
    - Minimal CSS styling
    - WebSocket client connection
+   - UI for room creation/joining
 
-3. **Test WebRTC Handshake** (Task 008)
+2. **Test WebRTC Handshake** (Task 008)
    - Two-peer connection
    - Verify SDP exchange via signaling
    - Confirm audio flows end-to-end
@@ -151,11 +150,11 @@
 - ✅ OGG/Opus stream playable via Icecast
 - ✅ Setup from clone < 5 min
 
-**Status**: 25% complete (5/20 tasks) - **Milestone 1: Foundation 100% complete**, **Milestone 2: Basic Connection 25% complete (1/4 tasks done)**
+**Status**: 30% complete (6/20 tasks) - **Milestone 1: Foundation 100% complete**, **Milestone 2: Basic Connection 50% complete (2/4 tasks done)**
 
 **Task Breakdown**: See `memory-bank/releases/0.1/` for detailed task files
-- **M1: Foundation** (001-004): Project structure, Docker, signaling skeleton, configuration ✅
-- **M2: Basic Connection** (005-008): WebSocket signaling protocol ✅, rooms (pending), HTML scaffold (pending), first peer connection (pending)
+- **M1: Foundation** (001-004): Project structure ✅, Docker ✅, signaling skeleton ✅, configuration ✅
+- **M2: Basic Connection** (005-008): WebSocket signaling ✅, room management ✅, HTML scaffold (next), first peer connection (pending)
 - **M3: Multi-Peer Audio** (009-013): Web Audio graph, gain controls, program bus
 - **M4: Mix-Minus** (014-016): Per-caller mixes, return feeds, testing
 - **M5: Production Ready** (017-020): Mute controls, Icecast, stability testing, docs
@@ -242,7 +241,16 @@
 ✅ Created server/test-signaling.js - Comprehensive test suite (429 lines, 9 tests)
 ✅ All acceptance criteria validated: Peer registration, offer/answer relay, ICE candidate relay, validation, error handling
 ✅ Test results: 9/9 passed (100% pass rate)
-✅ **Milestone 2 (Basic Connection) now 25% complete (1/4 tasks)**
+
+✅ **Task 006 Complete**: Room management system operational
+✅ Created server/lib/room.js - Room class with participant tracking and broadcast (147 lines)
+✅ Created server/lib/room-manager.js - RoomManager with UUID generation and auto-cleanup (218 lines)
+✅ Modified server/lib/websocket-server.js - Added create-room/join-room handlers (+112 lines)
+✅ Modified server/lib/signaling-protocol.js - Added room validation and broadcast helper (+30 lines)
+✅ Created server/test-rooms.js - Comprehensive test suite (538 lines, 9 tests)
+✅ All acceptance criteria validated: Create room, join room, participant tracking, peer-joined/peer-left events, auto-cleanup
+✅ Test results: 9/9 passed (100% pass rate)
+✅ **Milestone 2 (Basic Connection) now 50% complete (2/4 tasks)**
 
 ### 2025-10-18 (Part 2)
 

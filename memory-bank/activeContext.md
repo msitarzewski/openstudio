@@ -5,10 +5,73 @@
 ## Current Phase
 
 **Release**: 0.1 MVP (Core Loop)
-**Status**: Implementation In Progress (5/20 tasks complete, 25%)
-**Focus**: Milestone 2 - Basic Connection (25% complete: task 005 done, tasks 006-008 pending)
+**Status**: Implementation In Progress (6/20 tasks complete, 30%)
+**Focus**: Milestone 2 - Basic Connection (50% complete: tasks 005-006 done, tasks 007-008 pending)
 
 ## Recent Decisions
+
+### 2025-10-18: Room Management System (Task 006)
+
+**Decision**: Implement room-based organization for sessions with UUID room IDs, participant tracking, and event broadcasting
+
+**Rationale**:
+- Rooms provide organizational structure for multi-participant sessions
+- UUID v4 provides collision-resistant room identifiers without coordination
+- Auto-cleanup prevents orphaned rooms when all participants leave
+- One room per peer simplifies state management for MVP
+- Event broadcasting keeps all participants synchronized
+
+**Implementation**:
+- Created server/lib/room.js (147 lines) - Room class with participant tracking and broadcast
+- Created server/lib/room-manager.js (218 lines) - Room lifecycle with UUID generation and auto-cleanup
+- Modified server/lib/websocket-server.js (+112 lines) - Added create-room/join-room handlers, disconnect cleanup
+- Modified server/lib/signaling-protocol.js (+30 lines) - Added room validation and broadcast helper
+- Created server/test-rooms.js (538 lines) - 9 automated tests (100% pass rate)
+
+**Room Structure**:
+- UUID v4 room ID (crypto.randomUUID)
+- Host: First participant (creator) with 'host' role
+- Callers: All subsequent participants with 'caller' role
+- Bidirectional lookup: roomId → Room, peerId → roomId
+- In-memory storage (Map-based)
+
+**Message Protocol**:
+- Create room: Client sends `{type: 'create-room'}`, server responds with `{type: 'room-created', roomId, hostId}`
+- Join room: Client sends `{type: 'join-room', roomId}`, server responds with `{type: 'room-joined', roomId, participants}`
+- Broadcast peer-joined: `{type: 'peer-joined', peerId, role}` to all existing participants (excludes joiner)
+- Broadcast peer-left: `{type: 'peer-left', peerId}` to remaining participants on disconnect
+
+**Room Lifecycle**:
+- Created when host sends create-room message
+- Participants join with room ID
+- Auto-deleted when last participant leaves
+- Clean up peer-to-room mappings on deletion
+
+**Validation**:
+- Peers must register before creating/joining rooms
+- Peers can only be in one room at a time
+- Room must exist to join (error if not found)
+- Broadcast excludes triggering peer (no echo)
+
+**Testing**:
+- ✅ Create room returns UUID
+- ✅ Join room returns participant list and broadcasts peer-joined
+- ✅ Multiple participants all receive notifications
+- ✅ Disconnect broadcasts peer-left to remaining participants
+- ✅ Last participant leaving deletes room
+- ✅ Join non-existent room returns error
+- ✅ Each room gets unique UUID
+- ✅ Peer cannot join multiple rooms
+- ✅ Must register before room operations
+
+**Files Created**:
+- server/lib/room.js
+- server/lib/room-manager.js
+- server/test-rooms.js
+
+**Files Modified**:
+- server/lib/websocket-server.js (added room handlers and disconnect cleanup)
+- server/lib/signaling-protocol.js (added room validation and broadcast helper)
 
 ### 2025-10-18: WebSocket Signaling Protocol (Task 005)
 
@@ -260,8 +323,15 @@ notes (implementation hints)
    - Anti-spoofing validation
    - 9 automated tests (100% pass rate)
 
-6. **Task 006**: Room management system - NEXT
-7. **Task 007**: Web studio HTML/CSS scaffold
+6. ✅ **Task 006**: Room management system (COMPLETE)
+   - Room creation with UUID identifiers
+   - Participant tracking (host/caller roles)
+   - Join room with participant list
+   - Peer-joined/peer-left broadcasts
+   - Auto-cleanup when empty
+   - 9 automated tests (100% pass rate)
+
+7. **Task 007**: Web studio HTML/CSS scaffold - NEXT
 8. **Task 008**: First WebRTC peer connection test
 
 ### Short Term - Milestone 3-5 (Tasks 009-020)
@@ -309,17 +379,18 @@ notes (implementation hints)
 
 1. Review this file first to understand current state
 2. Check tasks/2025-10/README.md for recent progress
-3. **Start with task 006**: Read `memory-bank/releases/0.1/tasks/006_room_management_system.yml`
+3. **Start with task 007**: Read `memory-bank/releases/0.1/tasks/007_web_studio_scaffold.yml`
 4. Infrastructure operational: Icecast (8000), coturn (3478), signaling server (3000 WebSocket + HTTP)
 5. Signaling protocol ready: Peer registration, SDP/ICE relay, anti-spoofing validation working
-6. **Milestone 1 (Foundation) complete**: Project structure, Docker, signaling skeleton, configuration management
-7. **Milestone 2 (Basic Connection) 25% complete**: Signaling protocol done, room management next
-8. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
-9. Reference systemPatterns.md for architectural decisions
-10. Use `sudo docker compose` for all Docker commands (user not in docker group)
-11. Port 3000 is standard for signaling server (documented in tasks 003-004)
-12. Configuration available via GET /api/station (includes ICE servers for WebRTC)
-13. Signaling protocol test suite: 9 automated tests, all passing (server/test-signaling.js)
+6. Room management ready: Create room, join room, peer-joined/peer-left broadcasts, auto-cleanup
+7. **Milestone 1 (Foundation) complete**: Project structure, Docker, signaling skeleton, configuration management
+8. **Milestone 2 (Basic Connection) 50% complete**: Signaling and room management done, web scaffold next
+9. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
+10. Reference systemPatterns.md for architectural decisions
+11. Use `sudo docker compose` for all Docker commands (user not in docker group)
+12. Port 3000 is standard for signaling server (documented in tasks 003-004)
+13. Configuration available via GET /api/station (includes ICE servers for WebRTC)
+14. Test suites: 9 signaling tests + 9 room tests = 18 automated tests, all passing
 
 ## Context for Future Work
 
