@@ -39,7 +39,7 @@
 - All services verified operational
 - Configuration management with validation
 
-✅ **Signaling Server** (Tasks 003-004 - Complete)
+✅ **Signaling Server** (Tasks 003-005 - Complete)
 - WebSocket server operational (port 3000)
 - HTTP server with health check endpoint
 - Ping/pong message protocol working
@@ -47,33 +47,33 @@
 - Connection logging with client IPs
 - Station manifest loading and validation
 - API endpoint for station info (/api/station)
-- Files: server.js, lib/logger.js, lib/websocket-server.js, lib/config-loader.js, lib/validate-manifest.js (432 lines total)
+- Peer registration and tracking
+- SDP offer/answer relay working
+- ICE candidate exchange working
+- Message routing with anti-spoofing validation
+- Files: server.js, lib/logger.js, lib/websocket-server.js, lib/config-loader.js, lib/validate-manifest.js, lib/message-validator.js, lib/signaling-protocol.js (800 lines total)
 
-🚧 **WebSocket Signaling Protocol** (Task 005 - Next)
-- SDP offer/answer relay pending
-- ICE candidate exchange pending
-- Message routing to peers pending
+🚧 **Room Management System** (Task 006 - Next)
+- Create/join room functionality pending
+- Room state tracking pending
+- Participant list management pending
 
 ## What's Next
 
 ### Immediate (This Week)
 
-1. **WebSocket Signaling Protocol** (Task 005 - NEXT)
-   - SDP offer/answer relay
-   - ICE candidate exchange
-   - Message routing to peers
-
-2. **Room Management System** (Task 006)
+1. **Room Management System** (Task 006 - NEXT)
    - Create/join room functionality
    - Room state tracking
    - Participant list management
+   - Room-scoped message routing
 
-3. **Web Studio HTML/CSS Scaffold** (Task 007)
+2. **Web Studio HTML/CSS Scaffold** (Task 007)
    - Basic HTML structure
    - Minimal CSS styling
    - WebSocket client connection
 
-4. **Test WebRTC Handshake** (Task 008)
+3. **Test WebRTC Handshake** (Task 008)
    - Two-peer connection
    - Verify SDP exchange via signaling
    - Confirm audio flows end-to-end
@@ -151,11 +151,11 @@
 - ✅ OGG/Opus stream playable via Icecast
 - ✅ Setup from clone < 5 min
 
-**Status**: 20% complete (4/20 tasks) - **Milestone 1: Foundation 100% complete (4/4 tasks done)**
+**Status**: 25% complete (5/20 tasks) - **Milestone 1: Foundation 100% complete**, **Milestone 2: Basic Connection 25% complete (1/4 tasks done)**
 
 **Task Breakdown**: See `memory-bank/releases/0.1/` for detailed task files
-- **M1: Foundation** (001-004): Project structure, Docker, signaling skeleton
-- **M2: Basic Connection** (005-008): WebSocket, rooms, first peer connection
+- **M1: Foundation** (001-004): Project structure, Docker, signaling skeleton, configuration ✅
+- **M2: Basic Connection** (005-008): WebSocket signaling protocol ✅, rooms (pending), HTML scaffold (pending), first peer connection (pending)
 - **M3: Multi-Peer Audio** (009-013): Web Audio graph, gain controls, program bus
 - **M4: Mix-Minus** (014-016): Per-caller mixes, return feeds, testing
 - **M5: Production Ready** (017-020): Mute controls, Icecast, stability testing, docs
@@ -232,6 +232,17 @@
 - Documentation page views
 
 ## Recent Achievements
+
+### 2025-10-18 (Part 3)
+
+✅ **Task 005 Complete**: WebSocket signaling protocol operational
+✅ Created server/lib/message-validator.js - Message validation with anti-spoofing (136 lines)
+✅ Created server/lib/signaling-protocol.js - Peer registry and message relay (158 lines)
+✅ Modified server/lib/websocket-server.js - Integrated protocol and routing (+74 lines)
+✅ Created server/test-signaling.js - Comprehensive test suite (429 lines, 9 tests)
+✅ All acceptance criteria validated: Peer registration, offer/answer relay, ICE candidate relay, validation, error handling
+✅ Test results: 9/9 passed (100% pass rate)
+✅ **Milestone 2 (Basic Connection) now 25% complete (1/4 tasks)**
 
 ### 2025-10-18 (Part 2)
 

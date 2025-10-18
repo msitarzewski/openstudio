@@ -5,10 +5,64 @@
 ## Current Phase
 
 **Release**: 0.1 MVP (Core Loop)
-**Status**: Implementation In Progress (4/20 tasks complete, 20%)
-**Focus**: Milestone 2 - Basic Connection (0% complete: tasks 005-008 pending)
+**Status**: Implementation In Progress (5/20 tasks complete, 25%)
+**Focus**: Milestone 2 - Basic Connection (25% complete: task 005 done, tasks 006-008 pending)
 
 ## Recent Decisions
+
+### 2025-10-18: WebSocket Signaling Protocol (Task 005)
+
+**Decision**: Implement peer registration with anti-spoofing validation and message relay for WebRTC signaling
+
+**Rationale**:
+- WebRTC requires SDP exchange and ICE candidate relay between peers
+- Security critical: prevent peers from impersonating each other
+- Clear separation of validation, registry, and routing logic
+- Comprehensive testing ensures reliability
+
+**Implementation**:
+- Created server/lib/message-validator.js (136 lines) - Message validation with anti-spoofing
+- Created server/lib/signaling-protocol.js (158 lines) - Peer registry and message relay
+- Modified server/lib/websocket-server.js (+74 lines) - Integrated protocol and routing
+- Created server/test-signaling.js (429 lines) - 9 automated tests (100% pass rate)
+
+**Peer Registration**:
+- Clients send `{"type": "register", "peerId": "peer-a-id"}` on connection
+- Server responds with `{"type": "registered", "peerId": "peer-a-id"}`
+- First-registration-wins for duplicate peer IDs
+- Automatic cleanup on disconnect
+
+**Message Validation**:
+- All signaling messages validated before relay
+- `from` field must match registered peer ID (anti-spoofing)
+- Required fields: type, from, to
+- Type-specific validation: sdp for offer/answer, candidate for ice-candidate
+- Clear error messages returned to sender
+
+**Message Relay**:
+- Server routes messages from sender to target peer
+- No confirmation response (relay itself is confirmation)
+- Error response if target peer not found or connection closed
+- All relay actions logged for debugging
+
+**Testing**:
+- ✅ Peer registration working
+- ✅ Duplicate peer ID rejection
+- ✅ Offer relay from peer A to peer B
+- ✅ Answer relay from peer B to peer A
+- ✅ ICE candidate relay
+- ✅ Unregistered peer rejection
+- ✅ Target peer not found error
+- ✅ Spoofed "from" field rejection
+- ✅ Malformed message rejection
+
+**Files Created**:
+- server/lib/message-validator.js
+- server/lib/signaling-protocol.js
+- server/test-signaling.js
+
+**Files Modified**:
+- server/lib/websocket-server.js (added peer registry, validation, routing)
 
 ### 2025-10-18: Configuration Management (Task 004)
 
@@ -197,10 +251,16 @@ notes (implementation hints)
    - Fallback to sample manifest
    - Fail fast on invalid config
 
-### Immediate - Milestone 2: Basic Connection (Tasks 005-008)
+### In Progress - Milestone 2: Basic Connection (Tasks 005-008)
 
-5. **Task 005**: WebSocket signaling protocol (SDP/ICE relay) - NEXT
-6. **Task 006**: Room management system
+5. ✅ **Task 005**: WebSocket signaling protocol (COMPLETE)
+   - Peer registration and tracking
+   - SDP offer/answer relay
+   - ICE candidate relay
+   - Anti-spoofing validation
+   - 9 automated tests (100% pass rate)
+
+6. **Task 006**: Room management system - NEXT
 7. **Task 007**: Web studio HTML/CSS scaffold
 8. **Task 008**: First WebRTC peer connection test
 
@@ -249,15 +309,17 @@ notes (implementation hints)
 
 1. Review this file first to understand current state
 2. Check tasks/2025-10/README.md for recent progress
-3. **Start with task 005**: Read `memory-bank/releases/0.1/tasks/005_websocket_signaling_protocol.yml`
+3. **Start with task 006**: Read `memory-bank/releases/0.1/tasks/006_room_management_system.yml`
 4. Infrastructure operational: Icecast (8000), coturn (3478), signaling server (3000 WebSocket + HTTP)
-5. Signaling server ready: WebSocket accepts connections, config loaded, two API endpoints operational
+5. Signaling protocol ready: Peer registration, SDP/ICE relay, anti-spoofing validation working
 6. **Milestone 1 (Foundation) complete**: Project structure, Docker, signaling skeleton, configuration management
-7. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
-8. Reference systemPatterns.md for architectural decisions
-9. Use `sudo docker compose` for all Docker commands (user not in docker group)
-10. Port 3000 is standard for signaling server (documented in tasks 003-004)
-11. Configuration available via GET /api/station (includes ICE servers for WebRTC)
+7. **Milestone 2 (Basic Connection) 25% complete**: Signaling protocol done, room management next
+8. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
+9. Reference systemPatterns.md for architectural decisions
+10. Use `sudo docker compose` for all Docker commands (user not in docker group)
+11. Port 3000 is standard for signaling server (documented in tasks 003-004)
+12. Configuration available via GET /api/station (includes ICE servers for WebRTC)
+13. Signaling protocol test suite: 9 automated tests, all passing (server/test-signaling.js)
 
 ## Context for Future Work
 
