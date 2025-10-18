@@ -13,7 +13,7 @@ context: |
 depends_on: ["001"]
 
 acceptance_criteria:
-  - WebSocket server listens on port 8080
+  - WebSocket server listens on port 3000
   - Accepts WebSocket connections from browsers
   - Responds to 'ping' messages with 'pong'
   - Health check endpoint at GET /health returns 200 OK
@@ -21,18 +21,18 @@ acceptance_criteria:
   - Graceful shutdown on SIGTERM/SIGINT
 
 files_to_create:
-  - server/index.js
+  - server/server.js
   - server/lib/websocket-server.js
   - server/lib/logger.js
 
 files_to_modify:
-  - server/package.json (add start script)
+  - server/Dockerfile (update CMD to use server.js)
 
 tests_required:
-  - "Manual: Start server with 'npm start', verify it listens on 8080"
-  - "Manual: Connect with wscat -c ws://localhost:8080"
+  - "Manual: Start server with 'npm start', verify it listens on 3000"
+  - "Manual: Connect with wscat -c ws://localhost:3000"
   - "Manual: Send ping message, receive pong response"
-  - "Manual: curl http://localhost:8080/health returns 200"
+  - "Manual: curl http://localhost:3000/health returns 200"
 
 references:
   - memory-bank/systemPatterns.md (Signaling Server responsibilities)
@@ -42,6 +42,11 @@ references:
 notes: |
   Use the 'ws' library (already installed in task 001).
   Keep it simple - no authentication yet, just basic connectivity.
+
+  IMPLEMENTATION NOTE (Task 003):
+  - Port 3000 chosen to match existing docker-compose.yml configuration
+  - Entry point: server.js (matches package.json main field)
+  - This decision documented to prevent future confusion with port 8080
 
   Example ping/pong message format:
   Client sends: {"type": "ping"}

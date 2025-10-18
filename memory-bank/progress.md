@@ -1,6 +1,6 @@
 # Progress: OpenStudio
 
-**Last Updated**: 2025-10-17
+**Last Updated**: 2025-10-18
 
 ## What's Working
 
@@ -16,7 +16,7 @@
 - docker-compose.yml configured and validated
 - Icecast container running (HTTP 200 at localhost:8000)
 - coturn container running (STUN port 3478 listening)
-- Signaling server placeholder running (health check passing)
+- Signaling server operational (WebSocket + HTTP on port 3000)
 
 ✅ **Memory Bank System Initialized**
 - Core files created (toc.md, projectbrief.md, etc.)
@@ -31,37 +31,45 @@
 
 ### Code
 
-✅ **Foundation Complete** (Milestone 1: 50% - Tasks 001-002)
+✅ **Foundation In Progress** (Milestone 1: 75% - Tasks 001-003)
 - Project structure: server/, web/, shared/ directories
 - Package.json files with ES modules (Node.js 18+)
 - Dependencies: ws ^8.18.0, jsonwebtoken ^9.0.2 (0 vulnerabilities)
-- Docker infrastructure: Icecast, coturn, signaling placeholder
+- Docker infrastructure: Icecast, coturn, signaling server
 - All services verified operational
 
-🚧 **Signaling Server** (Task 003 - Next)
-- Placeholder container running
-- WebSocket implementation pending
+✅ **Signaling Server** (Task 003 - Complete)
+- WebSocket server operational (port 3000)
+- HTTP server with health check endpoint
+- Ping/pong message protocol working
+- Graceful shutdown on SIGTERM/SIGINT
+- Connection logging with client IPs
+- Files: server.js, lib/logger.js, lib/websocket-server.js (256 lines total)
+
+🚧 **Station Manifest Integration** (Task 004 - Next)
+- Configuration loading pending
+- Station info API endpoint pending
 
 ## What's Next
 
 ### Immediate (This Week)
 
-1. **Signaling Server Skeleton** (Task 003 - IN PROGRESS)
-   - WebSocket server setup (ws library)
-   - Basic connectivity (accept connections)
-   - Health check endpoint
-   - Ping/pong messaging
-
-2. **Station Manifest Integration** (Task 004)
+1. **Station Manifest Integration** (Task 004 - NEXT)
    - Configuration loading and validation
    - API endpoint for station info
+   - Fallback to sample manifest
 
-3. **Web Studio HTML Scaffold** (Task 007)
-   - Basic UI structure
-   - Host control interface
-   - Connection status display
+2. **WebSocket Signaling Protocol** (Task 005)
+   - SDP offer/answer relay
+   - ICE candidate exchange
+   - Message routing to peers
 
-3. **Test WebRTC Handshake**
+3. **Room Management System** (Task 006)
+   - Create/join room functionality
+   - Room state tracking
+   - Participant list management
+
+4. **Test WebRTC Handshake** (Task 008)
    - Two-peer connection
    - Verify SDP exchange via signaling
    - Confirm audio flows end-to-end
@@ -139,7 +147,7 @@
 - ✅ OGG/Opus stream playable via Icecast
 - ✅ Setup from clone < 5 min
 
-**Status**: 10% complete (2/20 tasks) - **Milestone 1: Foundation 50% complete (2/4 tasks done)**
+**Status**: 15% complete (3/20 tasks) - **Milestone 1: Foundation 75% complete (3/4 tasks done)**
 
 **Task Breakdown**: See `memory-bank/releases/0.1/` for detailed task files
 - **M1: Foundation** (001-004): Project structure, Docker, signaling skeleton
@@ -220,6 +228,17 @@
 - Documentation page views
 
 ## Recent Achievements
+
+### 2025-10-18
+
+✅ **Task 003 Complete**: Signaling server skeleton operational
+✅ Created server/server.js - HTTP + WebSocket server (93 lines)
+✅ Created server/lib/logger.js - ISO 8601 timestamped logger (48 lines)
+✅ Created server/lib/websocket-server.js - WebSocket wrapper with ping/pong (78 lines)
+✅ Updated Dockerfile CMD and health check endpoint
+✅ All acceptance criteria validated: WebSocket connectivity, ping/pong, health check, graceful shutdown, logging
+✅ Configuration decision: Port 3000 standard (documented in tasks 003 and 004)
+✅ Milestone 1 (Foundation) now 75% complete (3/4 tasks)
 
 ### 2025-10-17
 

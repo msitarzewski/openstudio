@@ -1,14 +1,44 @@
 # Active Context: OpenStudio
 
-**Last Updated**: 2025-10-17
+**Last Updated**: 2025-10-18
 
 ## Current Phase
 
 **Release**: 0.1 MVP (Core Loop)
-**Status**: Implementation In Progress (2/20 tasks complete, 10%)
-**Focus**: Milestone 1 - Foundation (50% complete: tasks 001-002 done, 003-004 remaining)
+**Status**: Implementation In Progress (3/20 tasks complete, 15%)
+**Focus**: Milestone 1 - Foundation (75% complete: tasks 001-003 done, 004 remaining)
 
 ## Recent Decisions
+
+### 2025-10-18: Signaling Server Port Configuration (Task 003)
+
+**Decision**: Use port 3000 for signaling server (not 8080 from task spec)
+
+**Rationale**:
+- docker-compose.yml already configured with PORT=3000 environment variable
+- Avoids confusion with Icecast on port 8000 (similar-looking port numbers)
+- Minimizes changes to existing infrastructure configuration
+- package.json already has `"main": "server.js"` and start script configured
+
+**Implementation**:
+- Created server/server.js (93 lines) - HTTP + WebSocket server
+- Created server/lib/logger.js (48 lines) - ISO 8601 timestamped logger
+- Created server/lib/websocket-server.js (78 lines) - WebSocket wrapper with ping/pong
+- Updated Dockerfile CMD from placeholder to `node server.js`
+- Updated Dockerfile health check to use GET /health endpoint
+- Updated tasks 003 and 004 YAML files to reflect port 3000 standard
+
+**Testing**:
+- WebSocket ping/pong: ✅ Working (timestamp in response)
+- Health check endpoint: ✅ HTTP 200 OK {"status":"ok","uptime":N}
+- Graceful shutdown: ✅ SIGTERM handled cleanly
+- Connection logging: ✅ Client IP logged on connect/disconnect
+
+**Files Created**:
+- server/server.js
+- server/lib/logger.js
+- server/lib/websocket-server.js
+- server/test-ws.js (test helper)
 
 ### 2025-10-17: Docker Infrastructure Configuration (Task 002)
 
@@ -109,12 +139,14 @@ notes (implementation hints)
    - coturn operational (STUN port 3478 listening)
    - Signaling placeholder healthy
 
-3. **Task 003**: Signaling server skeleton (NEXT)
-   - WebSocket server basic connectivity
-   - Health check endpoint
-   - Ping/pong messaging
+3. ✅ **Task 003**: Signaling server skeleton (COMPLETE)
+   - WebSocket server operational on port 3000
+   - Health check endpoint working (GET /health)
+   - Ping/pong messaging validated
+   - Graceful shutdown tested (SIGTERM)
+   - Connection logging with client IPs
 
-4. **Task 004**: Station manifest integration
+4. **Task 004**: Station manifest integration (NEXT)
    - Configuration loading and validation
    - API endpoint for station info
 
@@ -170,11 +202,13 @@ notes (implementation hints)
 
 1. Review this file first to understand current state
 2. Check tasks/2025-10/README.md for recent progress
-3. **Start with task 003**: Read `memory-bank/releases/0.1/tasks/003_signaling_server_skeleton.yml`
-4. Docker infrastructure is ready: Icecast (8000), coturn (3478), signaling placeholder (3000)
-5. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
-6. Reference systemPatterns.md for architectural decisions
-7. Use `sudo docker compose` for all Docker commands (user not in docker group)
+3. **Start with task 004**: Read `memory-bank/releases/0.1/tasks/004_station_manifest_integration.yml`
+4. Infrastructure operational: Icecast (8000), coturn (3478), signaling server (3000 WebSocket + HTTP)
+5. Signaling server ready: WebSocket accepts connections, ping/pong works, health check operational
+6. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
+7. Reference systemPatterns.md for architectural decisions
+8. Use `sudo docker compose` for all Docker commands (user not in docker group)
+9. Port 3000 is standard for signaling server (documented in task 003 and 004)
 
 ## Context for Future Work
 

@@ -24,11 +24,11 @@ files_to_create:
   - station-manifest.json (if not exists, copy from sample)
 
 files_to_modify:
-  - server/index.js (load and validate config on startup)
+  - server/server.js (load and validate config on startup)
 
 tests_required:
   - "Manual: Start server, verify manifest loads without errors"
-  - "Manual: curl http://localhost:8080/api/station returns station info"
+  - "Manual: curl http://localhost:3000/api/station returns station info"
   - "Manual: Rename manifest, verify server uses sample and logs warning"
   - "Manual: Corrupt manifest JSON, verify server exits with clear error"
 
@@ -41,7 +41,7 @@ notes: |
   {
     "stationId": "unique-id",
     "name": "Station Name",
-    "signaling": { "url": "wss://localhost:8080" },
+    "signaling": { "url": "wss://localhost:3000" },
     "ice": {
       "stun": ["stun:localhost:3478"],
       "turn": [{"urls": "turn:localhost:3478", "username": "user", "credential": "pass"}]
@@ -49,3 +49,5 @@ notes: |
   }
 
   Validation should check all required fields exist and URLs are valid format.
+
+  NOTE: Port 3000 is the standard signaling server port (configured in Task 003).
