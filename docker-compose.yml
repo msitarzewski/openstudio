@@ -1,0 +1,52 @@
+services:
+  icecast:
+    image: moul/icecast
+    container_name: openstudio-icecast
+    ports:
+      - "8000:8000"
+    environment:
+      - ICECAST_SOURCE_PASSWORD=hackme
+      - ICECAST_ADMIN_PASSWORD=hackme
+      - ICECAST_ADMIN_USERNAME=admin
+      - ICECAST_RELAY_PASSWORD=hackme
+      - ICECAST_HOSTNAME=localhost
+    restart: unless-stopped
+    networks:
+      - openstudio-network
+
+  coturn:
+    image: coturn/coturn
+    container_name: openstudio-coturn
+    network_mode: host
+    command:
+      - -n
+      - --log-file=stdout
+      - --listening-port=3478
+      - --fingerprint
+      - --lt-cred-mech
+      - --user=openstudio:hackme
+      - --realm=openstudio.local
+      - --min-port=49152
+      - --max-port=49200
+    restart: unless-stopped
+
+  signaling:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: openstudio-signaling
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    depends_on:
+      - icecast
+      - coturn
+    restart: unless-stopped
+    networks:
+      - openstudio-network
+
+networks:
+  openstudio-network:
+    driver: bridge

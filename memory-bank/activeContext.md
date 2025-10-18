@@ -1,14 +1,37 @@
 # Active Context: OpenStudio
 
-**Last Updated**: 2025-10-16
+**Last Updated**: 2025-10-17
 
 ## Current Phase
 
 **Release**: 0.1 MVP (Core Loop)
-**Status**: Planning Complete → Ready for Implementation
-**Focus**: Executing Release 0.1 task breakdown (20 tasks, 5 milestones)
+**Status**: Implementation In Progress (2/20 tasks complete, 10%)
+**Focus**: Milestone 1 - Foundation (50% complete: tasks 001-002 done, 003-004 remaining)
 
 ## Recent Decisions
+
+### 2025-10-17: Docker Infrastructure Configuration (Task 002)
+
+**Decision**: Use network_mode: host for coturn, limit relay port range to 49 ports
+
+**Rationale**:
+- Initial attempt with 16,384 port mappings (49152-65535) failed - Docker couldn't allocate
+- network_mode: host gives coturn direct network access without port mapping overhead
+- 49 ports (49152-49200) sufficient for MVP (~25 concurrent peers with media relay)
+- Simplifies configuration, avoids NAT overhead for TURN relay
+- Development credentials (hackme) acceptable for local testing
+
+**Implementation**:
+- docker-compose.yml created with 3 services: Icecast, coturn, signaling placeholder
+- coturn: network_mode host, limited relay ports, basic STUN/TURN config
+- Icecast: bridge network, port 8000, development credentials
+- signaling: placeholder Dockerfile (Node 18-alpine, health check)
+- All services verified operational: Icecast (HTTP 200), coturn (port 3478 listening), signaling (healthy)
+
+**Issues Resolved**:
+- Removed obsolete `version` field (Docker Compose v2 warning)
+- Removed unsupported coturn options (`--no-tlsv1`, `--no-tlsv1_1`)
+- Changed from massive port range to host networking
 
 ### 2025-10-16: Release 0.1 Task Breakdown Structure
 
@@ -74,18 +97,19 @@ notes (implementation hints)
 
 ## Current Work Items
 
-### Immediate - Milestone 1: Foundation (Tasks 001-004)
+### Immediate - Milestone 1: Foundation (Tasks 003-004)
 
-1. **Task 001**: Project structure and dependencies
+1. ✅ **Task 001**: Project structure and dependencies (COMPLETE)
    - Directory structure (server/, web/, shared/)
    - Package.json configuration with ES modules
    - Core dependency installation
 
-2. **Task 002**: Docker infrastructure verification
-   - Verify Icecast and coturn start successfully
-   - Test connectivity and configuration
+2. ✅ **Task 002**: Docker infrastructure verification (COMPLETE)
+   - Icecast operational (HTTP 200 at localhost:8000)
+   - coturn operational (STUN port 3478 listening)
+   - Signaling placeholder healthy
 
-3. **Task 003**: Signaling server skeleton
+3. **Task 003**: Signaling server skeleton (NEXT)
    - WebSocket server basic connectivity
    - Health check endpoint
    - Ping/pong messaging
@@ -146,10 +170,11 @@ notes (implementation hints)
 
 1. Review this file first to understand current state
 2. Check tasks/2025-10/README.md for recent progress
-3. **Start with task 001**: Read `memory-bank/releases/0.1/tasks/001_project_structure.yml`
-4. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
-5. Reference systemPatterns.md for architectural decisions
-6. Follow PM → Dev → QA → PM workflow for complex implementation tasks
+3. **Start with task 003**: Read `memory-bank/releases/0.1/tasks/003_signaling_server_skeleton.yml`
+4. Docker infrastructure is ready: Icecast (8000), coturn (3478), signaling placeholder (3000)
+5. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
+6. Reference systemPatterns.md for architectural decisions
+7. Use `sudo docker compose` for all Docker commands (user not in docker group)
 
 ## Context for Future Work
 

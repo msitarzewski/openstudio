@@ -1,6 +1,6 @@
 # Progress: OpenStudio
 
-**Last Updated**: 2025-10-16
+**Last Updated**: 2025-10-17
 
 ## What's Working
 
@@ -12,11 +12,11 @@
 - SIGNAL_FLOW.md with audio routing details
 - README.md with aspirational content and vision
 
-✅ **Docker Infrastructure Defined**
-- docker-compose.yml configured
-- Icecast container ready
-- coturn container ready
-- Signaling server stub defined
+✅ **Docker Infrastructure Operational**
+- docker-compose.yml configured and validated
+- Icecast container running (HTTP 200 at localhost:8000)
+- coturn container running (STUN port 3478 listening)
+- Signaling server placeholder running (health check passing)
 
 ✅ **Memory Bank System Initialized**
 - Core files created (toc.md, projectbrief.md, etc.)
@@ -31,18 +31,32 @@
 
 ### Code
 
-🚧 **Nothing Implemented Yet** - planning complete, ready for implementation
+✅ **Foundation Complete** (Milestone 1: 50% - Tasks 001-002)
+- Project structure: server/, web/, shared/ directories
+- Package.json files with ES modules (Node.js 18+)
+- Dependencies: ws ^8.18.0, jsonwebtoken ^9.0.2 (0 vulnerabilities)
+- Docker infrastructure: Icecast, coturn, signaling placeholder
+- All services verified operational
+
+🚧 **Signaling Server** (Task 003 - Next)
+- Placeholder container running
+- WebSocket implementation pending
 
 ## What's Next
 
 ### Immediate (This Week)
 
-1. **Signaling Server Skeleton**
-   - WebSocket server setup
-   - Basic room creation/join
+1. **Signaling Server Skeleton** (Task 003 - IN PROGRESS)
+   - WebSocket server setup (ws library)
+   - Basic connectivity (accept connections)
    - Health check endpoint
+   - Ping/pong messaging
 
-2. **Web Studio HTML Scaffold**
+2. **Station Manifest Integration** (Task 004)
+   - Configuration loading and validation
+   - API endpoint for station info
+
+3. **Web Studio HTML Scaffold** (Task 007)
    - Basic UI structure
    - Host control interface
    - Connection status display
@@ -125,7 +139,7 @@
 - ✅ OGG/Opus stream playable via Icecast
 - ✅ Setup from clone < 5 min
 
-**Status**: 0% complete (0/20 tasks) - **Planning complete, ready to start implementation**
+**Status**: 10% complete (2/20 tasks) - **Milestone 1: Foundation 50% complete (2/4 tasks done)**
 
 **Task Breakdown**: See `memory-bank/releases/0.1/` for detailed task files
 - **M1: Foundation** (001-004): Project structure, Docker, signaling skeleton
@@ -207,8 +221,18 @@
 
 ## Recent Achievements
 
+### 2025-10-17
+
+✅ **Task 002 Complete**: Docker infrastructure verified and operational
+✅ docker-compose.yml created with Icecast, coturn, signaling placeholder
+✅ All services running: Icecast (HTTP 200), coturn (port 3478), signaling (healthy)
+✅ Service persistence verified (restart test passed)
+✅ Docker configuration issues resolved (port range, obsolete options)
+✅ Milestone 1 (Foundation) now 50% complete (2/4 tasks)
+
 ### 2025-10-16
 
+✅ **Task 001 Complete**: Project structure and dependencies established
 ✅ Memory Bank system fully initialized
 ✅ All core documentation files created
 ✅ Task documentation structure established
