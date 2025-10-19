@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="OpenStudio - Decentralized broadcast studio for podcasters">
+  <meta name="author" content="OpenStudio Contributors">
+  <title>OpenStudio - Web Studio</title>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/studio.css">
+
+  <!-- Scripts -->
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <h1>OpenStudio</h1>
+    <div id="status">Disconnected</div>
+  </header>
+
+  <!-- Main content area -->
+  <main>
+    <!-- Participants section -->
+    <section id="participants">
+      <!-- Placeholder participant cards -->
+      <div class="participant-card">
+        <div class="participant-avatar">H</div>
+        <div class="participant-name">Host (You)</div>
+        <div class="participant-role">Host</div>
+        <div class="participant-status">
+          <span class="icon">🎙️</span>
+          <span>Ready</span>
+        </div>
+      </div>
+
+      <div class="participant-card">
+        <div class="participant-avatar">C1</div>
+        <div class="participant-name">Caller 1</div>
+        <div class="participant-role">Caller</div>
+        <div class="participant-status">
+          <span class="icon">🎙️</span>
+          <span>Ready</span>
+        </div>
+      </div>
+
+      <div class="participant-card">
+        <div class="participant-avatar">C2</div>
+        <div class="participant-name">Caller 2</div>
+        <div class="participant-role">Caller</div>
+        <div class="participant-status">
+          <span class="icon">🔇</span>
+          <span>Muted</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Controls section -->
+    <section id="controls">
+      <button id="start-session">Start Session</button>
+      <button id="toggle-mute" disabled>Mute</button>
+      <button id="end-session" disabled>End Session</button>
+    </section>
+  </main>
+</body>
+</html>

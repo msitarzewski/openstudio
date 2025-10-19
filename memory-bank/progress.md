@@ -57,25 +57,42 @@
 - Auto-cleanup when rooms become empty
 - Files: server.js, lib/logger.js, lib/websocket-server.js, lib/config-loader.js, lib/validate-manifest.js, lib/message-validator.js, lib/signaling-protocol.js, lib/room.js, lib/room-manager.js (1703 lines total)
 
-🚧 **Web Studio HTML/CSS Scaffold** (Task 007 - Next)
-- Basic HTML structure pending
-- Minimal CSS styling pending
-- WebSocket client connection pending
+✅ **Web Studio HTML/CSS Scaffold** (Task 007 - Complete)
+- web/index.html - Semantic HTML5 structure with header, participants, controls
+- web/css/reset.css - Modern CSS reset (63 lines)
+- web/css/studio.css - Dark theme with CSS Grid layout (290 lines)
+- Responsive design with breakpoints (desktop/tablet/mobile)
+- CSS custom properties for theming
+- Connection status indicator (disconnected/connecting/connected states)
+- Placeholder participant cards
+- Control buttons (Start Session, Mute, End Session)
+- Manual testing validated (browser rendering, responsive behavior)
+
+✅ **WebRTC Client Implementation** (Task 008 - Complete)
+- web/js/signaling-client.js - WebSocket client with auto-reconnection (268 lines)
+- web/js/rtc-manager.js - RTCPeerConnection manager with getUserMedia (324 lines)
+- web/js/main.js - Application orchestration and UI integration (469 lines)
+- Event-driven architecture: SignalingClient and RTCManager extend EventTarget
+- Room creation/joining via URL hash (#room-uuid)
+- SDP offer/answer exchange working
+- ICE candidate exchange working
+- Participant tracking with dynamic cards
+- Mute/unmute controls
+- End session cleanup
+- Playwright automated browser test (330 lines) - 2 browsers connect successfully
+- Manual testing: Two browser windows exchange audio peer-to-peer
 
 ## What's Next
 
 ### Immediate (This Week)
 
-1. **Web Studio HTML/CSS Scaffold** (Task 007 - NEXT)
-   - Basic HTML structure
-   - Minimal CSS styling
-   - WebSocket client connection
-   - UI for room creation/joining
-
-2. **Test WebRTC Handshake** (Task 008)
-   - Two-peer connection
-   - Verify SDP exchange via signaling
-   - Confirm audio flows end-to-end
+1. **Web Audio Graph Implementation** (Task 009 - NEXT)
+   - Create Web Audio context and graph
+   - Route remote tracks to MediaStreamAudioSourceNode
+   - Add GainNode per participant for volume control
+   - Create Program Bus summing all participants
+   - Add DynamicsCompressorNode for leveling
+   - Test multi-participant mixing (3+ peers)
 
 ### Short Term (Next 2-4 Weeks)
 
@@ -150,12 +167,12 @@
 - ✅ OGG/Opus stream playable via Icecast
 - ✅ Setup from clone < 5 min
 
-**Status**: 30% complete (6/20 tasks) - **Milestone 1: Foundation 100% complete**, **Milestone 2: Basic Connection 50% complete (2/4 tasks done)**
+**Status**: 40% complete (8/20 tasks) - **Milestone 1: Foundation 100% complete**, **Milestone 2: Basic Connection 100% complete**
 
 **Task Breakdown**: See `memory-bank/releases/0.1/` for detailed task files
 - **M1: Foundation** (001-004): Project structure ✅, Docker ✅, signaling skeleton ✅, configuration ✅
-- **M2: Basic Connection** (005-008): WebSocket signaling ✅, room management ✅, HTML scaffold (next), first peer connection (pending)
-- **M3: Multi-Peer Audio** (009-013): Web Audio graph, gain controls, program bus
+- **M2: Basic Connection** (005-008): WebSocket signaling ✅, room management ✅, HTML scaffold ✅, first peer connection ✅
+- **M3: Multi-Peer Audio** (009-013): Web Audio graph (next), gain controls, program bus, quality testing, multi-peer stability
 - **M4: Mix-Minus** (014-016): Per-caller mixes, return feeds, testing
 - **M5: Production Ready** (017-020): Mute controls, Icecast, stability testing, docs
 
@@ -231,6 +248,28 @@
 - Documentation page views
 
 ## Recent Achievements
+
+### 2025-10-18 (Part 5)
+
+✅ **Task 008 Complete**: First WebRTC peer connection operational
+✅ Created web/js/signaling-client.js - WebSocket client with auto-reconnection, peer registration, room management (268 lines)
+✅ Created web/js/rtc-manager.js - RTCPeerConnection manager, getUserMedia, SDP/ICE handling, remote audio playback (324 lines)
+✅ Created web/js/main.js - Application orchestration, UI integration, event coordination (469 lines)
+✅ Created test-webrtc.mjs - Playwright automated browser test (330 lines)
+✅ All acceptance criteria validated: WebSocket connection, room creation/joining, RTCPeerConnection creation, SDP exchange, ICE exchange, audio tracks, chrome://webrtc-internals visible, two-browser audio exchange
+✅ Playwright automated test passed: 2 browser instances connect, create/join room, exchange SDP/ICE, participant tracking working
+✅ Manual testing confirmed: Real audio flows between two browsers peer-to-peer
+✅ **Milestone 2 (Basic Connection) now 100% complete (4/4 tasks)**
+
+### 2025-10-18 (Part 4)
+
+✅ **Task 007 Complete**: Web studio HTML/CSS scaffold operational
+✅ Created web/css/reset.css - Modern CSS reset for cross-browser consistency (63 lines)
+✅ Created web/css/studio.css - Dark theme with CSS Grid layout, responsive design (290 lines)
+✅ Created web/index.html - Semantic HTML5 structure with placeholder participants (62 lines)
+✅ All acceptance criteria validated: Proper DOCTYPE/meta tags, header/main/controls layout, responsive CSS, placeholder cards, control buttons, connection status indicator, clean minimalist design
+✅ Manual testing passed: Browser rendering, responsive behavior (desktop/tablet/mobile), no console errors
+✅ **Milestone 2 (Basic Connection) now 75% complete (3/4 tasks)**
 
 ### 2025-10-18 (Part 3)
 

@@ -1,0 +1,292 @@
+/**
+ * OpenStudio - Web Studio Interface Styles
+ * Minimalist, functional design for broadcast studio controls
+ */
+
+/* CSS Custom Properties */
+:root {
+  /* Colors */
+  --color-bg: #1a1a1a;
+  --color-bg-secondary: #2a2a2a;
+  --color-text: #ffffff;
+  --color-text-secondary: #a0a0a0;
+  --color-border: #404040;
+
+  /* Status colors */
+  --color-disconnected: #ef4444;
+  --color-connecting: #f59e0b;
+  --color-connected: #10b981;
+
+  /* Button colors */
+  --color-button-bg: #3b82f6;
+  --color-button-bg-hover: #2563eb;
+  --color-button-text: #ffffff;
+  --color-button-disabled-bg: #404040;
+  --color-button-disabled-text: #6b7280;
+
+  /* Spacing */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --spacing-lg: 2rem;
+  --spacing-xl: 3rem;
+
+  /* Layout */
+  --header-height: 4rem;
+  --max-width: 1400px;
+
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+}
+
+/* Base styles */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Header */
+header {
+  height: var(--header-height);
+  background-color: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+#status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+#status::before {
+  content: '';
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background-color: var(--color-disconnected);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+#status.connecting::before {
+  background-color: var(--color-connecting);
+}
+
+#status.connected::before {
+  background-color: var(--color-connected);
+  animation: none;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Main content area */
+main {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: var(--spacing-lg);
+  min-height: calc(100vh - var(--header-height));
+}
+
+/* Participants section */
+#participants {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--spacing-md);
+  align-content: start;
+}
+
+.participant-card {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  transition: border-color 0.2s ease;
+}
+
+.participant-card:hover {
+  border-color: var(--color-text-secondary);
+}
+
+.participant-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--color-text);
+  text-transform: uppercase;
+}
+
+.participant-name {
+  font-size: 1rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.participant-role {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.participant-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.participant-status .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Empty state for participants */
+#participants:empty::after {
+  content: 'No participants yet. Start a session to begin.';
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: var(--spacing-xl);
+  font-size: 1rem;
+}
+
+/* Controls section */
+#controls {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Buttons */
+button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+button:not(:disabled) {
+  background-color: var(--color-button-bg);
+  color: var(--color-button-text);
+}
+
+button:not(:disabled):hover {
+  background-color: var(--color-button-bg-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+button:not(:disabled):active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+button:disabled {
+  background-color: var(--color-button-disabled-bg);
+  color: var(--color-button-disabled-text);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Specific button styles */
+#start-session {
+  --color-button-bg: #10b981;
+  --color-button-bg-hover: #059669;
+}
+
+#end-session {
+  --color-button-bg: #ef4444;
+  --color-button-bg-hover: #dc2626;
+}
+
+#toggle-mute.muted {
+  --color-button-bg: #f59e0b;
+  --color-button-bg-hover: #d97706;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  header {
+    padding: 0 var(--spacing-md);
+  }
+
+  header h1 {
+    font-size: 1.25rem;
+  }
+
+  main {
+    padding: var(--spacing-md);
+  }
+
+  #participants {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--spacing-sm);
+  }
+
+  #controls {
+    flex-direction: column;
+  }
+
+  button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  header {
+    padding: 0 var(--spacing-sm);
+  }
+
+  main {
+    padding: var(--spacing-sm);
+  }
+
+  #participants {
+    grid-template-columns: 1fr;
+  }
+}

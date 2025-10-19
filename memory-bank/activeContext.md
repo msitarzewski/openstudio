@@ -5,10 +5,108 @@
 ## Current Phase
 
 **Release**: 0.1 MVP (Core Loop)
-**Status**: Implementation In Progress (6/20 tasks complete, 30%)
-**Focus**: Milestone 2 - Basic Connection (50% complete: tasks 005-006 done, tasks 007-008 pending)
+**Status**: Implementation In Progress (8/20 tasks complete, 40%)
+**Focus**: Milestone 3 - Multi-Peer Audio (0% complete: task 009 next)
 
 ## Recent Decisions
+
+### 2025-10-18: First WebRTC Peer Connection (Task 008)
+
+**Decision**: Implement three-layer event-driven architecture for WebSocket and WebRTC communication
+
+**Rationale**:
+- Clean separation of concerns: signaling ↔ RTC ↔ UI
+- EventTarget pattern enables loose coupling and testability
+- ES modules provide native browser support without bundler overhead
+- Playwright automated testing validates architecture without manual intervention
+- URL hash for room sharing is simple and effective for MVP
+
+**Implementation**:
+- Created web/js/signaling-client.js (268 lines) - WebSocket client with auto-reconnection
+- Created web/js/rtc-manager.js (324 lines) - RTCPeerConnection manager with getUserMedia
+- Created web/js/main.js (469 lines) - Application orchestration and UI integration
+- Created test-webrtc.mjs (330 lines) - Playwright automated browser test
+
+**WebRTC Flow**:
+- Host: Start Session → getUserMedia → Create Room → Create Offer → Wait for Caller
+- Caller: Join Room (from URL hash) → getUserMedia → Receive Offer → Create Answer
+- Both: Exchange ICE candidates as generated → Connection established → Audio auto-plays
+
+**Testing**:
+- ✅ Playwright automated test: 2 browser instances connect successfully
+- ✅ Host creates room with UUID, caller joins via URL hash
+- ✅ SDP offer/answer exchange working
+- ✅ ICE candidate exchange working
+- ✅ Participant tracking working (2 cards visible on both sides)
+- ✅ Mute/unmute controls working
+- ✅ End session cleanup working
+- ✅ All 18 server tests still passing (regression verification)
+
+**Architecture**:
+- SignalingClient extends EventTarget (events: connected, registered, room-created, peer-joined, offer, answer, ice-candidate)
+- RTCManager extends EventTarget (events: initialized, local-stream, ice-candidate, remote-stream, connection-state)
+- Main app coordinates both via event subscriptions
+- One room per peer (simplifies state management)
+- Room ID shared via URL hash (#room-uuid)
+
+**Files Created**:
+- web/js/signaling-client.js
+- web/js/rtc-manager.js
+- web/js/main.js
+- test-webrtc.mjs
+
+**Next Step**: Task 009 will create Web Audio graph for multi-participant mixing
+
+### 2025-10-18: Web Studio HTML/CSS Scaffold (Task 007)
+
+**Decision**: Create clean, minimalist web interface with semantic HTML5 and responsive CSS Grid layout
+
+**Rationale**:
+- Provides visual foundation for WebRTC controls and participant display
+- CSS custom properties enable consistent theming and future customization
+- Mobile-first responsive design ensures accessibility across devices
+- Zero framework dependencies for simplicity and performance
+- Dark theme reduces eye strain for long studio sessions
+
+**Implementation**:
+- Created web/css/reset.css (63 lines) - Modern CSS reset for cross-browser consistency
+- Created web/css/studio.css (290 lines) - Dark theme with CSS Grid, responsive breakpoints, CSS variables
+- Created web/index.html (62 lines) - Semantic HTML5 structure with placeholder participant cards
+- Manual testing validated all acceptance criteria (browser rendering, responsive behavior)
+
+**Design System**:
+- CSS custom properties for colors, spacing, layout, border radius
+- Dark theme (#1a1a1a bg) with blue accent (#3b82f6)
+- System font stack (no web fonts)
+- Connection status: red (disconnected pulse), yellow (connecting), green (connected)
+- Button states: enabled/disabled with visual feedback
+
+**Layout**:
+- Sticky header with branding and status indicator
+- CSS Grid participant section (auto-fill, minmax(250px, 1fr))
+- Flexbox controls section with three buttons
+- Responsive breakpoints: 768px (tablet), 480px (mobile)
+
+**HTML Structure**:
+- Semantic elements: `<header>`, `<main>`, `<section>`
+- Proper meta tags (viewport, description, charset)
+- Three placeholder participant cards (host + 2 callers)
+- Control buttons: Start Session (enabled), Mute (disabled), End Session (disabled)
+
+**Testing**:
+- ✅ Page renders correctly in browser (http://localhost:8080)
+- ✅ Connection status displays with red pulsing dot
+- ✅ Participant cards visible with gradient avatars
+- ✅ Buttons render with correct enabled/disabled states
+- ✅ Responsive layout adapts to different screen sizes
+- ✅ No console errors on page load
+
+**Files Created**:
+- web/css/reset.css
+- web/css/studio.css
+- web/index.html
+
+**Next Step**: Task 008 will add WebSocket client JavaScript to connect to signaling server and implement room creation/joining
 
 ### 2025-10-18: Room Management System (Task 006)
 
@@ -331,12 +429,19 @@ notes (implementation hints)
    - Auto-cleanup when empty
    - 9 automated tests (100% pass rate)
 
-7. **Task 007**: Web studio HTML/CSS scaffold - NEXT
-8. **Task 008**: First WebRTC peer connection test
+7. ✅ **Task 007**: Web studio HTML/CSS scaffold (COMPLETE)
+8. ✅ **Task 008**: First WebRTC peer connection (COMPLETE)
 
-### Short Term - Milestone 3-5 (Tasks 009-020)
+### In Progress - Milestone 3: Multi-Peer Audio (Tasks 009-013)
 
-- **M3**: Multi-Peer Audio (009-013) - Web Audio graph, gain controls, program bus
+9. **Task 009**: Web Audio graph implementation - NEXT
+10. **Task 010**: Gain controls per participant
+11. **Task 011**: Program bus mixing
+12. **Task 012**: Audio quality testing
+13. **Task 013**: Multi-peer stability
+
+### Short Term - Milestone 4-5 (Tasks 014-020)
+
 - **M4**: Mix-Minus (014-016) - Per-caller mixes, return feeds, testing
 - **M5**: Production Ready (017-020) - Mute controls, Icecast, stability testing, docs
 
@@ -379,18 +484,24 @@ notes (implementation hints)
 
 1. Review this file first to understand current state
 2. Check tasks/2025-10/README.md for recent progress
-3. **Start with task 007**: Read `memory-bank/releases/0.1/tasks/007_web_studio_scaffold.yml`
+3. **Start with task 009**: Read `memory-bank/releases/0.1/tasks/009_web_audio_graph.yml`
 4. Infrastructure operational: Icecast (8000), coturn (3478), signaling server (3000 WebSocket + HTTP)
 5. Signaling protocol ready: Peer registration, SDP/ICE relay, anti-spoofing validation working
 6. Room management ready: Create room, join room, peer-joined/peer-left broadcasts, auto-cleanup
-7. **Milestone 1 (Foundation) complete**: Project structure, Docker, signaling skeleton, configuration management
-8. **Milestone 2 (Basic Connection) 50% complete**: Signaling and room management done, web scaffold next
-9. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
-10. Reference systemPatterns.md for architectural decisions
-11. Use `sudo docker compose` for all Docker commands (user not in docker group)
-12. Port 3000 is standard for signaling server (documented in tasks 003-004)
-13. Configuration available via GET /api/station (includes ICE servers for WebRTC)
-14. Test suites: 9 signaling tests + 9 room tests = 18 automated tests, all passing
+7. Web scaffold ready: HTML/CSS interface at web/index.html (415 lines: reset.css, studio.css, index.html)
+8. WebRTC client ready: signaling-client.js, rtc-manager.js, main.js (1061 lines JS)
+9. **Milestone 1 (Foundation) complete**: Project structure, Docker, signaling skeleton, configuration management
+10. **Milestone 2 (Basic Connection) complete**: Signaling, room management, web scaffold, WebRTC peer connection
+11. **Milestone 3 (Multi-Peer Audio) next**: Web Audio graph, gain controls, program bus mixing
+10. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
+11. Reference systemPatterns.md for architectural decisions
+12. Use `sudo docker compose` for all Docker commands (user not in docker group)
+13. Port 3000 is standard for signaling server (documented in tasks 003-004)
+14. Configuration available via GET /api/station (includes ICE servers for WebRTC)
+15. Test suites: 9 signaling tests + 9 room tests + 1 Playwright browser test = 19 automated tests, all passing
+16. Web client runs via `python3 -m http.server 8086` from web/ directory
+17. Two-browser peer connection working: create room, join room, SDP/ICE exchange, audio ready
+18. Playwright automated testing validates full WebRTC flow without manual intervention
 
 ## Context for Future Work
 
