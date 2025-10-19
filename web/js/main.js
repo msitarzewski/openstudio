@@ -12,6 +12,7 @@
 
 import { SignalingClient } from './signaling-client.js';
 import { RTCManager } from './rtc-manager.js';
+import { ConnectionManager } from './connection-manager.js';
 import { audioContextManager } from './audio-context-manager.js';
 import { AudioGraph } from './audio-graph.js';
 import { VolumeMeter } from './volume-meter.js';
@@ -27,6 +28,7 @@ class OpenStudioApp {
     this.rtc = new RTCManager(this.peerId);
     this.audioGraph = new AudioGraph();
     this.volumeMeter = null; // Will be initialized after audio graph
+    this.connectionManager = null; // Will be initialized after RTC
 
     // State
     this.currentRoom = null;
@@ -42,7 +44,6 @@ class OpenStudioApp {
 
     // Bind event handlers
     this.setupSignalingListeners();
-    this.setupRTCListeners();
     this.setupAudioListeners();
     this.setupUIListeners();
 
@@ -81,6 +82,13 @@ class OpenStudioApp {
 
       // Fetch ICE servers
       await this.rtc.initialize();
+
+      // Initialize connection manager (coordinates WebRTC mesh)
+      this.connectionManager = new ConnectionManager(this.peerId, this.signaling, this.rtc);
+      this.setupConnectionManagerListeners();
+
+      // Expose connection manager for debugging
+      window.connectionManager = this.connectionManager;
 
       // Connect to signaling server
       this.signaling.connect();
@@ -163,28 +171,19 @@ class OpenStudioApp {
       // Get local media stream
       try {
         await this.rtc.getLocalStream();
-
-        // Create peer connections and send offers to all existing participants
-        for (const p of participants) {
-          if (p.peerId !== this.peerId) {
-            await this.initiateConnectionTo(p.peerId);
-          }
-        }
+        console.log('[App] Local stream ready, ConnectionManager will handle peer connections');
+        // ConnectionManager automatically handles connections via room-joined event
       } catch (error) {
         console.error('[App] Failed to get local stream:', error);
       }
     });
 
-    this.signaling.addEventListener('peer-joined', async (event) => {
+    this.signaling.addEventListener('peer-joined', (event) => {
       const { peerId, role } = event.detail;
       console.log(`[App] Peer joined: ${peerId} (${role})`);
 
       this.addParticipant(peerId, role === 'host' ? 'Host' : 'Caller', role);
-
-      // If we're already in the room, initiate connection to new peer
-      if (this.currentRoom && this.rtc.localStream) {
-        await this.initiateConnectionTo(peerId);
-      }
+      // ConnectionManager automatically handles connection initiation via peer-joined event
     });
 
     this.signaling.addEventListener('peer-left', (event) => {
@@ -192,43 +191,11 @@ class OpenStudioApp {
       console.log(`[App] Peer left: ${peerId}`);
 
       this.removeParticipant(peerId);
-      this.rtc.closePeerConnection(peerId);
+      // ConnectionManager automatically handles cleanup via peer-left event
       this.audioGraph.removeParticipant(peerId);
     });
 
-    this.signaling.addEventListener('offer', async (event) => {
-      const { from, sdp } = event.detail;
-      console.log(`[App] Received offer from ${from}`);
-
-      try {
-        const answer = await this.rtc.handleOffer(from, sdp);
-        this.signaling.sendAnswer(from, answer);
-      } catch (error) {
-        console.error(`[App] Failed to handle offer from ${from}:`, error);
-      }
-    });
-
-    this.signaling.addEventListener('answer', async (event) => {
-      const { from, sdp } = event.detail;
-      console.log(`[App] Received answer from ${from}`);
-
-      try {
-        await this.rtc.handleAnswer(from, sdp);
-      } catch (error) {
-        console.error(`[App] Failed to handle answer from ${from}:`, error);
-      }
-    });
-
-    this.signaling.addEventListener('ice-candidate', async (event) => {
-      const { from, candidate } = event.detail;
-      console.log(`[App] Received ICE candidate from ${from}`);
-
-      try {
-        await this.rtc.handleIceCandidate(from, candidate);
-      } catch (error) {
-        console.error(`[App] Failed to handle ICE candidate from ${from}:`, error);
-      }
-    });
+    // Note: offer/answer/ice-candidate events are now handled by ConnectionManager
 
     this.signaling.addEventListener('error', (event) => {
       const { message } = event.detail;
@@ -238,15 +205,11 @@ class OpenStudioApp {
   }
 
   /**
-   * Setup RTC event listeners
+   * Setup ConnectionManager event listeners
    */
-  setupRTCListeners() {
-    this.rtc.addEventListener('ice-candidate', (event) => {
-      const { remotePeerId, candidate } = event.detail;
-      this.signaling.sendIceCandidate(remotePeerId, candidate);
-    });
-
-    this.rtc.addEventListener('remote-stream', (event) => {
+  setupConnectionManagerListeners() {
+    // Remote stream received
+    this.connectionManager.addEventListener('remote-stream', (event) => {
       const { remotePeerId, stream } = event.detail;
       console.log(`[App] Remote stream from ${remotePeerId}:`, stream);
 
@@ -258,18 +221,20 @@ class OpenStudioApp {
       }
     });
 
-    this.rtc.addEventListener('connection-state', (event) => {
+    // Connection state changed
+    this.connectionManager.addEventListener('connection-state-changed', (event) => {
       const { remotePeerId, state } = event.detail;
-      console.log(`[App] Connection state with ${remotePeerId}: ${state}`);
+      console.log(`[App] Connection state for ${remotePeerId}:`, state.status);
 
       // Update participant card status
-      this.updateParticipantStatus(remotePeerId, state);
+      this.updateParticipantStatus(remotePeerId, state.status);
     });
 
-    this.rtc.addEventListener('error', (event) => {
-      const { message } = event.detail;
-      console.error(`[App] RTC error: ${message}`);
-      alert(`Error: ${message}`);
+    // Connection permanently failed
+    this.connectionManager.addEventListener('connection-failed', (event) => {
+      const { remotePeerId, reason } = event.detail;
+      console.error(`[App] Connection permanently failed for ${remotePeerId}: ${reason}`);
+      alert(`Failed to connect to participant ${remotePeerId.substring(0, 8)}: ${reason}`);
     });
   }
 
@@ -388,8 +353,10 @@ class OpenStudioApp {
     // Clear audio graph
     this.audioGraph.clearAll();
 
-    // Close all RTC connections
-    this.rtc.closeAll();
+    // Close all connections (ConnectionManager handles cleanup)
+    if (this.connectionManager) {
+      this.connectionManager.closeAll();
+    }
 
     // Disconnect from signaling (will auto-notify peers)
     this.signaling.disconnect();
@@ -519,20 +486,6 @@ class OpenStudioApp {
     }
   }
 
-  /**
-   * Initiate WebRTC connection to remote peer
-   */
-  async initiateConnectionTo(remotePeerId) {
-    console.log(`[App] Initiating connection to ${remotePeerId}`);
-
-    try {
-      const pc = this.rtc.createPeerConnection(remotePeerId, true);
-      const offer = await this.rtc.createOffer(remotePeerId);
-      this.signaling.sendOffer(remotePeerId, offer);
-    } catch (error) {
-      console.error(`[App] Failed to initiate connection to ${remotePeerId}:`, error);
-    }
-  }
 
   /**
    * Set connection status
@@ -660,9 +613,9 @@ class OpenStudioApp {
 
     if (state === 'connected') {
       statusEl.textContent = 'Connected';
-    } else if (state === 'connecting') {
+    } else if (state === 'connecting' || state === 'waiting') {
       statusEl.textContent = 'Connecting...';
-    } else if (state === 'failed' || state === 'disconnected') {
+    } else if (state === 'failed' || state === 'failed-permanent' || state === 'disconnected') {
       statusEl.textContent = 'Disconnected';
     }
   }

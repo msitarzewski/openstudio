@@ -28,7 +28,7 @@
 - Task 009 (Web Audio Foundation) completed
 - Task 010/011 (Gain Controls Per Participant) completed
 - Task 012 (Program Bus Mixing) completed
-- Task 013 (Audio Quality Testing) is next in queue
+- Task 013 (Multi-Peer Support) completed (automated testing), manual testing pending
 
 ## Tasks Completed
 
@@ -45,11 +45,13 @@
 11. **191025_task_009_web_audio_foundation.md** - Task 009: Web Audio foundation (Milestone 3: Multi-Peer Audio)
 12. **191025_task_010_011_gain_controls.md** - Task 010/011: Per-participant gain controls UI (Milestone 3: Multi-Peer Audio)
 13. **191025_task_012_program_bus.md** - Task 012: Program bus mixing and volume meter (Milestone 3: Multi-Peer Audio)
+14. **191025_task_013_multi_peer_support.md** - Task 013: Multi-peer support with ConnectionManager (Milestone 3: Multi-Peer Audio)
 
 ## Next Priorities
 
-1. Continue Release 0.1 tasks sequentially (013 → 020)
-2. Finish Milestone 3: Multi-Peer Audio (task 013)
+1. Continue Release 0.1 tasks sequentially (014 → 020)
+2. Manual testing of 8-peer mesh (Task 013 final acceptance)
+3. Begin Milestone 4: Mix-Minus (tasks 014-016)
 3. Track progress with X-marker file renaming
 4. Completed task files marked with X:
    - 001_X_project_structure.yml ✅
@@ -64,6 +66,7 @@
    - 010_X_mediastream_sources.yml ✅ (redundant with 009)
    - 011_X_participant_gain_controls.yml ✅
    - 012_X_program_bus.yml ✅
+   - 013_X_multi_peer_support.yml ✅ (automated testing complete)
 
 ## Key Decisions Made
 
@@ -106,6 +109,10 @@
 - **Stereo Program Bus**: All mono participants summed to stereo (L+R identical, connected to both merger channels)
 - **Real-Time Volume Metering**: Canvas-based visualization with RMS level calculation, peak hold, color-coded thresholds
 - **Meter Color Thresholds**: Green (0-70% safe), Yellow (70-90% warning), Red (90-100% danger/clipping)
+- **Perfect Negotiation Pattern**: Polite/impolite peer determination prevents simultaneous offer race conditions
+- **Connection Retry Logic**: Exponential backoff (2s → 4s → 8s, max 3 attempts) for temporary network failures
+- **Connection State Tracking**: disconnected → waiting/connecting → connected → failed/failed-permanent states
+- **Local Stream Race Condition Fix**: Wait for getUserMedia() before initiating WebRTC connections
 
 ## Blockers
 
@@ -113,14 +120,15 @@ None currently
 
 ## Metrics
 
-- **Tasks Completed**: 3 (planning tasks) + 12 (implementation tasks) = 15 total
+- **Tasks Completed**: 3 (planning tasks) + 13 (implementation tasks) = 16 total
 - **Memory Bank Files Created**: 8 core + 22 release files + 13 task docs (43 total)
-- **Code Implemented**: 60% (Task 001-012 complete: Milestone 1 100%, Milestone 2 100%, Milestone 3 75%)
-- **Release 0.1 Progress**: 12/20 tasks complete (60%, skipped redundant task 010)
+- **Code Implemented**: 65% (Task 001-013 complete: Milestone 1 100%, Milestone 2 100%, Milestone 3 100%*)
+- **Release 0.1 Progress**: 13/20 tasks complete (65%, skipped redundant task 010)
+  - *Milestone 3 automated testing complete, manual 8-peer testing pending
 - **Dependencies Installed**: Server (16 packages), Web (2 packages - Playwright)
 - **Security Audit**: 0 vulnerabilities
 - **Docker Containers**: 3 running (Icecast, coturn, signaling server operational)
-- **Lines of Code**: Server (1703 lines), Web (2823 lines: 538 HTML/CSS + 2285 JS), Tests (1934 lines: 1004 server + 330 + 113 + 255 + 232 Playwright)
+- **Lines of Code**: Server (1703 lines), Web (3181 lines: 538 HTML/CSS + 2643 JS), Tests (1934 lines: 1004 server + 930 Playwright)
 
 ## Notes
 
@@ -194,4 +202,12 @@ None currently
 - Volume meter: RMS level calculation, peak hold, color-coded (green/yellow/red), threshold markers
 - All acceptance criteria validated: Program bus initialized, participants connected, volume meter active, add/remove updates bus
 
-**Next Step**: Task 013 (Audio Quality Testing) - subjective quality assessment, latency measurements, CPU/memory profiling (Milestone 3: Multi-Peer Audio).
+**Multi-Peer Support** (Task 013):
+- web/js/connection-manager.js - ConnectionManager class with Perfect Negotiation, retry logic (405 lines)
+- Modified web/js/main.js - Integrated ConnectionManager, simplified connection logic (-47 lines net)
+- Perfect Negotiation pattern: Prevents race conditions when both peers offer simultaneously
+- Connection retry: Exponential backoff (2s → 4s → 8s, max 3 attempts)
+- Local stream race condition fix: Wait for stream before initiating connections
+- All acceptance criteria validated: Perfect Negotiation ✅, Retry logic ✅, State tracking ✅, Race conditions prevented ✅
+
+**Next Step**: Task 014 (Mix-Minus Calculation) - Create per-caller mix-minus buses excluding own voice (Milestone 4: Mix-Minus).

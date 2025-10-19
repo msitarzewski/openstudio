@@ -5,10 +5,84 @@
 ## Current Phase
 
 **Release**: 0.1 MVP (Core Loop)
-**Status**: Implementation In Progress (12/20 tasks complete, 60%)
-**Focus**: Milestone 3 - Multi-Peer Audio (75% complete: 3/4 tasks, task 013 next)
+**Status**: Implementation In Progress (13/20 tasks complete, 65%)
+**Focus**: Milestone 3 - Multi-Peer Audio (100%* complete: 4/4 tasks, *automated testing only)
+**Next**: Milestone 4 - Mix-Minus (Tasks 014-016)
 
 ## Recent Decisions
+
+### 2025-10-19: Multi-Peer Support with ConnectionManager (Task 013)
+
+**Decision**: Create ConnectionManager to coordinate WebRTC mesh topology with Perfect Negotiation pattern and connection retry logic
+
+**Rationale**:
+- WebRTC mesh connections prone to race conditions when peers join simultaneously
+- Manual connection management in main.js was error-prone and complex
+- Need robust retry logic for temporary network failures
+- Connection state tracking essential for debugging multi-peer issues
+- Perfect Negotiation pattern is standard WebRTC best practice
+
+**Implementation**:
+- Created web/js/connection-manager.js (405 lines) - ConnectionManager class with Perfect Negotiation, retry, state tracking
+- Modified web/js/main.js (-81 lines, +34 lines = net -47 lines simpler) - Removed manual connection logic
+- Fixed two race condition bugs discovered during testing
+
+**Perfect Negotiation Pattern**:
+```
+Polite Peer (lower peer ID):
+- Rolls back when offer collision detected
+- Accepts incoming offer
+- Sends answer
+
+Impolite Peer (higher peer ID):
+- Ignores incoming offer when making own offer
+- Proceeds with own offer
+- Waits for answer
+```
+
+**Connection Retry Logic**:
+- Exponential backoff: 2s → 4s → 8s
+- Maximum 3 attempts
+- After 3 failures: Mark 'failed-permanent', notify app layer
+- Clean up retry timeouts on peer-left
+
+**Connection State Tracking**:
+- disconnected: No connection attempt
+- waiting: Polite peer waiting for offer
+- connecting: Negotiation in progress
+- connected: ICE and peer connection established
+- failed: Temporary failure, will retry
+- failed-permanent: Max retries exceeded
+
+**Local Stream Race Condition Fix**:
+- Problem: ConnectionManager initiated connections before getUserMedia() completed
+- Solution: waitForLocalStream() polls for local stream (max 10s) before initiating
+- Result: Remote streams now received correctly on all peers
+
+**Bugs Fixed**:
+1. **Perfect Negotiation Answer Blocking**: ignoreOffer flag incorrectly blocked answers
+   - Fix: Remove check from handleAnswer(), answers always processed
+2. **Local Stream Race Condition**: Connections initiated before local stream ready
+   - Fix: Wait for rtcManager.localStream before initiating connections
+
+**Testing**:
+- ✅ Automated Playwright tests: All 3 tests passing (webrtc, gain-controls, program-bus)
+- ✅ test-gain-controls.mjs now shows "Audio graph has participants" (was failing before fix)
+- ✅ All acceptance criteria met: Perfect Negotiation ✅, Retry logic ✅, State tracking ✅, Race prevention ✅
+- ⏸️ Manual 8-peer testing pending
+
+**Architecture Impact**:
+```
+Before (Task 012):
+main.js handles everything (685 lines, complex)
+
+After (Task 013):
+SignalingClient ←→ ConnectionManager ←→ RTCManager (638 lines main.js, simpler)
+                         ↓
+                    OpenStudioApp
+```
+
+**Next Step**: Task 014 will implement mix-minus calculation (per-caller buses excluding own voice)
 
 ### 2025-10-19: Program Bus Mixing (Task 012)
 
