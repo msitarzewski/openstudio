@@ -5,11 +5,95 @@
 ## Current Phase
 
 **Release**: 0.1 MVP (Core Loop)
-**Status**: Implementation In Progress (14/20 tasks complete, 70%)
-**Focus**: Milestone 4 - Mix-Minus (25% complete: 1/4 tasks)
-**Next**: Task 015 - Mix-Minus Return Feeds
+**Status**: Implementation In Progress (15/20 tasks complete, 75%)
+**Focus**: Milestone 4 - Mix-Minus (50% complete: 2/4 tasks)
+**Next**: Task 016 - Mix-Minus Testing
 
 ## Recent Decisions
+
+### 2025-10-19: Return Feed Routing (Task 015)
+
+**Decision**: Route personalized mix-minus audio back to participants via WebRTC renegotiation to complete the anti-echo system
+
+**Rationale**:
+- Mix-minus streams created in Task 014, but participants still hearing program bus (includes their own voice)
+- Without return feeds, participants hear ~200-500ms echo (network latency)
+- This is the final piece needed for professional broadcast audio quality
+- Must distinguish between microphone tracks and return feed tracks received from remote peers
+
+**Implementation**:
+- Created web/js/return-feed.js (198 lines) - ReturnFeedManager for direct HTMLAudioElement playback
+- Modified web/js/rtc-manager.js (+48 lines) - addReturnFeedTrack() method for WebRTC renegotiation
+- Modified web/js/connection-manager.js (+33 lines) - Coordinate renegotiation with Perfect Negotiation
+- Modified web/js/main.js (+66 net lines) - Stream order tracking, automatic return feed addition
+- Created test-return-feed.mjs (313 lines) - Automated 2-peer validation
+
+**Return Feed Flow**:
+```
+1. Initial Connection (Microphone Only):
+   A ←─ SDP Offer (mic track) ──→ B
+   A ←─ SDP Answer ────────────→ B
+   ✅ Microphone audio flowing
+
+2. Receive Microphone → Create Mix-Minus:
+   audioGraph.addParticipant(B, stream)
+   → Mix-minus bus created for B (Program - B's audio)
+
+3. Renegotiation (Add Return Feed):
+   A ─→ addTrack(returnFeed) → RTCPeerConnection
+   A ─→ createOffer() → New SDP offer
+   A ──→ SDP Offer (renegotiation) ──→ B
+   A ←─ SDP Answer ────────────────←─ B
+   ✅ Return feed audio flowing
+
+4. Receive Return Feed → Direct Playback:
+   returnFeedManager.playReturnFeed(A, stream)
+   → HTMLAudioElement → Speakers
+   ✅ B hears return feed (excludes B's voice)
+```
+
+**Stream Order Tracking**:
+- Each peer sends TWO streams: microphone (first), return feed (second)
+- Track order using Sets: `receivedMicrophoneStreams`, `receivedReturnFeeds`
+- First stream received → route to audio graph
+- Second stream received → route to ReturnFeedManager
+- Simple, deterministic, no race conditions
+
+**Why HTMLAudioElement for Return Feed**:
+- Return feeds already processed (gain, compression, mixing done remotely)
+- Just need direct playback to speakers
+- Must NOT go through audio graph (would create feedback loop)
+- Lower latency, simpler architecture
+
+**Testing**:
+- ✅ Automated Playwright test: 2 peers exchange return feeds
+- ✅ Microphone tracks route to audio graph
+- ✅ Mix-minus buses created automatically
+- ✅ Return feed tracks sent via renegotiation
+- ✅ Return feeds play directly (bypass audio graph)
+- ✅ No self-echo (mix-minus excludes own peer ID)
+
+**Architecture Impact**:
+```
+ReturnFeedManager (new class):
+- playReturnFeed(peerId, stream)
+- stopReturnFeed(peerId)
+- stopAll()
+- getInfo() → debug info
+
+RTCManager additions:
+- addReturnFeedTrack(remotePeerId, mixMinusStream) → offer
+
+ConnectionManager additions:
+- addReturnFeedTrack(remotePeerId, mixMinusStream)
+
+Main.js additions:
+- receivedMicrophoneStreams: Set<peerId>
+- receivedReturnFeeds: Set<peerId>
+- Stream distinction logic in remote-stream handler
+```
+
+**Next Step**: Task 016 will validate return feed system with 3+ peer testing and quality assessment
 
 ### 2025-10-19: Mix-Minus Calculation Logic (Task 014)
 

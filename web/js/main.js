@@ -16,6 +16,7 @@ import { ConnectionManager } from './connection-manager.js';
 import { audioContextManager } from './audio-context-manager.js';
 import { AudioGraph } from './audio-graph.js';
 import { VolumeMeter } from './volume-meter.js';
+import { ReturnFeedManager } from './return-feed.js';
 
 class OpenStudioApp {
   constructor() {
@@ -29,11 +30,17 @@ class OpenStudioApp {
     this.audioGraph = new AudioGraph();
     this.volumeMeter = null; // Will be initialized after audio graph
     this.connectionManager = null; // Will be initialized after RTC
+    this.returnFeedManager = new ReturnFeedManager();
 
     // State
     this.currentRoom = null;
     this.currentRole = null; // 'host' or 'caller'
     this.participants = new Map(); // peerId -> { name, role }
+
+    // Track which remote streams have been received (for distinguishing microphone vs return feed)
+    // Each peer sends TWO streams: microphone (first) and return feed (second)
+    this.receivedMicrophoneStreams = new Set(); // peerIds that have sent microphone
+    this.receivedReturnFeeds = new Set(); // peerIds that have sent return feed
 
     // UI elements
     this.statusElement = document.getElementById('status');
@@ -56,6 +63,7 @@ class OpenStudioApp {
     // Expose for debugging in browser console
     window.audioContextManager = audioContextManager;
     window.audioGraph = this.audioGraph;
+    window.returnFeedManager = this.returnFeedManager;
     window.app = this;
   }
 
@@ -190,9 +198,20 @@ class OpenStudioApp {
       const { peerId } = event.detail;
       console.log(`[App] Peer left: ${peerId}`);
 
+      // Clean up all components related to this peer
       this.removeParticipant(peerId);
-      // ConnectionManager automatically handles cleanup via peer-left event
+
+      // Remove from audio graph
       this.audioGraph.removeParticipant(peerId);
+
+      // Stop return feed playback
+      this.returnFeedManager.stopReturnFeed(peerId);
+
+      // Remove from tracking sets
+      this.receivedMicrophoneStreams.delete(peerId);
+      this.receivedReturnFeeds.delete(peerId);
+
+      // ConnectionManager automatically handles connection cleanup via peer-left event
     });
 
     // Note: offer/answer/ice-candidate events are now handled by ConnectionManager
@@ -209,15 +228,48 @@ class OpenStudioApp {
    */
   setupConnectionManagerListeners() {
     // Remote stream received
-    this.connectionManager.addEventListener('remote-stream', (event) => {
+    // Each peer sends TWO streams: microphone (first) and return feed (second)
+    this.connectionManager.addEventListener('remote-stream', async (event) => {
       const { remotePeerId, stream } = event.detail;
       console.log(`[App] Remote stream from ${remotePeerId}:`, stream);
 
-      // Route remote stream through audio graph
-      try {
-        this.audioGraph.addParticipant(remotePeerId, stream);
-      } catch (error) {
-        console.error(`[App] Failed to add ${remotePeerId} to audio graph:`, error);
+      // Distinguish between microphone track (first stream) and return feed (second stream)
+      if (!this.receivedMicrophoneStreams.has(remotePeerId)) {
+        // First stream = microphone, route to audio graph
+        console.log(`[App] First stream from ${remotePeerId} = microphone, routing to audio graph`);
+
+        try {
+          // Add to audio graph (creates mix-minus automatically)
+          this.audioGraph.addParticipant(remotePeerId, stream);
+          this.receivedMicrophoneStreams.add(remotePeerId);
+
+          // After adding participant, get their mix-minus stream and send it back
+          // Wait a moment for audio graph to fully initialize the mix-minus
+          setTimeout(async () => {
+            const mixMinusStream = this.audioGraph.getMixMinusStream(remotePeerId);
+            if (mixMinusStream) {
+              console.log(`[App] Mix-minus stream created for ${remotePeerId}, adding return feed track`);
+              await this.connectionManager.addReturnFeedTrack(remotePeerId, mixMinusStream);
+            } else {
+              console.warn(`[App] No mix-minus stream available for ${remotePeerId}`);
+            }
+          }, 100); // Small delay to ensure mix-minus is fully created
+        } catch (error) {
+          console.error(`[App] Failed to add ${remotePeerId} to audio graph:`, error);
+        }
+      } else if (!this.receivedReturnFeeds.has(remotePeerId)) {
+        // Second stream = return feed, play directly (bypass audio graph)
+        console.log(`[App] Second stream from ${remotePeerId} = return feed, playing directly`);
+
+        try {
+          this.returnFeedManager.playReturnFeed(remotePeerId, stream);
+          this.receivedReturnFeeds.add(remotePeerId);
+        } catch (error) {
+          console.error(`[App] Failed to play return feed for ${remotePeerId}:`, error);
+        }
+      } else {
+        // Third or subsequent stream - unexpected
+        console.warn(`[App] Unexpected additional stream from ${remotePeerId}:`, stream);
       }
     });
 
@@ -353,6 +405,9 @@ class OpenStudioApp {
     // Clear audio graph
     this.audioGraph.clearAll();
 
+    // Stop all return feed playback
+    this.returnFeedManager.stopAll();
+
     // Close all connections (ConnectionManager handles cleanup)
     if (this.connectionManager) {
       this.connectionManager.closeAll();
@@ -365,6 +420,10 @@ class OpenStudioApp {
     this.currentRoom = null;
     this.currentRole = null;
     this.participants.clear();
+
+    // Clear tracking sets
+    this.receivedMicrophoneStreams.clear();
+    this.receivedReturnFeeds.clear();
 
     // Reset UI
     this.clearParticipants();

@@ -342,6 +342,39 @@ export class ConnectionManager extends EventTarget {
   }
 
   /**
+   * Add return feed track to peer connection (renegotiation)
+   * This sends the mix-minus audio back to the remote peer
+   *
+   * @param {string} remotePeerId - Remote peer identifier
+   * @param {MediaStream} mixMinusStream - Mix-minus stream (all participants except remotePeerId)
+   */
+  async addReturnFeedTrack(remotePeerId, mixMinusStream) {
+    const state = this.getConnectionState(remotePeerId);
+
+    if (state.status !== 'connected') {
+      console.warn(`[ConnectionManager] Cannot add return feed to ${remotePeerId}: not connected (status: ${state.status})`);
+      return;
+    }
+
+    console.log(`[ConnectionManager] Adding return feed track to ${remotePeerId}`);
+    this.setConnectionState(remotePeerId, { makingOffer: true });
+
+    try {
+      // Add return feed track and get renegotiation offer
+      const offer = await this.rtcManager.addReturnFeedTrack(remotePeerId, mixMinusStream);
+
+      // Send offer via signaling
+      this.signalingClient.sendOffer(remotePeerId, offer);
+
+      console.log(`[ConnectionManager] Return feed renegotiation offer sent to ${remotePeerId}`);
+      this.setConnectionState(remotePeerId, { makingOffer: false });
+    } catch (error) {
+      console.error(`[ConnectionManager] Failed to add return feed for ${remotePeerId}:`, error);
+      this.setConnectionState(remotePeerId, { makingOffer: false });
+    }
+  }
+
+  /**
    * Close connection to a remote peer
    */
   closeConnection(remotePeerId) {

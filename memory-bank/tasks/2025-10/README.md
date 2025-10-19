@@ -30,6 +30,7 @@
 - Task 012 (Program Bus Mixing) completed
 - Task 013 (Multi-Peer Support) completed (automated testing), manual testing pending
 - Task 014 (Mix-Minus Calculation Logic) completed
+- Task 015 (Mix-Minus Return Feed Routing) completed
 
 ## Tasks Completed
 
@@ -48,10 +49,11 @@
 13. **191025_task_012_program_bus.md** - Task 012: Program bus mixing and volume meter (Milestone 3: Multi-Peer Audio)
 14. **191025_task_013_multi_peer_support.md** - Task 013: Multi-peer support with ConnectionManager (Milestone 3: Multi-Peer Audio)
 15. **191025_task_014_mix_minus_calculation.md** - Task 014: Mix-minus calculation logic (Milestone 4: Mix-Minus)
+16. **191025_task_015_return_feed_routing.md** - Task 015: Mix-minus return feed routing (Milestone 4: Mix-Minus)
 
 ## Next Priorities
 
-1. Continue Release 0.1 tasks sequentially (015 → 020)
+1. Continue Release 0.1 tasks sequentially (016 → 020)
 2. Manual testing of 8-peer mesh (Task 013 final acceptance)
 3. Continue Milestone 4: Mix-Minus (tasks 015-016)
 3. Track progress with X-marker file renaming
@@ -70,6 +72,7 @@
    - 012_X_program_bus.yml ✅
    - 013_X_multi_peer_support.yml ✅ (automated testing complete)
    - 014_X_mixminus_calculation.yml ✅
+   - 015_X_return_feed_routing.yml ✅
 
 ## Key Decisions Made
 
@@ -119,6 +122,10 @@
 - **Mix-Minus Phase Inversion Algorithm**: Efficient O(N) algorithm using gain=-1 instead of selective summing (Program + (-Participant) = Mix-Minus)
 - **Automatic Mix-Minus Creation**: Mix-minus buses created/destroyed automatically when participants join/leave
 - **CORS for Development APIs**: Added Access-Control-Allow-Origin headers to /api/station endpoint for cross-origin testing
+- **Return Feed Routing via Renegotiation**: WebRTC renegotiation adds mix-minus tracks after initial connection (2 streams per peer: mic + return feed)
+- **Stream Order Tracking**: Distinguish microphone (first) vs return feed (second) by tracking stream reception order per peer
+- **HTMLAudioElement for Return Feed**: Direct playback bypasses audio graph to prevent feedback loop (return feed already processed)
+- **100ms Return Feed Delay**: Small delay after participant addition ensures mix-minus bus fully created before sending
 
 ## Blockers
 
@@ -126,19 +133,19 @@ None currently
 
 ## Metrics
 
-- **Tasks Completed**: 3 (planning tasks) + 14 (implementation tasks) = 17 total
-- **Memory Bank Files Created**: 8 core + 22 release files + 15 task docs (45 total)
-- **Code Implemented**: 70% (Task 001-014 complete: Milestone 1 100%, Milestone 2 100%, Milestone 3 100%*, Milestone 4 25%)
-- **Release 0.1 Progress**: 14/20 tasks complete (70%, skipped redundant task 010)
+- **Tasks Completed**: 3 (planning tasks) + 15 (implementation tasks) = 18 total
+- **Memory Bank Files Created**: 8 core + 22 release files + 16 task docs (46 total)
+- **Code Implemented**: 75% (Task 001-015 complete: Milestone 1 100%, Milestone 2 100%, Milestone 3 100%*, Milestone 4 50%)
+- **Release 0.1 Progress**: 15/20 tasks complete (75%, skipped redundant task 010)
   - *Milestone 3 automated testing complete, manual 8-peer testing pending
 - **Dependencies Installed**: Server (16 packages), Web (2 packages - Playwright)
 - **Security Audit**: 0 vulnerabilities
 - **Docker Containers**: 3 running (Icecast, coturn, signaling server operational)
-- **Lines of Code**: Server (1706 lines), Web (3484 lines: 538 HTML/CSS + 2946 JS), Tests (2247 lines: 1004 server + 1243 Playwright)
+- **Lines of Code**: Server (1706 lines), Web (3631 lines: 538 HTML/CSS + 3093 JS), Tests (2560 lines: 1004 server + 1556 Playwright)
 
 ## Notes
 
-**Project Status**: Release 0.1 implementation in progress. **Milestone 1 (Foundation) is 100% complete (4/4 tasks)**. **Milestone 2 (Basic Connection) is 100% complete (4/4 tasks)**. **Milestone 3 (Multi-Peer Audio) is 100% complete* (4/4 tasks, *automated testing only)**. **Milestone 4 (Mix-Minus) is 25% complete (1/4 tasks)**.
+**Project Status**: Release 0.1 implementation in progress. **Milestone 1 (Foundation) is 100% complete (4/4 tasks)**. **Milestone 2 (Basic Connection) is 100% complete (4/4 tasks)**. **Milestone 3 (Multi-Peer Audio) is 100% complete* (4/4 tasks, *automated testing only)**. **Milestone 4 (Mix-Minus) is 50% complete (2/4 tasks)**.
 
 **Foundation Complete** (Milestone 1):
 - Directory structure (server/, web/, shared/) with package.json and ES modules
@@ -226,4 +233,15 @@ None currently
 - Audio graph: Participant → Compressor → [Program Bus, Inverter(-1)] → Mixer → MediaStreamDestination
 - All acceptance criteria validated: Buses created ✅, Efficient O(N) ✅, Auto-update on join/leave ✅, No self-audio ✅, Documented ✅
 
-**Next Step**: Task 015 (Mix-Minus Return Feeds) - Send mix-minus streams back to callers via WebRTC (Milestone 4: Mix-Minus).
+**Return Feed Routing** (Task 015):
+- web/js/return-feed.js - ReturnFeedManager class for direct return feed playback (198 lines)
+- Modified web/js/rtc-manager.js - addReturnFeedTrack() method for WebRTC renegotiation (+48 lines, 310 → 358)
+- Modified web/js/connection-manager.js - Renegotiation coordination with Perfect Negotiation (+33 lines, 405 → 438)
+- Modified web/js/main.js - Integrated ReturnFeedManager, stream order tracking (+73 lines, -7 deletions, 638 → 704)
+- test-return-feed.mjs - Automated Playwright test for 2-peer return feed validation (313 lines)
+- WebRTC renegotiation: Add mix-minus track after initial connection (2 streams per peer: microphone + return feed)
+- Stream tracking: First stream = microphone → audio graph, Second stream = return feed → direct playback
+- HTMLAudioElement playback: Return feeds bypass audio graph (prevents feedback loop)
+- All acceptance criteria validated: Microphone to audio graph ✅, Mix-minus sent ✅, Return feed playing ✅, No self-echo ✅, Updates on join/leave ✅
+
+**Next Step**: Task 016 (Mix-Minus Testing) - Multi-peer testing and quality validation (Milestone 4: Mix-Minus).
