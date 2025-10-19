@@ -5,11 +5,78 @@
 ## Current Phase
 
 **Release**: 0.1 MVP (Core Loop)
-**Status**: Implementation In Progress (13/20 tasks complete, 65%)
-**Focus**: Milestone 3 - Multi-Peer Audio (100%* complete: 4/4 tasks, *automated testing only)
-**Next**: Milestone 4 - Mix-Minus (Tasks 014-016)
+**Status**: Implementation In Progress (14/20 tasks complete, 70%)
+**Focus**: Milestone 4 - Mix-Minus (25% complete: 1/4 tasks)
+**Next**: Task 015 - Mix-Minus Return Feeds
 
 ## Recent Decisions
+
+### 2025-10-19: Mix-Minus Calculation Logic (Task 014)
+
+**Decision**: Implement efficient O(N) phase-inversion algorithm for per-participant mix-minus buses to prevent callers from hearing themselves
+
+**Rationale**:
+- Mix-minus is the technical centerpiece of professional broadcast studios
+- Without it, callers hear themselves with network latency (echo/feedback)
+- This is the #1 UX failure mode for virtual studios
+- O(N²) selective summing would not scale beyond 5-8 participants
+- Phase inversion reuses existing program bus computation
+
+**Implementation**:
+- Created web/js/mix-minus.js (225 lines) - MixMinusManager class with phase-inversion algorithm
+- Modified web/js/audio-graph.js (+53 lines) - Integrated MixMinusManager, auto-creates/destroys buses
+- Modified server/server.js (+3 lines) - Added CORS headers for automated testing
+- Created test-mix-minus.mjs (313 lines) - Automated Playwright test for 3-peer validation
+
+**Phase-Inversion Algorithm**:
+```
+For each participant i:
+  1. Create inverter GainNode (gain = -1, phase inversion)
+  2. Create mixer GainNode (gain = 1)
+  3. Connect: Participant_i compressor → inverter → mixer
+  4. Connect: Program Bus masterGain → mixer
+  5. Result: mixer output = Program + (-Participant_i) = All except i
+
+Complexity: O(N) - scales linearly
+3 peers = 3 buses (not 9), 8 peers = 8 buses (not 64)
+```
+
+**Audio Graph Structure**:
+```
+Participant A: Compressor ──┬──→ Program Bus (sum of all) ──┬──→ Mixer B (for B's mix-minus)
+                            │                                └──→ Mixer C (for C's mix-minus)
+                            └──→ Inverter A (gain=-1) ──→ Mixer A (for A's mix-minus)
+
+Result:
+- Participant A hears: B + C (not A) ✅ No echo
+- Participant B hears: A + C (not B) ✅ No echo
+- Participant C hears: A + B (not C) ✅ No echo
+```
+
+**Automatic Lifecycle Management**:
+- Mix-minus buses created automatically in audioGraph.addParticipant()
+- Mix-minus buses destroyed automatically in audioGraph.removeParticipant()
+- No manual management needed - clean API
+
+**Testing**:
+- ✅ Automated Playwright test: 3 peers (A, B, C) connect
+- ✅ Each peer has 2 buses (correct for 3-way mesh)
+- ✅ Configuration verified: inverter=-1, mixer=1, MediaStream present
+- ✅ Peer ID exclusion verified: Each peer's buses exclude their own ID
+
+**Architecture Impact**:
+```
+AudioGraph API additions:
+- getMixMinusStream(peerId) → MediaStream | null
+- getMixMinusManager() → MixMinusManager
+
+MixMinusManager (new class):
+- createMixMinusBus(peerId, compressorNode) → MediaStream
+- destroyMixMinusBus(peerId)
+- getMixMinusStream(peerId) → MediaStream | null
+```
+
+**Next Step**: Task 015 will send mix-minus MediaStreams back to callers via WebRTC return feeds
 
 ### 2025-10-19: Multi-Peer Support with ConnectionManager (Task 013)
 

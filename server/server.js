@@ -35,7 +35,11 @@ const httpServer = http.createServer((req, res) => {
 
   // Station info endpoint
   if (req.method === 'GET' && req.url === '/api/station') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*', // Allow all origins for development
+      'Access-Control-Allow-Methods': 'GET'
+    });
     res.end(JSON.stringify({
       stationId: config.stationId,
       name: config.name,

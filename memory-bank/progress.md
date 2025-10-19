@@ -1,6 +1,6 @@
 # Progress: OpenStudio
 
-**Last Updated**: 2025-10-19 (Post-Task 013)
+**Last Updated**: 2025-10-19 (Post-Task 014)
 
 ## What's Working
 
@@ -112,16 +112,16 @@
 
 ### Immediate (This Week)
 
-1. **Manual 8-Peer Testing** (Task 013 Final Acceptance)
+1. **Mix-Minus Return Feeds** (Task 015 - NEXT)
+   - Send mix-minus MediaStreams back to callers via WebRTC
+   - Add mix-minus tracks to RTCPeerConnection
+   - Verify callers don't hear themselves (anti-echo validation)
+
+2. **Manual 8-Peer Testing** (Task 013 Final Acceptance)
    - Open 8 browser windows (3 hosts + 5 callers)
    - Verify full mesh connections
    - Test dynamic join/leave stability
    - Monitor CPU/memory (target <30%, no dropouts)
-
-2. **Mix-Minus Calculation** (Task 014 - NEXT)
-   - Create per-caller mix-minus buses
-   - Each caller gets personalized mix excluding their own voice
-   - Efficient calculation: Program Bus - Participant (phase inversion)
 
 ### Short Term (Next 2-4 Weeks)
 
@@ -196,13 +196,13 @@
 - ✅ OGG/Opus stream playable via Icecast
 - ✅ Setup from clone < 5 min
 
-**Status**: 65% complete (13/20 tasks) - **Milestone 1: Foundation 100% complete**, **Milestone 2: Basic Connection 100% complete**, **Milestone 3: Multi-Peer Audio 100%* complete** (*automated testing only, manual 8-peer testing pending)
+**Status**: 70% complete (14/20 tasks) - **Milestone 1: Foundation 100% complete**, **Milestone 2: Basic Connection 100% complete**, **Milestone 3: Multi-Peer Audio 100%* complete** (*automated testing only, manual 8-peer testing pending), **Milestone 4: Mix-Minus 25% complete**
 
 **Task Breakdown**: See `memory-bank/releases/0.1/` for detailed task files
 - **M1: Foundation** (001-004): Project structure ✅, Docker ✅, signaling skeleton ✅, configuration ✅
 - **M2: Basic Connection** (005-008): WebSocket signaling ✅, room management ✅, HTML scaffold ✅, first peer connection ✅
 - **M3: Multi-Peer Audio** (009-013): Web Audio foundation ✅, gain controls ✅, program bus ✅, multi-peer support ✅ (automated testing complete)
-- **M4: Mix-Minus** (014-016): Per-caller mixes, return feeds, testing
+- **M4: Mix-Minus** (014-016): Mix-minus calculation ✅, return feeds (next), testing
 - **M5: Production Ready** (017-020): Icecast, stability testing, docs
 
 ### Release 0.2 - Distributed Stations (Target: +2 months)
@@ -277,6 +277,22 @@
 - Documentation page views
 
 ## Recent Achievements
+
+### 2025-10-19 (Part 5)
+
+✅ **Task 014 Complete**: Mix-minus calculation logic operational - technical centerpiece of OpenStudio
+✅ Created web/js/mix-minus.js - MixMinusManager class with efficient O(N) phase-inversion algorithm (225 lines)
+✅ Modified web/js/audio-graph.js - Integrated MixMinusManager, auto-creates/destroys mix-minus buses (+53 lines, 256 → 309)
+✅ Modified server/server.js - Added CORS headers to /api/station endpoint (+3 lines)
+✅ Created test-mix-minus.mjs - Automated Playwright test for 3-peer mix-minus validation (313 lines)
+✅ Implemented phase-inversion algorithm - O(N) complexity: MixMinus_i = Program + (-Participant_i)
+✅ Each participant gets personalized audio mix excluding their own voice (prevents echo/feedback)
+✅ Automatic lifecycle management - Mix-minus buses created/destroyed when participants join/leave
+✅ Audio graph: Participant → Compressor → [Program Bus, Inverter(-1)] → Mixer → MediaStreamDestination
+✅ All automated tests passing - test-mix-minus.mjs validates 3 peers with correct exclusion
+✅ All acceptance criteria validated: Buses created ✅, Efficient O(N) ✅, Auto-update on join/leave ✅, No self-audio ✅, Documented ✅
+✅ API additions: audioGraph.getMixMinusStream(peerId), getMixMinusManager()
+✅ **Milestone 4 (Mix-Minus) now 25% complete (1/4 tasks)**
 
 ### 2025-10-19 (Part 4)
 

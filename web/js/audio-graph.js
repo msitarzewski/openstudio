@@ -6,11 +6,28 @@
  * - Participant audio node creation and routing
  * - MediaStreamAudioSourceNode → GainNode → DynamicsCompressor → Program Bus
  * - Program bus routing to destination, analyser, and media stream
+ * - Mix-minus bus creation for each participant (prevents self-echo)
  * - Node lifecycle (creation, connection, cleanup)
+ *
+ * Audio Graph with Mix-Minus:
+ *
+ * Participant A: Source → Gain → Compressor ──┬──→ Program Bus ──┬──→ Speakers/Monitor
+ *                                              │                   │
+ *                                              │                   ├──→ Mix-Minus B (Program + (-A))
+ *                                              │                   └──→ Mix-Minus C (Program + (-C))
+ *                                              │
+ *                                              └──→ Inverter A (gain = -1) ──→ Mix-Minus A mixer
+ *
+ * Participant B: Source → Gain → Compressor ──┬──→ Program Bus ──┬──→ Mix-Minus A (Program + (-B))
+ *                                              │                   ├──→ Mix-Minus C (Program + (-C))
+ *                                              │                   └──→ Speakers/Monitor
+ *                                              │
+ *                                              └──→ Inverter B (gain = -1) ──→ Mix-Minus B mixer
  */
 
 import { audioContextManager } from './audio-context-manager.js';
 import { ProgramBus } from './program-bus.js';
+import { MixMinusManager } from './mix-minus.js';
 
 export class AudioGraph extends EventTarget {
   constructor() {
@@ -18,10 +35,11 @@ export class AudioGraph extends EventTarget {
     this.participantNodes = new Map(); // peerId -> { source, gain, compressor }
     this.audioContext = null;
     this.programBus = null;
+    this.mixMinusManager = null;
   }
 
   /**
-   * Initialize audio graph with program bus
+   * Initialize audio graph with program bus and mix-minus manager
    */
   initialize() {
     try {
@@ -32,6 +50,10 @@ export class AudioGraph extends EventTarget {
       this.programBus = new ProgramBus(this.audioContext);
       this.programBus.initialize();
       console.log('[AudioGraph] Program bus created and initialized');
+
+      // Create mix-minus manager
+      this.mixMinusManager = new MixMinusManager(this.audioContext, this.programBus);
+      console.log('[AudioGraph] Mix-minus manager created');
 
       this.dispatchEvent(new Event('initialized'));
     } catch (error) {
@@ -96,6 +118,13 @@ export class AudioGraph extends EventTarget {
 
       console.log(`[AudioGraph] Participant ${peerId} connected to program bus (gain: ${gain.gain.value})`);
 
+      // Create mix-minus bus for this participant
+      // This gives them all audio EXCEPT their own voice (prevents echo)
+      if (this.mixMinusManager) {
+        const mixMinusStream = this.mixMinusManager.createMixMinusBus(peerId, compressor);
+        console.log(`[AudioGraph] Mix-minus bus created for ${peerId} (stream ID: ${mixMinusStream.id})`);
+      }
+
       this.dispatchEvent(new CustomEvent('participant-added', {
         detail: { peerId }
       }));
@@ -123,7 +152,12 @@ export class AudioGraph extends EventTarget {
     console.log(`[AudioGraph] Removing participant: ${peerId}`);
 
     try {
-      // Disconnect from program bus first
+      // Destroy mix-minus bus first
+      if (this.mixMinusManager) {
+        this.mixMinusManager.destroyMixMinusBus(peerId);
+      }
+
+      // Disconnect from program bus
       if (this.programBus) {
         this.programBus.disconnectParticipant(nodes.compressor, peerId);
       }
@@ -215,6 +249,27 @@ export class AudioGraph extends EventTarget {
   }
 
   /**
+   * Get mix-minus MediaStream for a participant
+   * This is the audio mix that excludes the participant's own voice
+   * @param {string} peerId - Participant ID
+   * @returns {MediaStream|null}
+   */
+  getMixMinusStream(peerId) {
+    if (!this.mixMinusManager) {
+      console.warn('[AudioGraph] Mix-minus manager not initialized');
+      return null;
+    }
+    return this.mixMinusManager.getMixMinusStream(peerId);
+  }
+
+  /**
+   * Get the mix-minus manager instance
+   */
+  getMixMinusManager() {
+    return this.mixMinusManager;
+  }
+
+  /**
    * Clear all participants from graph
    */
   clearAll() {
@@ -222,6 +277,11 @@ export class AudioGraph extends EventTarget {
 
     for (const peerId of this.participantNodes.keys()) {
       this.removeParticipant(peerId);
+    }
+
+    // Ensure all mix-minus buses are destroyed
+    if (this.mixMinusManager) {
+      this.mixMinusManager.destroyAll();
     }
 
     this.dispatchEvent(new Event('cleared'));
@@ -241,7 +301,8 @@ export class AudioGraph extends EventTarget {
           threshold: nodes.compressor.threshold.value,
           ratio: nodes.compressor.ratio.value,
           reduction: nodes.compressor.reduction
-        }
+        },
+        hasMixMinus: this.mixMinusManager ? this.mixMinusManager.hasMixMinusBus(peerId) : false
       });
     }
 
@@ -250,7 +311,8 @@ export class AudioGraph extends EventTarget {
       sampleRate: this.audioContext ? this.audioContext.sampleRate : null,
       participantCount: this.participantNodes.size,
       participants,
-      programBus: this.programBus ? this.programBus.getInfo() : null
+      programBus: this.programBus ? this.programBus.getInfo() : null,
+      mixMinus: this.mixMinusManager ? this.mixMinusManager.getInfo() : null
     };
   }
 }

@@ -29,6 +29,7 @@
 - Task 010/011 (Gain Controls Per Participant) completed
 - Task 012 (Program Bus Mixing) completed
 - Task 013 (Multi-Peer Support) completed (automated testing), manual testing pending
+- Task 014 (Mix-Minus Calculation Logic) completed
 
 ## Tasks Completed
 
@@ -46,12 +47,13 @@
 12. **191025_task_010_011_gain_controls.md** - Task 010/011: Per-participant gain controls UI (Milestone 3: Multi-Peer Audio)
 13. **191025_task_012_program_bus.md** - Task 012: Program bus mixing and volume meter (Milestone 3: Multi-Peer Audio)
 14. **191025_task_013_multi_peer_support.md** - Task 013: Multi-peer support with ConnectionManager (Milestone 3: Multi-Peer Audio)
+15. **191025_task_014_mix_minus_calculation.md** - Task 014: Mix-minus calculation logic (Milestone 4: Mix-Minus)
 
 ## Next Priorities
 
-1. Continue Release 0.1 tasks sequentially (014 → 020)
+1. Continue Release 0.1 tasks sequentially (015 → 020)
 2. Manual testing of 8-peer mesh (Task 013 final acceptance)
-3. Begin Milestone 4: Mix-Minus (tasks 014-016)
+3. Continue Milestone 4: Mix-Minus (tasks 015-016)
 3. Track progress with X-marker file renaming
 4. Completed task files marked with X:
    - 001_X_project_structure.yml ✅
@@ -67,6 +69,7 @@
    - 011_X_participant_gain_controls.yml ✅
    - 012_X_program_bus.yml ✅
    - 013_X_multi_peer_support.yml ✅ (automated testing complete)
+   - 014_X_mixminus_calculation.yml ✅
 
 ## Key Decisions Made
 
@@ -113,6 +116,9 @@
 - **Connection Retry Logic**: Exponential backoff (2s → 4s → 8s, max 3 attempts) for temporary network failures
 - **Connection State Tracking**: disconnected → waiting/connecting → connected → failed/failed-permanent states
 - **Local Stream Race Condition Fix**: Wait for getUserMedia() before initiating WebRTC connections
+- **Mix-Minus Phase Inversion Algorithm**: Efficient O(N) algorithm using gain=-1 instead of selective summing (Program + (-Participant) = Mix-Minus)
+- **Automatic Mix-Minus Creation**: Mix-minus buses created/destroyed automatically when participants join/leave
+- **CORS for Development APIs**: Added Access-Control-Allow-Origin headers to /api/station endpoint for cross-origin testing
 
 ## Blockers
 
@@ -120,19 +126,19 @@ None currently
 
 ## Metrics
 
-- **Tasks Completed**: 3 (planning tasks) + 13 (implementation tasks) = 16 total
-- **Memory Bank Files Created**: 8 core + 22 release files + 13 task docs (43 total)
-- **Code Implemented**: 65% (Task 001-013 complete: Milestone 1 100%, Milestone 2 100%, Milestone 3 100%*)
-- **Release 0.1 Progress**: 13/20 tasks complete (65%, skipped redundant task 010)
+- **Tasks Completed**: 3 (planning tasks) + 14 (implementation tasks) = 17 total
+- **Memory Bank Files Created**: 8 core + 22 release files + 15 task docs (45 total)
+- **Code Implemented**: 70% (Task 001-014 complete: Milestone 1 100%, Milestone 2 100%, Milestone 3 100%*, Milestone 4 25%)
+- **Release 0.1 Progress**: 14/20 tasks complete (70%, skipped redundant task 010)
   - *Milestone 3 automated testing complete, manual 8-peer testing pending
 - **Dependencies Installed**: Server (16 packages), Web (2 packages - Playwright)
 - **Security Audit**: 0 vulnerabilities
 - **Docker Containers**: 3 running (Icecast, coturn, signaling server operational)
-- **Lines of Code**: Server (1703 lines), Web (3181 lines: 538 HTML/CSS + 2643 JS), Tests (1934 lines: 1004 server + 930 Playwright)
+- **Lines of Code**: Server (1706 lines), Web (3484 lines: 538 HTML/CSS + 2946 JS), Tests (2247 lines: 1004 server + 1243 Playwright)
 
 ## Notes
 
-**Project Status**: Release 0.1 implementation in progress. **Milestone 1 (Foundation) is 100% complete (4/4 tasks)**. **Milestone 2 (Basic Connection) is 100% complete (4/4 tasks)**. **Milestone 3 (Multi-Peer Audio) is 75% complete (3/4 tasks)**.
+**Project Status**: Release 0.1 implementation in progress. **Milestone 1 (Foundation) is 100% complete (4/4 tasks)**. **Milestone 2 (Basic Connection) is 100% complete (4/4 tasks)**. **Milestone 3 (Multi-Peer Audio) is 100% complete* (4/4 tasks, *automated testing only)**. **Milestone 4 (Mix-Minus) is 25% complete (1/4 tasks)**.
 
 **Foundation Complete** (Milestone 1):
 - Directory structure (server/, web/, shared/) with package.json and ES modules
@@ -210,4 +216,14 @@ None currently
 - Local stream race condition fix: Wait for stream before initiating connections
 - All acceptance criteria validated: Perfect Negotiation ✅, Retry logic ✅, State tracking ✅, Race conditions prevented ✅
 
-**Next Step**: Task 014 (Mix-Minus Calculation) - Create per-caller mix-minus buses excluding own voice (Milestone 4: Mix-Minus).
+**Mix-Minus Calculation** (Task 014):
+- web/js/mix-minus.js - MixMinusManager class with efficient phase-inversion algorithm (225 lines)
+- Modified web/js/audio-graph.js - Integrated MixMinusManager, auto-creates/destroys mix-minus buses (+53 lines, 256 → 309)
+- Modified server/server.js - Added CORS headers to /api/station endpoint (+3 lines)
+- test-mix-minus.mjs - Automated Playwright test for 3-peer mix-minus validation (313 lines)
+- Phase-inversion algorithm: O(N) complexity, MixMinus_i = Program + (-Participant_i)
+- Each participant gets personalized audio mix excluding their own voice (prevents echo/feedback)
+- Audio graph: Participant → Compressor → [Program Bus, Inverter(-1)] → Mixer → MediaStreamDestination
+- All acceptance criteria validated: Buses created ✅, Efficient O(N) ✅, Auto-update on join/leave ✅, No self-audio ✅, Documented ✅
+
+**Next Step**: Task 015 (Mix-Minus Return Feeds) - Send mix-minus streams back to callers via WebRTC (Milestone 4: Mix-Minus).
