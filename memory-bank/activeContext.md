@@ -5,10 +5,72 @@
 ## Current Phase
 
 **Release**: 0.1 MVP (Core Loop)
-**Status**: Implementation In Progress (8/20 tasks complete, 40%)
-**Focus**: Milestone 3 - Multi-Peer Audio (0% complete: task 009 next)
+**Status**: Implementation In Progress (9/20 tasks complete, 45%)
+**Focus**: Milestone 3 - Multi-Peer Audio (25% complete: 1/4 tasks, task 010 next)
 
 ## Recent Decisions
+
+### 2025-10-19: Web Audio Foundation (Task 009)
+
+**Decision**: Implement Web Audio API foundation with AudioContext singleton and participant audio graph routing
+
+**Rationale**:
+- HTMLAudioElement approach from Task 008 has no mixing capability
+- Web Audio graph enables per-participant gain control, compression, and routing
+- Foundation required for Program Bus (Task 011) and Mix-Minus (Task 014-016)
+- Browser autoplay policy requires careful AudioContext state management
+- Separation of concerns: lifecycle (audio-context-manager) vs routing (audio-graph)
+
+**Implementation**:
+- Created web/js/audio-context-manager.js (162 lines) - AudioContext singleton with lifecycle
+- Created web/js/audio-graph.js (229 lines) - Participant node management and routing
+- Modified web/js/rtc-manager.js (-34 lines) - Removed HTMLAudioElement auto-play
+- Modified web/js/main.js (+68 lines) - Audio system initialization and integration
+- Created test-audio-graph.mjs (113 lines) - Automated Playwright test
+
+**Audio Graph Architecture**:
+```
+Remote MediaStream
+       ↓
+MediaStreamAudioSourceNode
+       ↓
+GainNode (volume: 0.0 to 2.0, default: 1.0 = 0dB)
+       ↓
+DynamicsCompressorNode (threshold: -24dB, ratio: 12:1, attack: 3ms, release: 250ms)
+       ↓
+AudioContext.destination (speakers)
+```
+
+**Lifecycle Management**:
+- AudioContext created on page load (state: suspended)
+- Resume on Start Session button (user interaction, autoplay policy compliance)
+- Event-driven state changes: `initialized`, `resumed`, `suspended`, `statechange`
+- Browser compatibility: `window.AudioContext || window.webkitAudioContext`
+
+**Testing**:
+- ✅ Automated Playwright test: AudioContext creation, state management, audio graph initialization
+- ✅ All tests passing: Created ✅, Resumed ✅, Graph initialized ✅
+- ✅ Browser console debugging: `audioContextManager.getState()`, `audioGraph.getGraphInfo()`
+- ✅ Chrome DevTools Web Audio inspector compatible
+
+**API Design**:
+```javascript
+// AudioContext lifecycle
+audioContextManager.initialize()
+await audioContextManager.resume()
+audioContextManager.getState() // 'suspended' | 'running'
+
+// Audio graph operations
+audioGraph.initialize()
+audioGraph.addParticipant(peerId, mediaStream)
+audioGraph.removeParticipant(peerId)
+audioGraph.setParticipantGain(peerId, 1.0) // 0.0 to 2.0
+audioGraph.muteParticipant(peerId)
+audioGraph.unmuteParticipant(peerId)
+audioGraph.getGraphInfo() // Debug info
+```
+
+**Next Step**: Task 010 will add UI controls (sliders, mute buttons, level meters) for the audio graph foundation
 
 ### 2025-10-18: First WebRTC Peer Connection (Task 008)
 
@@ -434,8 +496,13 @@ notes (implementation hints)
 
 ### In Progress - Milestone 3: Multi-Peer Audio (Tasks 009-013)
 
-9. **Task 009**: Web Audio graph implementation - NEXT
-10. **Task 010**: Gain controls per participant
+9. ✅ **Task 009**: Web Audio foundation (COMPLETE)
+   - AudioContext singleton with lifecycle management
+   - Audio graph: MediaStreamSource → Gain → Compressor → Destination
+   - Browser autoplay policy compliance
+   - Automated Playwright testing
+
+10. **Task 010**: Gain controls per participant - NEXT
 11. **Task 011**: Program bus mixing
 12. **Task 012**: Audio quality testing
 13. **Task 013**: Multi-peer stability
@@ -484,24 +551,26 @@ notes (implementation hints)
 
 1. Review this file first to understand current state
 2. Check tasks/2025-10/README.md for recent progress
-3. **Start with task 009**: Read `memory-bank/releases/0.1/tasks/009_web_audio_graph.yml`
+3. **Start with task 010**: Read `memory-bank/releases/0.1/tasks/010_gain_controls.yml`
 4. Infrastructure operational: Icecast (8000), coturn (3478), signaling server (3000 WebSocket + HTTP)
 5. Signaling protocol ready: Peer registration, SDP/ICE relay, anti-spoofing validation working
 6. Room management ready: Create room, join room, peer-joined/peer-left broadcasts, auto-cleanup
 7. Web scaffold ready: HTML/CSS interface at web/index.html (415 lines: reset.css, studio.css, index.html)
-8. WebRTC client ready: signaling-client.js, rtc-manager.js, main.js (1061 lines JS)
-9. **Milestone 1 (Foundation) complete**: Project structure, Docker, signaling skeleton, configuration management
-10. **Milestone 2 (Basic Connection) complete**: Signaling, room management, web scaffold, WebRTC peer connection
-11. **Milestone 3 (Multi-Peer Audio) next**: Web Audio graph, gain controls, program bus mixing
-10. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
-11. Reference systemPatterns.md for architectural decisions
-12. Use `sudo docker compose` for all Docker commands (user not in docker group)
-13. Port 3000 is standard for signaling server (documented in tasks 003-004)
-14. Configuration available via GET /api/station (includes ICE servers for WebRTC)
-15. Test suites: 9 signaling tests + 9 room tests + 1 Playwright browser test = 19 automated tests, all passing
-16. Web client runs via `python3 -m http.server 8086` from web/ directory
-17. Two-browser peer connection working: create room, join room, SDP/ICE exchange, audio ready
-18. Playwright automated testing validates full WebRTC flow without manual intervention
+8. WebRTC client ready: signaling-client.js, rtc-manager.js, main.js (1520 lines JS total)
+9. **Web Audio foundation ready**: audio-context-manager.js, audio-graph.js (391 lines, routing infrastructure)
+10. **Milestone 1 (Foundation) complete**: Project structure, Docker, signaling skeleton, configuration management
+11. **Milestone 2 (Basic Connection) complete**: Signaling, room management, web scaffold, WebRTC peer connection
+12. **Milestone 3 (Multi-Peer Audio) 25% complete**: Web Audio foundation ✅, gain controls next
+13. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
+14. Reference systemPatterns.md for architectural decisions
+15. Use `sudo docker compose` for all Docker commands (user not in docker group)
+16. Port 3000 is standard for signaling server (documented in tasks 003-004)
+17. Configuration available via GET /api/station (includes ICE servers for WebRTC)
+18. Test suites: 9 signaling tests + 9 room tests + 2 Playwright tests = 20 automated tests, all passing
+19. Web client runs via `python3 -m http.server 8086` from web/ directory
+20. Two-browser peer connection working: create room, join room, SDP/ICE exchange, audio routes through Web Audio graph
+21. Playwright automated testing validates WebRTC + Web Audio flow without manual intervention
+22. Browser console debugging: `audioContextManager.getState()`, `audioGraph.getGraphInfo()`
 
 ## Context for Future Work
 

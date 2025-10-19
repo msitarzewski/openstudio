@@ -19,7 +19,6 @@ export class RTCManager extends EventTarget {
     this.peerConnections = new Map(); // remotePeerId -> RTCPeerConnection
     this.localStream = null;
     this.iceServers = null;
-    this.remoteAudioElements = new Map(); // remotePeerId -> HTMLAudioElement
   }
 
   /**
@@ -169,7 +168,13 @@ export class RTCManager extends EventTarget {
       console.log(`[RTC] Remote ${event.track.kind} track received from ${remotePeerId}`);
 
       if (event.streams && event.streams[0]) {
-        this.playRemoteStream(remotePeerId, event.streams[0]);
+        // Emit event for audio graph to handle routing
+        this.dispatchEvent(new CustomEvent('remote-stream', {
+          detail: {
+            remotePeerId,
+            stream: event.streams[0]
+          }
+        }));
       }
     });
 
@@ -258,29 +263,6 @@ export class RTCManager extends EventTarget {
     }
   }
 
-  /**
-   * Play remote audio stream
-   */
-  playRemoteStream(remotePeerId, stream) {
-    // Create audio element for remote peer
-    let audioElement = this.remoteAudioElements.get(remotePeerId);
-
-    if (!audioElement) {
-      audioElement = new Audio();
-      audioElement.autoplay = true;
-      this.remoteAudioElements.set(remotePeerId, audioElement);
-      console.log(`[RTC] Created audio element for ${remotePeerId}`);
-    }
-
-    audioElement.srcObject = stream;
-
-    this.dispatchEvent(new CustomEvent('remote-stream', {
-      detail: {
-        remotePeerId,
-        stream
-      }
-    }));
-  }
 
   /**
    * Close peer connection
@@ -291,13 +273,6 @@ export class RTCManager extends EventTarget {
       pc.close();
       this.peerConnections.delete(remotePeerId);
       console.log(`[RTC] Closed peer connection for ${remotePeerId}`);
-    }
-
-    const audioElement = this.remoteAudioElements.get(remotePeerId);
-    if (audioElement) {
-      audioElement.srcObject = null;
-      this.remoteAudioElements.delete(remotePeerId);
-      console.log(`[RTC] Removed audio element for ${remotePeerId}`);
     }
   }
 

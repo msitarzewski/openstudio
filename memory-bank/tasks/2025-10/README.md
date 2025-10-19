@@ -25,7 +25,8 @@
 - Task 006 (Room Management System) completed
 - Task 007 (Web Studio HTML/CSS Scaffold) completed
 - Task 008 (First WebRTC Peer Connection) completed
-- Task 009 (Web Audio Graph Implementation) is next in queue
+- Task 009 (Web Audio Foundation) completed
+- Task 010 (Gain Controls Per Participant) is next in queue
 
 ## Tasks Completed
 
@@ -39,11 +40,12 @@
 8. **181025_task_006_room_management_system.md** - Task 006: Room management system (Milestone 2: Basic Connection)
 9. **181025_task_007_web_studio_scaffold.md** - Task 007: Web studio HTML/CSS scaffold (Milestone 2: Basic Connection)
 10. **181025_task_008_first_webrtc_connection.md** - Task 008: First WebRTC peer connection (Milestone 2: Basic Connection)
+11. **191025_task_009_web_audio_foundation.md** - Task 009: Web Audio foundation (Milestone 3: Multi-Peer Audio)
 
 ## Next Priorities
 
-1. Continue Release 0.1 tasks sequentially (009 → 020)
-2. Begin Milestone 3: Multi-Peer Audio (task 009)
+1. Continue Release 0.1 tasks sequentially (010 → 020)
+2. Continue Milestone 3: Multi-Peer Audio (tasks 010-013)
 3. Track progress with X-marker file renaming
 4. Completed task files marked with X:
    - 001_X_project_structure.yml ✅
@@ -54,6 +56,7 @@
    - 006_X_room_management.yml ✅
    - 007_X_web_studio_scaffold.yml ✅
    - 008_X_first_webrtc_connection.yml ✅
+   - 009_X_web_audio_foundation.yml ✅
 
 ## Key Decisions Made
 
@@ -84,6 +87,10 @@
 - **ES Modules for Web Client**: No bundler needed for MVP, native browser support, easier debugging
 - **Playwright Automated Testing**: Headless browser testing validates WebRTC flow without manual intervention
 - **URL Hash for Room Sharing**: Simple room ID sharing via fragment identifier (#room-uuid)
+- **Web Audio Foundation**: AudioContext singleton with lifecycle management, browser autoplay policy compliance
+- **Audio Graph Architecture**: MediaStreamSource → GainNode → DynamicsCompressor → Destination routing per participant
+- **Separation of Audio Concerns**: audio-context-manager.js (lifecycle) + audio-graph.js (routing) for clean design
+- **Browser Console Debugging**: Exposed audioContextManager and audioGraph to window object for development
 
 ## Blockers
 
@@ -91,18 +98,18 @@ None currently
 
 ## Metrics
 
-- **Tasks Completed**: 3 (planning tasks) + 8 (implementation tasks) = 11 total
-- **Memory Bank Files Created**: 8 core + 22 release files + 10 task docs (40 total)
-- **Code Implemented**: 40% (Task 001-008 complete: Milestone 1 100%, Milestone 2 100%)
-- **Release 0.1 Progress**: 8/20 tasks complete (40%)
+- **Tasks Completed**: 3 (planning tasks) + 9 (implementation tasks) = 12 total
+- **Memory Bank Files Created**: 8 core + 22 release files + 11 task docs (41 total)
+- **Code Implemented**: 45% (Task 001-009 complete: Milestone 1 100%, Milestone 2 100%, Milestone 3 25%)
+- **Release 0.1 Progress**: 9/20 tasks complete (45%)
 - **Dependencies Installed**: Server (16 packages), Web (2 packages - Playwright)
 - **Security Audit**: 0 vulnerabilities
 - **Docker Containers**: 3 running (Icecast, coturn, signaling server operational)
-- **Lines of Code**: Server (1703 lines), Web (1476 lines: 415 HTML/CSS + 1061 JS), Tests (1334 lines: 1004 server + 330 Playwright)
+- **Lines of Code**: Server (1703 lines), Web (1867 lines: 415 HTML/CSS + 1452 JS), Tests (1447 lines: 1004 server + 330 Playwright + 113 audio)
 
 ## Notes
 
-**Project Status**: Release 0.1 implementation in progress. **Milestone 1 (Foundation) is 100% complete (4/4 tasks)**. **Milestone 2 (Basic Connection) is 100% complete (4/4 tasks)**.
+**Project Status**: Release 0.1 implementation in progress. **Milestone 1 (Foundation) is 100% complete (4/4 tasks)**. **Milestone 2 (Basic Connection) is 100% complete (4/4 tasks)**. **Milestone 3 (Multi-Peer Audio) is 25% complete (1/4 tasks)**.
 
 **Foundation Complete** (Milestone 1):
 - Directory structure (server/, web/, shared/) with package.json and ES modules
@@ -136,10 +143,19 @@ None currently
 
 **WebRTC Client Implementation** (Task 008):
 - web/js/signaling-client.js - WebSocket client with auto-reconnection, peer registration, room management (268 lines)
-- web/js/rtc-manager.js - RTCPeerConnection manager, getUserMedia, SDP/ICE handling, remote audio playback (324 lines)
-- web/js/main.js - Application orchestration, UI integration, event coordination (469 lines)
+- web/js/rtc-manager.js - RTCPeerConnection manager, getUserMedia, SDP/ICE handling (299 lines, simplified)
+- web/js/main.js - Application orchestration, UI integration, event coordination (528 lines, audio integration)
 - test-webrtc.mjs - Playwright automated browser test validating full WebRTC flow (330 lines)
 - All acceptance criteria validated with automated Playwright testing (18 server tests + browser automation)
 - Two-browser peer connection working: create room, join room, SDP exchange, ICE negotiation, participant tracking
 
-**Next Step**: Task 009 (Web Audio Graph Implementation) - create Web Audio mixing graph, route remote tracks to MediaStreamAudioSourceNode, add GainNode per participant, create Program Bus (Milestone 3: Multi-Peer Audio).
+**Web Audio Foundation** (Task 009):
+- web/js/audio-context-manager.js - AudioContext singleton with lifecycle management (162 lines)
+- web/js/audio-graph.js - Participant audio node management and routing (229 lines)
+- Modified rtc-manager.js - Removed HTMLAudioElement playback (-34 lines, cleaner separation)
+- Modified main.js - Audio system initialization and RTC integration (+68 lines)
+- test-audio-graph.mjs - Automated Playwright test for AudioContext and graph validation (113 lines)
+- Audio routing: MediaStreamSource → GainNode → DynamicsCompressor → Destination
+- All acceptance criteria validated: AudioContext creation, state management (suspended → running), browser compatibility, dev tools debugging
+
+**Next Step**: Task 010 (Gain Controls Per Participant) - add UI sliders for volume control, visual mute buttons, level meters per participant (Milestone 3: Multi-Peer Audio).

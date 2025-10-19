@@ -70,8 +70,8 @@
 
 ✅ **WebRTC Client Implementation** (Task 008 - Complete)
 - web/js/signaling-client.js - WebSocket client with auto-reconnection (268 lines)
-- web/js/rtc-manager.js - RTCPeerConnection manager with getUserMedia (324 lines)
-- web/js/main.js - Application orchestration and UI integration (469 lines)
+- web/js/rtc-manager.js - RTCPeerConnection manager with getUserMedia (299 lines, simplified)
+- web/js/main.js - Application orchestration and UI integration (528 lines, audio integration)
 - Event-driven architecture: SignalingClient and RTCManager extend EventTarget
 - Room creation/joining via URL hash (#room-uuid)
 - SDP offer/answer exchange working
@@ -82,26 +82,48 @@
 - Playwright automated browser test (330 lines) - 2 browsers connect successfully
 - Manual testing: Two browser windows exchange audio peer-to-peer
 
+✅ **Web Audio Foundation** (Task 009 - Complete)
+- web/js/audio-context-manager.js - AudioContext singleton with lifecycle management (162 lines)
+- web/js/audio-graph.js - Participant audio node management and routing (229 lines)
+- Modified rtc-manager.js - Removed HTMLAudioElement playback (-34 lines, cleaner separation)
+- Modified main.js - Audio system initialization and RTC integration (+68 lines)
+- test-audio-graph.mjs - Automated Playwright test for AudioContext validation (113 lines)
+- Audio routing: MediaStreamSource → GainNode → DynamicsCompressor → Destination
+- AudioContext lifecycle: suspended on init, running on user interaction
+- Browser compatibility: webkit prefix support for Safari
+- Event-driven: audioContextManager and audioGraph extend EventTarget
+- Browser console debugging: window.audioContextManager, window.audioGraph
+- All acceptance criteria validated: AudioContext creation ✅, state management ✅, browser compatibility ✅, dev tools debugging ✅
+
 ## What's Next
 
 ### Immediate (This Week)
 
-1. **Web Audio Graph Implementation** (Task 009 - NEXT)
-   - Create Web Audio context and graph
-   - Route remote tracks to MediaStreamAudioSourceNode
-   - Add GainNode per participant for volume control
-   - Create Program Bus summing all participants
-   - Add DynamicsCompressorNode for leveling
-   - Test multi-participant mixing (3+ peers)
+1. **Gain Controls Per Participant** (Task 010 - NEXT)
+   - Add volume sliders to participant cards
+   - Visual mute/unmute buttons
+   - Level meters showing audio activity
+   - Wire UI controls to audio graph API
+   - Test gain adjustments and mute functionality
 
 ### Short Term (Next 2-4 Weeks)
 
-4. **Web Audio Graph Implementation**
-   - MediaStreamSource nodes per peer
-   - GainNode per participant
-   - Program bus routing
+2. **Program Bus Mixing** (Task 011)
+   - Sum all participants to single stereo bus
+   - Route to MediaRecorder for Icecast
+   - Master gain/compressor on output
 
-5. **Mix-Minus Calculation**
+3. **Audio Quality Testing** (Task 012)
+   - Subjective quality assessment
+   - Latency measurements
+   - CPU/memory profiling
+
+4. **Multi-Peer Stability** (Task 013)
+   - Stress testing with 3+ participants
+   - 60+ minute session stability
+   - Connection resilience testing
+
+5. **Mix-Minus Calculation** (Tasks 014-016)
    - Per-caller bus generation
    - Return feed routing
    - Test with 3+ participants
@@ -167,12 +189,12 @@
 - ✅ OGG/Opus stream playable via Icecast
 - ✅ Setup from clone < 5 min
 
-**Status**: 40% complete (8/20 tasks) - **Milestone 1: Foundation 100% complete**, **Milestone 2: Basic Connection 100% complete**
+**Status**: 45% complete (9/20 tasks) - **Milestone 1: Foundation 100% complete**, **Milestone 2: Basic Connection 100% complete**, **Milestone 3: Multi-Peer Audio 25% complete**
 
 **Task Breakdown**: See `memory-bank/releases/0.1/` for detailed task files
 - **M1: Foundation** (001-004): Project structure ✅, Docker ✅, signaling skeleton ✅, configuration ✅
 - **M2: Basic Connection** (005-008): WebSocket signaling ✅, room management ✅, HTML scaffold ✅, first peer connection ✅
-- **M3: Multi-Peer Audio** (009-013): Web Audio graph (next), gain controls, program bus, quality testing, multi-peer stability
+- **M3: Multi-Peer Audio** (009-013): Web Audio foundation ✅, gain controls (next), program bus, quality testing, multi-peer stability
 - **M4: Mix-Minus** (014-016): Per-caller mixes, return feeds, testing
 - **M5: Production Ready** (017-020): Mute controls, Icecast, stability testing, docs
 
@@ -248,6 +270,20 @@
 - Documentation page views
 
 ## Recent Achievements
+
+### 2025-10-19
+
+✅ **Task 009 Complete**: Web Audio foundation operational
+✅ Created web/js/audio-context-manager.js - AudioContext singleton with lifecycle management (162 lines)
+✅ Created web/js/audio-graph.js - Participant audio node management and routing (229 lines)
+✅ Modified web/js/rtc-manager.js - Removed HTMLAudioElement playback (-34 lines, cleaner separation)
+✅ Modified web/js/main.js - Audio system initialization and RTC integration (+68 lines)
+✅ Created test-audio-graph.mjs - Automated Playwright test for AudioContext validation (113 lines)
+✅ All acceptance criteria validated: AudioContext creation, state management (suspended → running), browser compatibility, audio graph routing
+✅ Automated test passed: AudioContext created ✅, AudioContext resumed ✅, Audio graph initialized ✅
+✅ Audio routing working: MediaStreamSource → GainNode → DynamicsCompressor → Destination
+✅ Browser console debugging enabled: audioContextManager.getState(), audioGraph.getGraphInfo()
+✅ **Milestone 3 (Multi-Peer Audio) now 25% complete (1/4 tasks)**
 
 ### 2025-10-18 (Part 5)
 

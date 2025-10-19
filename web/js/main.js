@@ -11,6 +11,8 @@
 
 import { SignalingClient } from './signaling-client.js';
 import { RTCManager } from './rtc-manager.js';
+import { audioContextManager } from './audio-context-manager.js';
+import { AudioGraph } from './audio-graph.js';
 
 class OpenStudioApp {
   constructor() {
@@ -21,6 +23,7 @@ class OpenStudioApp {
     // Initialize components
     this.signaling = new SignalingClient(this.peerId);
     this.rtc = new RTCManager(this.peerId);
+    this.audioGraph = new AudioGraph();
 
     // State
     this.currentRoom = null;
@@ -37,6 +40,7 @@ class OpenStudioApp {
     // Bind event handlers
     this.setupSignalingListeners();
     this.setupRTCListeners();
+    this.setupAudioListeners();
     this.setupUIListeners();
 
     // Check for room ID in URL hash
@@ -44,13 +48,24 @@ class OpenStudioApp {
 
     // Auto-connect to signaling server
     this.initializeApp();
+
+    // Expose for debugging in browser console
+    window.audioContextManager = audioContextManager;
+    window.audioGraph = this.audioGraph;
+    window.app = this;
   }
 
   /**
-   * Initialize app: connect signaling, fetch ICE config
+   * Initialize app: connect signaling, fetch ICE config, setup audio
    */
   async initializeApp() {
     try {
+      // Initialize AudioContext (will be in suspended state)
+      audioContextManager.initialize();
+
+      // Initialize audio graph
+      this.audioGraph.initialize();
+
       // Fetch ICE servers
       await this.rtc.initialize();
 
@@ -165,6 +180,7 @@ class OpenStudioApp {
 
       this.removeParticipant(peerId);
       this.rtc.closePeerConnection(peerId);
+      this.audioGraph.removeParticipant(peerId);
     });
 
     this.signaling.addEventListener('offer', async (event) => {
@@ -220,7 +236,13 @@ class OpenStudioApp {
     this.rtc.addEventListener('remote-stream', (event) => {
       const { remotePeerId, stream } = event.detail;
       console.log(`[App] Remote stream from ${remotePeerId}:`, stream);
-      // Remote audio auto-plays via Audio element in RTCManager
+
+      // Route remote stream through audio graph
+      try {
+        this.audioGraph.addParticipant(remotePeerId, stream);
+      } catch (error) {
+        console.error(`[App] Failed to add ${remotePeerId} to audio graph:`, error);
+      }
     });
 
     this.rtc.addEventListener('connection-state', (event) => {
@@ -235,6 +257,35 @@ class OpenStudioApp {
       const { message } = event.detail;
       console.error(`[App] RTC error: ${message}`);
       alert(`Error: ${message}`);
+    });
+  }
+
+  /**
+   * Setup audio event listeners
+   */
+  setupAudioListeners() {
+    audioContextManager.addEventListener('statechange', (event) => {
+      const { state } = event.detail;
+      console.log(`[App] AudioContext state changed: ${state}`);
+    });
+
+    audioContextManager.addEventListener('resumed', () => {
+      console.log('[App] AudioContext resumed successfully');
+    });
+
+    this.audioGraph.addEventListener('participant-added', (event) => {
+      const { peerId } = event.detail;
+      console.log(`[App] Participant added to audio graph: ${peerId}`);
+    });
+
+    this.audioGraph.addEventListener('participant-removed', (event) => {
+      const { peerId } = event.detail;
+      console.log(`[App] Participant removed from audio graph: ${peerId}`);
+    });
+
+    this.audioGraph.addEventListener('error', (event) => {
+      const { message } = event.detail;
+      console.error(`[App] Audio graph error: ${message}`);
     });
   }
 
@@ -270,6 +321,16 @@ class OpenStudioApp {
    * Handle Start Session button
    */
   async handleStartSession() {
+    // Resume AudioContext (required for browser autoplay policy)
+    try {
+      await audioContextManager.resume();
+      console.log('[App] AudioContext resumed');
+    } catch (error) {
+      console.error('[App] Failed to resume AudioContext:', error);
+      alert('Failed to start audio system. Please try again.');
+      return;
+    }
+
     // Check if we should create or join
     if (this.roomIdFromUrl) {
       // Join existing room
@@ -298,6 +359,9 @@ class OpenStudioApp {
    */
   handleEndSession() {
     console.log('[App] Ending session...');
+
+    // Clear audio graph
+    this.audioGraph.clearAll();
 
     // Close all RTC connections
     this.rtc.closeAll();
