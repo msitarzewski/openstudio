@@ -27,7 +27,8 @@
 - Task 008 (First WebRTC Peer Connection) completed
 - Task 009 (Web Audio Foundation) completed
 - Task 010/011 (Gain Controls Per Participant) completed
-- Task 012 (Program Bus Mixing) is next in queue
+- Task 012 (Program Bus Mixing) completed
+- Task 013 (Audio Quality Testing) is next in queue
 
 ## Tasks Completed
 
@@ -43,11 +44,12 @@
 10. **181025_task_008_first_webrtc_connection.md** - Task 008: First WebRTC peer connection (Milestone 2: Basic Connection)
 11. **191025_task_009_web_audio_foundation.md** - Task 009: Web Audio foundation (Milestone 3: Multi-Peer Audio)
 12. **191025_task_010_011_gain_controls.md** - Task 010/011: Per-participant gain controls UI (Milestone 3: Multi-Peer Audio)
+13. **191025_task_012_program_bus.md** - Task 012: Program bus mixing and volume meter (Milestone 3: Multi-Peer Audio)
 
 ## Next Priorities
 
-1. Continue Release 0.1 tasks sequentially (012 → 020)
-2. Continue Milestone 3: Multi-Peer Audio (tasks 012-013)
+1. Continue Release 0.1 tasks sequentially (013 → 020)
+2. Finish Milestone 3: Multi-Peer Audio (task 013)
 3. Track progress with X-marker file renaming
 4. Completed task files marked with X:
    - 001_X_project_structure.yml ✅
@@ -61,6 +63,7 @@
    - 009_X_web_audio_foundation.yml ✅
    - 010_X_mediastream_sources.yml ✅ (redundant with 009)
    - 011_X_participant_gain_controls.yml ✅
+   - 012_X_program_bus.yml ✅
 
 ## Key Decisions Made
 
@@ -99,6 +102,10 @@
 - **Smooth Gain Transitions**: AudioParam linearRampToValueAtTime (50ms) prevents audio clicks/pops during volume changes
 - **SDP Serialization Fix**: Extract SDP string from RTCSessionDescription object before server transmission
 - **Gain Control State Management**: Track muted status and gain value per participant in application state
+- **Program Bus Architecture**: ChannelMerger → MasterGain → (Destination, AnalyserNode, MediaStreamDestination) for unified output
+- **Stereo Program Bus**: All mono participants summed to stereo (L+R identical, connected to both merger channels)
+- **Real-Time Volume Metering**: Canvas-based visualization with RMS level calculation, peak hold, color-coded thresholds
+- **Meter Color Thresholds**: Green (0-70% safe), Yellow (70-90% warning), Red (90-100% danger/clipping)
 
 ## Blockers
 
@@ -106,18 +113,18 @@ None currently
 
 ## Metrics
 
-- **Tasks Completed**: 3 (planning tasks) + 11 (implementation tasks) = 14 total
-- **Memory Bank Files Created**: 8 core + 22 release files + 12 task docs (42 total)
-- **Code Implemented**: 50% (Task 001-011 complete: Milestone 1 100%, Milestone 2 100%, Milestone 3 50%)
-- **Release 0.1 Progress**: 11/20 tasks complete (55%, skipped redundant task 010)
+- **Tasks Completed**: 3 (planning tasks) + 12 (implementation tasks) = 15 total
+- **Memory Bank Files Created**: 8 core + 22 release files + 13 task docs (43 total)
+- **Code Implemented**: 60% (Task 001-012 complete: Milestone 1 100%, Milestone 2 100%, Milestone 3 75%)
+- **Release 0.1 Progress**: 12/20 tasks complete (60%, skipped redundant task 010)
 - **Dependencies Installed**: Server (16 packages), Web (2 packages - Playwright)
 - **Security Audit**: 0 vulnerabilities
 - **Docker Containers**: 3 running (Icecast, coturn, signaling server operational)
-- **Lines of Code**: Server (1703 lines), Web (2131 lines: 531 HTML/CSS + 1600 JS), Tests (1702 lines: 1004 server + 330 + 113 + 255 Playwright)
+- **Lines of Code**: Server (1703 lines), Web (2823 lines: 538 HTML/CSS + 2285 JS), Tests (1934 lines: 1004 server + 330 + 113 + 255 + 232 Playwright)
 
 ## Notes
 
-**Project Status**: Release 0.1 implementation in progress. **Milestone 1 (Foundation) is 100% complete (4/4 tasks)**. **Milestone 2 (Basic Connection) is 100% complete (4/4 tasks)**. **Milestone 3 (Multi-Peer Audio) is 50% complete (2/4 tasks)**.
+**Project Status**: Release 0.1 implementation in progress. **Milestone 1 (Foundation) is 100% complete (4/4 tasks)**. **Milestone 2 (Basic Connection) is 100% complete (4/4 tasks)**. **Milestone 3 (Multi-Peer Audio) is 75% complete (3/4 tasks)**.
 
 **Foundation Complete** (Milestone 1):
 - Directory structure (server/, web/, shared/) with package.json and ES modules
@@ -175,4 +182,16 @@ None currently
 - Smooth gain ramping: AudioParam.linearRampToValueAtTime (50ms, no clicks/pops)
 - All acceptance criteria validated: Sliders (0-200%), mute buttons, real-time UI updates, state persistence
 
-**Next Step**: Task 012 (Program Bus Mixing) - sum all participants to single stereo bus for Icecast output (Milestone 3: Multi-Peer Audio).
+**Program Bus Mixing** (Task 012):
+- web/js/program-bus.js - ProgramBus class with ChannelMerger, AnalyserNode, MediaStreamDestination (233 lines)
+- web/js/volume-meter.js - VolumeMeter class with canvas-based real-time visualization (227 lines)
+- Modified web/js/audio-graph.js - Integrated program bus, routed participants through bus (+27 lines, 229 → 256)
+- Modified web/js/main.js - Initialized volume meter, added start/stop controls (+25 lines, 660 → 685)
+- Modified web/index.html - Added volume meter UI section (+7 lines, 69 → 76)
+- Modified web/css/studio.css - Styled volume meter with responsive design (+54 lines, 408 → 462)
+- test-program-bus.mjs - Automated Playwright test for program bus and volume meter (232 lines)
+- Program bus: ChannelMerger (stereo) → MasterGain → (Destination, AnalyserNode, MediaStreamDestination)
+- Volume meter: RMS level calculation, peak hold, color-coded (green/yellow/red), threshold markers
+- All acceptance criteria validated: Program bus initialized, participants connected, volume meter active, add/remove updates bus
+
+**Next Step**: Task 013 (Audio Quality Testing) - subjective quality assessment, latency measurements, CPU/memory profiling (Milestone 3: Multi-Peer Audio).

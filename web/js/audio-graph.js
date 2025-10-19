@@ -4,27 +4,35 @@
  *
  * Handles:
  * - Participant audio node creation and routing
- * - MediaStreamAudioSourceNode → GainNode → Destination
+ * - MediaStreamAudioSourceNode → GainNode → DynamicsCompressor → Program Bus
+ * - Program bus routing to destination, analyser, and media stream
  * - Node lifecycle (creation, connection, cleanup)
- * - Foundation for Program Bus and Mix-Minus (future tasks)
  */
 
 import { audioContextManager } from './audio-context-manager.js';
+import { ProgramBus } from './program-bus.js';
 
 export class AudioGraph extends EventTarget {
   constructor() {
     super();
     this.participantNodes = new Map(); // peerId -> { source, gain, compressor }
     this.audioContext = null;
+    this.programBus = null;
   }
 
   /**
-   * Initialize audio graph
+   * Initialize audio graph with program bus
    */
   initialize() {
     try {
       this.audioContext = audioContextManager.getContext();
       console.log('[AudioGraph] Initialized with context');
+
+      // Create and initialize program bus
+      this.programBus = new ProgramBus(this.audioContext);
+      this.programBus.initialize();
+      console.log('[AudioGraph] Program bus created and initialized');
+
       this.dispatchEvent(new Event('initialized'));
     } catch (error) {
       console.error('[AudioGraph] Failed to initialize:', error);
@@ -37,11 +45,15 @@ export class AudioGraph extends EventTarget {
 
   /**
    * Add participant to audio graph
-   * Creates: MediaStreamSource → GainNode → DynamicsCompressor → Destination
+   * Creates: MediaStreamSource → GainNode → DynamicsCompressor → Program Bus
    */
   addParticipant(peerId, mediaStream) {
     if (!this.audioContext) {
       throw new Error('AudioGraph not initialized');
+    }
+
+    if (!this.programBus) {
+      throw new Error('Program bus not initialized');
     }
 
     if (this.participantNodes.has(peerId)) {
@@ -55,7 +67,7 @@ export class AudioGraph extends EventTarget {
       // Create MediaStreamAudioSourceNode from remote stream
       const source = this.audioContext.createMediaStreamSource(mediaStream);
 
-      // Create GainNode for volume control (and future mute)
+      // Create GainNode for volume control
       const gain = this.audioContext.createGain();
       gain.gain.value = 1.0; // Unity gain (0 dB)
 
@@ -67,10 +79,12 @@ export class AudioGraph extends EventTarget {
       compressor.attack.value = 0.003; // 3ms
       compressor.release.value = 0.25; // 250ms
 
-      // Connect nodes: source → gain → compressor → destination
+      // Connect nodes: source → gain → compressor → program bus
       source.connect(gain);
       gain.connect(compressor);
-      compressor.connect(this.audioContext.destination);
+
+      // Connect to program bus instead of destination
+      this.programBus.connectParticipant(compressor, peerId);
 
       // Store node references
       this.participantNodes.set(peerId, {
@@ -80,7 +94,7 @@ export class AudioGraph extends EventTarget {
         mediaStream
       });
 
-      console.log(`[AudioGraph] Participant ${peerId} connected to destination (gain: ${gain.gain.value})`);
+      console.log(`[AudioGraph] Participant ${peerId} connected to program bus (gain: ${gain.gain.value})`);
 
       this.dispatchEvent(new CustomEvent('participant-added', {
         detail: { peerId }
@@ -109,6 +123,11 @@ export class AudioGraph extends EventTarget {
     console.log(`[AudioGraph] Removing participant: ${peerId}`);
 
     try {
+      // Disconnect from program bus first
+      if (this.programBus) {
+        this.programBus.disconnectParticipant(nodes.compressor, peerId);
+      }
+
       // Disconnect all nodes
       nodes.source.disconnect();
       nodes.gain.disconnect();
@@ -189,6 +208,13 @@ export class AudioGraph extends EventTarget {
   }
 
   /**
+   * Get the program bus instance
+   */
+  getProgramBus() {
+    return this.programBus;
+  }
+
+  /**
    * Clear all participants from graph
    */
   clearAll() {
@@ -223,7 +249,8 @@ export class AudioGraph extends EventTarget {
       contextState: this.audioContext ? this.audioContext.state : 'uninitialized',
       sampleRate: this.audioContext ? this.audioContext.sampleRate : null,
       participantCount: this.participantNodes.size,
-      participants
+      participants,
+      programBus: this.programBus ? this.programBus.getInfo() : null
     };
   }
 }

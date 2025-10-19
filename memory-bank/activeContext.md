@@ -5,10 +5,67 @@
 ## Current Phase
 
 **Release**: 0.1 MVP (Core Loop)
-**Status**: Implementation In Progress (11/20 tasks complete, 55%)
-**Focus**: Milestone 3 - Multi-Peer Audio (50% complete: 2/4 tasks, task 012 next)
+**Status**: Implementation In Progress (12/20 tasks complete, 60%)
+**Focus**: Milestone 3 - Multi-Peer Audio (75% complete: 3/4 tasks, task 013 next)
 
 ## Recent Decisions
+
+### 2025-10-19: Program Bus Mixing (Task 012)
+
+**Decision**: Create unified program bus that sums all participants into single stereo mix for monitoring and Icecast streaming
+
+**Rationale**:
+- Program bus essential for unified monitoring (host hears complete mix)
+- Required for Icecast streaming (Task 018 will encode program bus output)
+- Real-time volume metering prevents clipping and ensures good audio levels
+- Foundation for future mix-minus calculations (Tasks 014-016)
+- Centralizes audio output management
+
+**Implementation**:
+- Created web/js/program-bus.js (233 lines) - ProgramBus class with ChannelMerger, AnalyserNode, MediaStreamDestination
+- Created web/js/volume-meter.js (227 lines) - VolumeMeter class with canvas-based visualization
+- Modified web/js/audio-graph.js (+27 lines) - Integrated program bus, routed participants through bus
+- Modified web/js/main.js (+25 lines) - Initialized volume meter, added start/stop controls
+- Modified web/index.html (+7 lines) - Added volume meter UI section
+- Modified web/css/studio.css (+54 lines) - Styled volume meter with responsive design
+- Created test-program-bus.mjs (232 lines) - Automated Playwright test
+
+**Program Bus Architecture**:
+```
+Each Participant:
+MediaStreamSource → GainNode → DynamicsCompressor → Program Bus
+
+Program Bus:
+ChannelMerger (stereo) → MasterGain → ┬→ AudioContext.destination (monitoring)
+                                       ├→ AnalyserNode → Volume Meter (UI)
+                                       └→ MediaStreamDestination (for recording, Task 018)
+```
+
+**Stereo Summing**:
+- Each mono participant duplicated to both stereo channels
+- Compressor connects to merger channel 0 (left) and channel 1 (right)
+- ChannelMerger automatically sums all inputs
+- Result: All participants mixed together in stereo
+
+**Volume Meter Design**:
+- Canvas-based visualization (400x30px, responsive)
+- RMS level calculation from time domain data (accurate measurement)
+- Color-coded: Green (0-70% safe), Yellow (70-90% warning), Red (90-100% danger)
+- Peak hold indicator with decay
+- Threshold markers at 70% and 90%
+- Animation loop with requestAnimationFrame
+
+**AnalyserNode Configuration**:
+- FFT size: 2048 (balance of resolution and performance)
+- Smoothing: 0.8 (smooth visual updates, not jittery)
+- Min/Max dB: -90 to -10 (typical audio range)
+
+**Testing**:
+- ✅ Automated Playwright test: Program bus initialized, participants tracked, volume meter active
+- ✅ All acceptance criteria met: ChannelMerger created, participants connected, meter shows levels
+- ✅ Add/remove participants updates bus correctly
+
+**Next Step**: Task 013 will perform audio quality testing (latency measurements, CPU/memory profiling, subjective quality)
 
 ### 2025-10-19: Per-Participant Gain Controls (Task 010/011)
 
@@ -569,9 +626,14 @@ notes (implementation hints)
    - SDP serialization fixes for WebRTC
    - Automated Playwright testing
 
-12. **Task 012**: Program bus mixing - NEXT
-13. **Task 013**: Audio quality testing
-14. **Task 014**: Multi-peer stability
+12. ✅ **Task 012**: Program bus mixing (COMPLETE)
+   - ProgramBus class with ChannelMerger, AnalyserNode, MediaStreamDestination
+   - VolumeMeter class with canvas-based real-time visualization
+   - Stereo program bus (all mono participants summed to L+R)
+   - Volume meter: RMS calculation, peak hold, color-coded thresholds
+   - Automated Playwright testing
+
+13. **Task 013**: Audio quality testing - NEXT
 
 ### Short Term - Milestone 4-5 (Tasks 014-020)
 
@@ -617,24 +679,27 @@ notes (implementation hints)
 
 1. Review this file first to understand current state
 2. Check tasks/2025-10/README.md for recent progress
-3. **Start with task 012**: Read `memory-bank/releases/0.1/tasks/012_program_bus.yml`
+3. **Start with task 013**: Read `memory-bank/releases/0.1/tasks/013_audio_quality_testing.yml`
 4. Infrastructure operational: Icecast (8000), coturn (3478), signaling server (3000 WebSocket + HTTP)
 5. Signaling protocol ready: Peer registration, SDP/ICE relay, anti-spoofing validation working
 6. Room management ready: Create room, join room, peer-joined/peer-left broadcasts, auto-cleanup
-7. Web scaffold ready: HTML/CSS interface at web/index.html (415 lines: reset.css, studio.css, index.html)
-8. WebRTC client ready: signaling-client.js, rtc-manager.js, main.js (1520 lines JS total)
-9. **Web Audio foundation ready**: audio-context-manager.js, audio-graph.js (391 lines, routing infrastructure)
+7. Web scaffold ready: HTML/CSS interface at web/index.html (76 lines, includes volume meter)
+8. WebRTC client ready: signaling-client.js, rtc-manager.js, main.js (2285 lines JS total)
+9. **Web Audio foundation ready**: audio-context-manager.js, audio-graph.js (618 lines, routing infrastructure)
 10. **Gain controls operational**: Per-participant sliders (0-200%), mute buttons, smooth ramping, real-time UI
-11. **Milestone 1 (Foundation) complete**: Project structure, Docker, signaling skeleton, configuration management
-12. **Milestone 2 (Basic Connection) complete**: Signaling, room management, web scaffold, WebRTC peer connection
-13. **Milestone 3 (Multi-Peer Audio) 50% complete**: Web Audio foundation ✅, Gain controls ✅, Program Bus next
-13. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
-14. Reference systemPatterns.md for architectural decisions
-15. Use `sudo docker compose` for all Docker commands (user not in docker group)
-16. Port 3000 is standard for signaling server (documented in tasks 003-004)
-17. Configuration available via GET /api/station (includes ICE servers for WebRTC)
-18. Test suites: 9 signaling tests + 9 room tests + 3 Playwright tests = 21 automated tests, all passing
-19. Web client runs via `python3 -m http.server 8086` from web/ directory
+11. **Program bus operational**: Unified stereo mix, real-time volume meter, ready for Icecast streaming
+12. **Milestone 1 (Foundation) complete**: Project structure, Docker, signaling skeleton, configuration management
+13. **Milestone 2 (Basic Connection) complete**: Signaling, room management, web scaffold, WebRTC peer connection
+14. **Milestone 3 (Multi-Peer Audio) 75% complete**: Web Audio foundation ✅, Gain controls ✅, Program Bus ✅, Quality testing next
+15. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
+16. Reference systemPatterns.md for architectural decisions
+17. Use `sudo docker compose` for all Docker commands (user not in docker group)
+18. Port 3000 is standard for signaling server (documented in tasks 003-004)
+19. Configuration available via GET /api/station (includes ICE servers for WebRTC)
+20. Test suites: 9 signaling tests + 9 room tests + 4 Playwright tests = 22 automated tests, all passing
+21. Web client runs via `python3 -m http.server 8086` from web/ directory
+22. Browser console debugging: audioContextManager, audioGraph, volumeMeter exposed to window object
+23. Program bus provides MediaStreamDestination for future recording (Task 018)
 20. Two-browser peer connection working: create room, join room, SDP/ICE exchange, audio routes through Web Audio graph
 21. Playwright automated testing validates WebRTC + Web Audio + Gain Controls without manual intervention
 22. Browser console debugging: `audioContextManager.getState()`, `audioGraph.getGraphInfo()`

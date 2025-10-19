@@ -112,10 +112,10 @@
 
 ### Immediate (This Week)
 
-1. **Program Bus Mixing** (Task 012 - NEXT)
-   - Sum all participants to single stereo bus
-   - Route to MediaRecorder for Icecast
-   - Master gain/compressor on output
+1. **Audio Quality Testing** (Task 013 - NEXT)
+   - Subjective quality assessment
+   - Latency measurements (glass-to-glass, RTT)
+   - CPU/memory profiling under load
 
 ### Short Term (Next 2-4 Weeks)
 
@@ -190,12 +190,12 @@
 - ✅ OGG/Opus stream playable via Icecast
 - ✅ Setup from clone < 5 min
 
-**Status**: 55% complete (11/20 tasks) - **Milestone 1: Foundation 100% complete**, **Milestone 2: Basic Connection 100% complete**, **Milestone 3: Multi-Peer Audio 50% complete**
+**Status**: 60% complete (12/20 tasks) - **Milestone 1: Foundation 100% complete**, **Milestone 2: Basic Connection 100% complete**, **Milestone 3: Multi-Peer Audio 75% complete**
 
 **Task Breakdown**: See `memory-bank/releases/0.1/` for detailed task files
 - **M1: Foundation** (001-004): Project structure ✅, Docker ✅, signaling skeleton ✅, configuration ✅
 - **M2: Basic Connection** (005-008): WebSocket signaling ✅, room management ✅, HTML scaffold ✅, first peer connection ✅
-- **M3: Multi-Peer Audio** (009-013): Web Audio foundation ✅, gain controls ✅, program bus (next), quality testing, multi-peer stability
+- **M3: Multi-Peer Audio** (009-013): Web Audio foundation ✅, gain controls ✅, program bus ✅, quality testing (next)
 - **M4: Mix-Minus** (014-016): Per-caller mixes, return feeds, testing
 - **M5: Production Ready** (017-020): Icecast, stability testing, docs
 
@@ -271,6 +271,24 @@
 - Documentation page views
 
 ## Recent Achievements
+
+### 2025-10-19 (Part 3)
+
+✅ **Task 012 Complete**: Program bus mixing and volume meter operational
+✅ Created web/js/program-bus.js - ProgramBus class with ChannelMerger, AnalyserNode, MediaStreamDestination (233 lines)
+✅ Created web/js/volume-meter.js - VolumeMeter class with canvas-based real-time visualization (227 lines)
+✅ Modified web/js/audio-graph.js - Integrated program bus, routed participants through bus (+27 lines, 229 → 256)
+✅ Modified web/js/main.js - Initialized volume meter, added start/stop controls (+25 lines, 660 → 685)
+✅ Modified web/index.html - Added volume meter UI section (+7 lines, 69 → 76)
+✅ Modified web/css/studio.css - Styled volume meter with responsive design (+54 lines, 408 → 462)
+✅ Created test-program-bus.mjs - Automated Playwright test for program bus and volume meter (232 lines)
+✅ All acceptance criteria validated: ChannelMerger created, participants connected to bus, volume meter active, add/remove updates bus
+✅ Automated test passed: Program bus initialized ✅, Volume meter visible ✅, Participants tracked ✅, Meter animating ✅
+✅ Program bus architecture: ChannelMerger (stereo) → MasterGain → (Destination, AnalyserNode, MediaStreamDestination)
+✅ Volume meter features: RMS calculation, peak hold with decay, color-coded levels (green/yellow/red), threshold markers
+✅ Stereo summing: All mono participants duplicated to both channels, ChannelMerger sums all inputs automatically
+✅ MediaStreamDestination ready for future recording (Task 018)
+✅ **Milestone 3 (Multi-Peer Audio) now 75% complete (3/4 tasks)**
 
 ### 2025-10-19 (Part 2)
 

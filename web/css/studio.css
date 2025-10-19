@@ -406,3 +406,57 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+/* Program Bus Volume Meter */
+#program-bus-section {
+  max-width: var(--max-width);
+  margin: var(--spacing-md) auto;
+  padding: 0 var(--spacing-md);
+}
+
+.meter-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.meter-container {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#volume-meter {
+  display: block;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg);
+}
+
+/* Responsive adjustments for meter */
+@media (max-width: 768px) {
+  #program-bus-section {
+    padding: 0 var(--spacing-sm);
+  }
+
+  #volume-meter {
+    width: 100%;
+    max-width: 400px;
+  }
+}
+
+@media (max-width: 480px) {
+  .meter-container {
+    padding: var(--spacing-xs);
+  }
+
+  #volume-meter {
+    width: 100%;
+  }
+}

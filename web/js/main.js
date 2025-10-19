@@ -7,12 +7,14 @@
  * - UI state management
  * - Room creation and joining workflow
  * - Participant display
+ * - Program bus volume meter
  */
 
 import { SignalingClient } from './signaling-client.js';
 import { RTCManager } from './rtc-manager.js';
 import { audioContextManager } from './audio-context-manager.js';
 import { AudioGraph } from './audio-graph.js';
+import { VolumeMeter } from './volume-meter.js';
 
 class OpenStudioApp {
   constructor() {
@@ -24,6 +26,7 @@ class OpenStudioApp {
     this.signaling = new SignalingClient(this.peerId);
     this.rtc = new RTCManager(this.peerId);
     this.audioGraph = new AudioGraph();
+    this.volumeMeter = null; // Will be initialized after audio graph
 
     // State
     this.currentRoom = null;
@@ -63,8 +66,18 @@ class OpenStudioApp {
       // Initialize AudioContext (will be in suspended state)
       audioContextManager.initialize();
 
-      // Initialize audio graph
+      // Initialize audio graph (includes program bus)
       this.audioGraph.initialize();
+
+      // Initialize volume meter
+      const canvasElement = document.getElementById('volume-meter');
+      const programBus = this.audioGraph.getProgramBus();
+      const analyser = programBus.getAnalyser();
+      this.volumeMeter = new VolumeMeter(canvasElement, analyser);
+      console.log('[App] Volume meter initialized');
+
+      // Expose volume meter for debugging
+      window.volumeMeter = this.volumeMeter;
 
       // Fetch ICE servers
       await this.rtc.initialize();
@@ -331,6 +344,12 @@ class OpenStudioApp {
       return;
     }
 
+    // Start volume meter animation
+    if (this.volumeMeter) {
+      this.volumeMeter.start();
+      console.log('[App] Volume meter started');
+    }
+
     // Check if we should create or join
     if (this.roomIdFromUrl) {
       // Join existing room
@@ -359,6 +378,12 @@ class OpenStudioApp {
    */
   handleEndSession() {
     console.log('[App] Ending session...');
+
+    // Stop volume meter animation
+    if (this.volumeMeter) {
+      this.volumeMeter.stop();
+      console.log('[App] Volume meter stopped');
+    }
 
     // Clear audio graph
     this.audioGraph.clearAll();
