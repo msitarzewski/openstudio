@@ -1,6 +1,6 @@
 # Progress: OpenStudio
 
-**Last Updated**: 2025-10-18
+**Last Updated**: 2025-10-19
 
 ## What's Working
 
@@ -95,45 +95,46 @@
 - Browser console debugging: window.audioContextManager, window.audioGraph
 - All acceptance criteria validated: AudioContext creation ✅, state management ✅, browser compatibility ✅, dev tools debugging ✅
 
+✅ **Per-Participant Gain Controls** (Task 010/011 - Complete)
+- Modified web/js/main.js - Gain slider, mute button, value display in participant cards (+132 lines, 528 → 660)
+- Modified web/css/studio.css - Cross-browser slider styling, mute button states (+115 lines, 293 → 408)
+- Fixed web/js/signaling-client.js - SDP serialization (extract string from RTCSessionDescription, 2 lines)
+- Fixed web/js/rtc-manager.js - SDP deserialization (handle string and object formats, +10 lines, 299 → 310)
+- test-gain-controls.mjs - Automated Playwright test for gain controls (255 lines)
+- Gain sliders: 0-200% range (0% silence, 100% unity, 200% +6dB boost)
+- Mute/unmute buttons: Toggle with visual state change (🔊 ↔ 🔇)
+- Smooth AudioParam ramping: linearRampToValueAtTime (50ms, no clicks/pops)
+- State management: Track muted status and gain value per participant
+- UI/UX: Controls only for remote participants (not self), slider disabled when muted
+- All acceptance criteria validated: Sliders ✅, real-time updates ✅, smooth transitions ✅, state persistence ✅
+
 ## What's Next
 
 ### Immediate (This Week)
 
-1. **Gain Controls Per Participant** (Task 010 - NEXT)
-   - Add volume sliders to participant cards
-   - Visual mute/unmute buttons
-   - Level meters showing audio activity
-   - Wire UI controls to audio graph API
-   - Test gain adjustments and mute functionality
-
-### Short Term (Next 2-4 Weeks)
-
-2. **Program Bus Mixing** (Task 011)
+1. **Program Bus Mixing** (Task 012 - NEXT)
    - Sum all participants to single stereo bus
    - Route to MediaRecorder for Icecast
    - Master gain/compressor on output
 
-3. **Audio Quality Testing** (Task 012)
+### Short Term (Next 2-4 Weeks)
+
+2. **Audio Quality Testing** (Task 013)
    - Subjective quality assessment
    - Latency measurements
    - CPU/memory profiling
 
-4. **Multi-Peer Stability** (Task 013)
+3. **Multi-Peer Stability** (Task 014)
    - Stress testing with 3+ participants
    - 60+ minute session stability
    - Connection resilience testing
 
-5. **Mix-Minus Calculation** (Tasks 014-016)
+4. **Mix-Minus Calculation** (Tasks 015-017)
    - Per-caller bus generation
    - Return feed routing
    - Test with 3+ participants
 
-6. **Mute/Unmute Controls**
-   - UI buttons
-   - Signaling messages
-   - Gain node manipulation
-
-7. **Icecast Integration**
+5. **Icecast Integration**
    - MediaRecorder setup
    - Opus encoding
    - Mount point streaming
@@ -189,14 +190,14 @@
 - ✅ OGG/Opus stream playable via Icecast
 - ✅ Setup from clone < 5 min
 
-**Status**: 45% complete (9/20 tasks) - **Milestone 1: Foundation 100% complete**, **Milestone 2: Basic Connection 100% complete**, **Milestone 3: Multi-Peer Audio 25% complete**
+**Status**: 55% complete (11/20 tasks) - **Milestone 1: Foundation 100% complete**, **Milestone 2: Basic Connection 100% complete**, **Milestone 3: Multi-Peer Audio 50% complete**
 
 **Task Breakdown**: See `memory-bank/releases/0.1/` for detailed task files
 - **M1: Foundation** (001-004): Project structure ✅, Docker ✅, signaling skeleton ✅, configuration ✅
 - **M2: Basic Connection** (005-008): WebSocket signaling ✅, room management ✅, HTML scaffold ✅, first peer connection ✅
-- **M3: Multi-Peer Audio** (009-013): Web Audio foundation ✅, gain controls (next), program bus, quality testing, multi-peer stability
+- **M3: Multi-Peer Audio** (009-013): Web Audio foundation ✅, gain controls ✅, program bus (next), quality testing, multi-peer stability
 - **M4: Mix-Minus** (014-016): Per-caller mixes, return feeds, testing
-- **M5: Production Ready** (017-020): Mute controls, Icecast, stability testing, docs
+- **M5: Production Ready** (017-020): Icecast, stability testing, docs
 
 ### Release 0.2 - Distributed Stations (Target: +2 months)
 
@@ -271,7 +272,22 @@
 
 ## Recent Achievements
 
-### 2025-10-19
+### 2025-10-19 (Part 2)
+
+✅ **Task 010/011 Complete**: Per-participant gain controls operational
+✅ Modified web/js/main.js - Added gain slider, mute button, value display to participant cards (+132 lines)
+✅ Modified web/css/studio.css - Cross-browser slider styling, mute button states (+115 lines)
+✅ Fixed web/js/signaling-client.js - SDP serialization (extract string from RTCSessionDescription, 2 lines changed)
+✅ Fixed web/js/rtc-manager.js - SDP deserialization (handle both string and object formats, +10 lines)
+✅ Created test-gain-controls.mjs - Automated Playwright test for gain controls (255 lines)
+✅ All acceptance criteria validated: Sliders (0-200%), mute buttons, real-time UI updates, smooth ramping, state persistence
+✅ Automated test passed: Gain controls visible ✅, Mute/unmute working ✅, WebRTC connected ✅, Audio graph integrated ✅
+✅ Smooth gain transitions: AudioParam.linearRampToValueAtTime (50ms ramp, no clicks/pops)
+✅ UI/UX complete: Gain slider only for remote participants, mute disables slider, unmute restores previous gain
+✅ SDP serialization fixed: WebRTC peer connection fully functional, SDP exchange working
+✅ **Milestone 3 (Multi-Peer Audio) now 50% complete (2/4 tasks)**
+
+### 2025-10-19 (Part 1)
 
 ✅ **Task 009 Complete**: Web Audio foundation operational
 ✅ Created web/js/audio-context-manager.js - AudioContext singleton with lifecycle management (162 lines)

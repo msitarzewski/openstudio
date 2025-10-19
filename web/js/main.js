@@ -386,7 +386,7 @@ class OpenStudioApp {
   }
 
   /**
-   * Handle Toggle Mute button
+   * Handle Toggle Mute button (for local microphone)
    */
   handleToggleMute() {
     if (!this.rtc.localStream) {
@@ -406,6 +406,91 @@ class OpenStudioApp {
     } else {
       this.toggleMuteButton.textContent = 'Unmute';
       console.log('[App] Muted microphone');
+    }
+  }
+
+  /**
+   * Handle participant mute button click
+   */
+  handleParticipantMute(peerId) {
+    const participant = this.participants.get(peerId);
+    if (!participant) {
+      return;
+    }
+
+    const card = this.participantsSection.querySelector(`[data-peer-id="${peerId}"]`);
+    if (!card) {
+      return;
+    }
+
+    const muteButton = card.querySelector('.mute-button');
+    const gainSlider = card.querySelector('.gain-slider');
+    const gainValue = card.querySelector('.gain-value');
+
+    if (participant.muted) {
+      // Unmute
+      this.audioGraph.unmuteParticipant(peerId);
+      participant.muted = false;
+      muteButton.textContent = '🔊 Unmuted';
+      muteButton.classList.remove('muted');
+
+      // Restore previous gain value
+      gainSlider.disabled = false;
+      const gainPercent = participant.gain;
+      this.audioGraph.setParticipantGain(peerId, gainPercent / 100);
+
+      console.log(`[App] Unmuted participant: ${peerId}`);
+    } else {
+      // Mute
+      this.audioGraph.muteParticipant(peerId);
+      participant.muted = true;
+      muteButton.textContent = '🔇 Muted';
+      muteButton.classList.add('muted');
+      gainSlider.disabled = true;
+
+      console.log(`[App] Muted participant: ${peerId}`);
+    }
+  }
+
+  /**
+   * Handle gain slider change
+   */
+  handleGainChange(peerId, sliderValue) {
+    const participant = this.participants.get(peerId);
+    if (!participant || participant.muted) {
+      return;
+    }
+
+    const gainPercent = parseInt(sliderValue, 10);
+    const gainValue = gainPercent / 100; // Convert 0-200% to 0.0-2.0
+
+    // Update audio graph with smooth ramping
+    try {
+      const nodes = this.audioGraph.participantNodes.get(peerId);
+      if (nodes) {
+        const audioContext = this.audioGraph.audioContext;
+        const currentGain = nodes.gain.gain.value;
+
+        // Use AudioParam ramping for smooth transitions (no clicks/pops)
+        nodes.gain.gain.setValueAtTime(currentGain, audioContext.currentTime);
+        nodes.gain.gain.linearRampToValueAtTime(gainValue, audioContext.currentTime + 0.05);
+
+        // Update UI
+        const card = this.participantsSection.querySelector(`[data-peer-id="${peerId}"]`);
+        if (card) {
+          const gainValueEl = card.querySelector('.gain-value');
+          if (gainValueEl) {
+            gainValueEl.textContent = `${gainPercent}%`;
+          }
+        }
+
+        // Store in participant state
+        participant.gain = gainPercent;
+
+        console.log(`[App] Set gain for ${peerId}: ${gainPercent}% (${gainValue.toFixed(2)})`);
+      }
+    } catch (error) {
+      console.error(`[App] Failed to set gain for ${peerId}:`, error);
     }
   }
 
@@ -445,7 +530,7 @@ class OpenStudioApp {
       return; // Already added
     }
 
-    this.participants.set(peerId, { name, role });
+    this.participants.set(peerId, { name, role, muted: false, gain: 100 });
 
     // Clear placeholder cards on first real participant
     if (this.participants.size === 1) {
@@ -468,13 +553,55 @@ class OpenStudioApp {
     roleEl.className = 'participant-role';
     roleEl.textContent = role.charAt(0).toUpperCase() + role.slice(1);
 
+    // Gain controls (only for remote participants, not self)
+    const isSelf = peerId === this.peerId;
+    if (!isSelf) {
+      const controlsEl = document.createElement('div');
+      controlsEl.className = 'participant-controls';
+
+      // Mute button
+      const muteButton = document.createElement('button');
+      muteButton.className = 'mute-button';
+      muteButton.textContent = '🔊 Unmuted';
+      muteButton.addEventListener('click', () => this.handleParticipantMute(peerId));
+
+      // Gain control container
+      const gainControl = document.createElement('div');
+      gainControl.className = 'gain-control';
+
+      const gainSlider = document.createElement('input');
+      gainSlider.type = 'range';
+      gainSlider.className = 'gain-slider';
+      gainSlider.min = '0';
+      gainSlider.max = '200';
+      gainSlider.value = '100';
+      gainSlider.addEventListener('input', (e) => this.handleGainChange(peerId, e.target.value));
+
+      const gainValue = document.createElement('span');
+      gainValue.className = 'gain-value';
+      gainValue.textContent = '100%';
+
+      gainControl.appendChild(gainSlider);
+      gainControl.appendChild(gainValue);
+
+      controlsEl.appendChild(muteButton);
+      controlsEl.appendChild(gainControl);
+
+      card.appendChild(avatar);
+      card.appendChild(nameEl);
+      card.appendChild(roleEl);
+      card.appendChild(controlsEl);
+    } else {
+      // Self - no gain controls needed
+      card.appendChild(avatar);
+      card.appendChild(nameEl);
+      card.appendChild(roleEl);
+    }
+
     const statusEl = document.createElement('div');
     statusEl.className = 'participant-status';
     statusEl.innerHTML = '<span class="icon">🎙️</span><span>Ready</span>';
 
-    card.appendChild(avatar);
-    card.appendChild(nameEl);
-    card.appendChild(roleEl);
     card.appendChild(statusEl);
 
     this.participantsSection.appendChild(card);

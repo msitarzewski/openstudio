@@ -218,7 +218,7 @@ export class SignalingClient extends EventTarget {
       type: 'offer',
       from: this.peerId,
       to: targetPeerId,
-      sdp: sdp
+      sdp: sdp.sdp || sdp // Extract SDP string from RTCSessionDescription
     });
   }
 
@@ -230,7 +230,7 @@ export class SignalingClient extends EventTarget {
       type: 'answer',
       from: this.peerId,
       to: targetPeerId,
-      sdp: sdp
+      sdp: sdp.sdp || sdp // Extract SDP string from RTCSessionDescription
     });
   }
 

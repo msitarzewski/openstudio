@@ -1,14 +1,72 @@
 # Active Context: OpenStudio
 
-**Last Updated**: 2025-10-18
+**Last Updated**: 2025-10-19
 
 ## Current Phase
 
 **Release**: 0.1 MVP (Core Loop)
-**Status**: Implementation In Progress (9/20 tasks complete, 45%)
-**Focus**: Milestone 3 - Multi-Peer Audio (25% complete: 1/4 tasks, task 010 next)
+**Status**: Implementation In Progress (11/20 tasks complete, 55%)
+**Focus**: Milestone 3 - Multi-Peer Audio (50% complete: 2/4 tasks, task 012 next)
 
 ## Recent Decisions
+
+### 2025-10-19: Per-Participant Gain Controls (Task 010/011)
+
+**Decision**: Add UI controls for per-participant volume mixing with smooth AudioParam ramping
+
+**Rationale**:
+- Task 009 provided audio graph API, needed user interface
+- Per-participant gain control essential for studio mixing (balance volume levels)
+- Smooth ramping prevents audio clicks/pops during gain changes
+- Mute functionality needed for quick participant silencing
+- Real-time visual feedback improves user experience
+
+**Implementation**:
+- Modified web/js/main.js (+132 lines) - Gain slider, mute button, value display in participant cards
+- Modified web/css/studio.css (+115 lines) - Cross-browser slider styling (Webkit + Firefox vendor prefixes)
+- Fixed web/js/signaling-client.js (2 lines) - SDP serialization (extract string from RTCSessionDescription)
+- Fixed web/js/rtc-manager.js (+10 lines) - SDP deserialization (handle both string and object formats)
+- Created test-gain-controls.mjs (255 lines) - Automated Playwright test
+
+**Gain Control Architecture**:
+```
+Participant Card UI
+       ↓
+🔊 Unmuted Button (click → mute/unmute)
+       ↓
+Slider (0-200%) ──input event──→ handleGainChange()
+       ↓                                ↓
+Gain Value: 150%              AudioParam Ramping:
+                              gain.gain.setValueAtTime(current, now)
+                              gain.gain.linearRampToValueAtTime(new, now + 50ms)
+                                        ↓
+                              GainNode in Audio Graph (smooth transition, no clicks)
+```
+
+**Smooth Gain Ramping**:
+- Uses `AudioParam.linearRampToValueAtTime()` instead of direct assignment
+- 50ms ramp duration: Fast enough to feel responsive, slow enough to prevent clicks
+- Prevents audible artifacts when adjusting volume in real-time
+
+**SDP Serialization Fixes**:
+- **Problem**: RTCSessionDescription objects sent instead of SDP strings
+- **Root Cause**: `createOffer()` returns object with `.sdp` property, server expects string
+- **Fix 1** (signaling-client.js): Extract `sdp.sdp || sdp` before sending
+- **Fix 2** (rtc-manager.js): Handle both formats when receiving (backward compat)
+- **Result**: WebRTC connection successful, SDP exchange working
+
+**Testing**:
+- ✅ Automated Playwright test: Gain controls rendered, mute/unmute working, WebRTC connected
+- ✅ Manual testing: Smooth volume changes, no audio clicks, slider disabled when muted
+- ✅ All acceptance criteria met: Sliders (0-200%), real-time updates, state persistence
+
+**UI/UX Design**:
+- Gain slider only for remote participants (not self)
+- Mute button disables slider (visual feedback that gain won't apply)
+- Unmute restores previous gain value (state preserved)
+- Gain range 0-200%: 0% silence, 100% unity (0dB), 200% boost (+6dB)
+
+**Next Step**: Task 012 will create Program Bus (sum all participants to stereo bus for Icecast streaming)
 
 ### 2025-10-19: Web Audio Foundation (Task 009)
 
@@ -502,10 +560,18 @@ notes (implementation hints)
    - Browser autoplay policy compliance
    - Automated Playwright testing
 
-10. **Task 010**: Gain controls per participant - NEXT
-11. **Task 011**: Program bus mixing
-12. **Task 012**: Audio quality testing
-13. **Task 013**: Multi-peer stability
+10. ✅ **Task 010**: MediaStream sources (COMPLETE - redundant with 009)
+11. ✅ **Task 011**: Gain controls per participant (COMPLETE)
+   - UI sliders (0-200%) for volume control
+   - Mute/unmute toggle buttons
+   - Real-time gain value display
+   - Smooth AudioParam ramping (50ms, no clicks)
+   - SDP serialization fixes for WebRTC
+   - Automated Playwright testing
+
+12. **Task 012**: Program bus mixing - NEXT
+13. **Task 013**: Audio quality testing
+14. **Task 014**: Multi-peer stability
 
 ### Short Term - Milestone 4-5 (Tasks 014-020)
 
@@ -551,26 +617,29 @@ notes (implementation hints)
 
 1. Review this file first to understand current state
 2. Check tasks/2025-10/README.md for recent progress
-3. **Start with task 010**: Read `memory-bank/releases/0.1/tasks/010_gain_controls.yml`
+3. **Start with task 012**: Read `memory-bank/releases/0.1/tasks/012_program_bus.yml`
 4. Infrastructure operational: Icecast (8000), coturn (3478), signaling server (3000 WebSocket + HTTP)
 5. Signaling protocol ready: Peer registration, SDP/ICE relay, anti-spoofing validation working
 6. Room management ready: Create room, join room, peer-joined/peer-left broadcasts, auto-cleanup
 7. Web scaffold ready: HTML/CSS interface at web/index.html (415 lines: reset.css, studio.css, index.html)
 8. WebRTC client ready: signaling-client.js, rtc-manager.js, main.js (1520 lines JS total)
 9. **Web Audio foundation ready**: audio-context-manager.js, audio-graph.js (391 lines, routing infrastructure)
-10. **Milestone 1 (Foundation) complete**: Project structure, Docker, signaling skeleton, configuration management
-11. **Milestone 2 (Basic Connection) complete**: Signaling, room management, web scaffold, WebRTC peer connection
-12. **Milestone 3 (Multi-Peer Audio) 25% complete**: Web Audio foundation ✅, gain controls next
+10. **Gain controls operational**: Per-participant sliders (0-200%), mute buttons, smooth ramping, real-time UI
+11. **Milestone 1 (Foundation) complete**: Project structure, Docker, signaling skeleton, configuration management
+12. **Milestone 2 (Basic Connection) complete**: Signaling, room management, web scaffold, WebRTC peer connection
+13. **Milestone 3 (Multi-Peer Audio) 50% complete**: Web Audio foundation ✅, Gain controls ✅, Program Bus next
 13. Follow workflow: Read task YAML → Implement → Test → Mark complete with X
 14. Reference systemPatterns.md for architectural decisions
 15. Use `sudo docker compose` for all Docker commands (user not in docker group)
 16. Port 3000 is standard for signaling server (documented in tasks 003-004)
 17. Configuration available via GET /api/station (includes ICE servers for WebRTC)
-18. Test suites: 9 signaling tests + 9 room tests + 2 Playwright tests = 20 automated tests, all passing
+18. Test suites: 9 signaling tests + 9 room tests + 3 Playwright tests = 21 automated tests, all passing
 19. Web client runs via `python3 -m http.server 8086` from web/ directory
 20. Two-browser peer connection working: create room, join room, SDP/ICE exchange, audio routes through Web Audio graph
-21. Playwright automated testing validates WebRTC + Web Audio flow without manual intervention
+21. Playwright automated testing validates WebRTC + Web Audio + Gain Controls without manual intervention
 22. Browser console debugging: `audioContextManager.getState()`, `audioGraph.getGraphInfo()`
+23. SDP serialization fixed: Extract `.sdp` string from RTCSessionDescription before sending to server
+24. Gain control UI complete: Sliders, mute buttons, smooth AudioParam ramping (50ms, no audio clicks)
 
 ## Context for Future Work
 

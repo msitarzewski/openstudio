@@ -26,7 +26,8 @@
 - Task 007 (Web Studio HTML/CSS Scaffold) completed
 - Task 008 (First WebRTC Peer Connection) completed
 - Task 009 (Web Audio Foundation) completed
-- Task 010 (Gain Controls Per Participant) is next in queue
+- Task 010/011 (Gain Controls Per Participant) completed
+- Task 012 (Program Bus Mixing) is next in queue
 
 ## Tasks Completed
 
@@ -41,11 +42,12 @@
 9. **181025_task_007_web_studio_scaffold.md** - Task 007: Web studio HTML/CSS scaffold (Milestone 2: Basic Connection)
 10. **181025_task_008_first_webrtc_connection.md** - Task 008: First WebRTC peer connection (Milestone 2: Basic Connection)
 11. **191025_task_009_web_audio_foundation.md** - Task 009: Web Audio foundation (Milestone 3: Multi-Peer Audio)
+12. **191025_task_010_011_gain_controls.md** - Task 010/011: Per-participant gain controls UI (Milestone 3: Multi-Peer Audio)
 
 ## Next Priorities
 
-1. Continue Release 0.1 tasks sequentially (010 → 020)
-2. Continue Milestone 3: Multi-Peer Audio (tasks 010-013)
+1. Continue Release 0.1 tasks sequentially (012 → 020)
+2. Continue Milestone 3: Multi-Peer Audio (tasks 012-013)
 3. Track progress with X-marker file renaming
 4. Completed task files marked with X:
    - 001_X_project_structure.yml ✅
@@ -57,6 +59,8 @@
    - 007_X_web_studio_scaffold.yml ✅
    - 008_X_first_webrtc_connection.yml ✅
    - 009_X_web_audio_foundation.yml ✅
+   - 010_X_mediastream_sources.yml ✅ (redundant with 009)
+   - 011_X_participant_gain_controls.yml ✅
 
 ## Key Decisions Made
 
@@ -91,6 +95,10 @@
 - **Audio Graph Architecture**: MediaStreamSource → GainNode → DynamicsCompressor → Destination routing per participant
 - **Separation of Audio Concerns**: audio-context-manager.js (lifecycle) + audio-graph.js (routing) for clean design
 - **Browser Console Debugging**: Exposed audioContextManager and audioGraph to window object for development
+- **Per-Participant Gain Controls**: UI sliders (0-200%), mute buttons, real-time gain value display for independent volume mixing
+- **Smooth Gain Transitions**: AudioParam linearRampToValueAtTime (50ms) prevents audio clicks/pops during volume changes
+- **SDP Serialization Fix**: Extract SDP string from RTCSessionDescription object before server transmission
+- **Gain Control State Management**: Track muted status and gain value per participant in application state
 
 ## Blockers
 
@@ -98,18 +106,18 @@ None currently
 
 ## Metrics
 
-- **Tasks Completed**: 3 (planning tasks) + 9 (implementation tasks) = 12 total
-- **Memory Bank Files Created**: 8 core + 22 release files + 11 task docs (41 total)
-- **Code Implemented**: 45% (Task 001-009 complete: Milestone 1 100%, Milestone 2 100%, Milestone 3 25%)
-- **Release 0.1 Progress**: 9/20 tasks complete (45%)
+- **Tasks Completed**: 3 (planning tasks) + 11 (implementation tasks) = 14 total
+- **Memory Bank Files Created**: 8 core + 22 release files + 12 task docs (42 total)
+- **Code Implemented**: 50% (Task 001-011 complete: Milestone 1 100%, Milestone 2 100%, Milestone 3 50%)
+- **Release 0.1 Progress**: 11/20 tasks complete (55%, skipped redundant task 010)
 - **Dependencies Installed**: Server (16 packages), Web (2 packages - Playwright)
 - **Security Audit**: 0 vulnerabilities
 - **Docker Containers**: 3 running (Icecast, coturn, signaling server operational)
-- **Lines of Code**: Server (1703 lines), Web (1867 lines: 415 HTML/CSS + 1452 JS), Tests (1447 lines: 1004 server + 330 Playwright + 113 audio)
+- **Lines of Code**: Server (1703 lines), Web (2131 lines: 531 HTML/CSS + 1600 JS), Tests (1702 lines: 1004 server + 330 + 113 + 255 Playwright)
 
 ## Notes
 
-**Project Status**: Release 0.1 implementation in progress. **Milestone 1 (Foundation) is 100% complete (4/4 tasks)**. **Milestone 2 (Basic Connection) is 100% complete (4/4 tasks)**. **Milestone 3 (Multi-Peer Audio) is 25% complete (1/4 tasks)**.
+**Project Status**: Release 0.1 implementation in progress. **Milestone 1 (Foundation) is 100% complete (4/4 tasks)**. **Milestone 2 (Basic Connection) is 100% complete (4/4 tasks)**. **Milestone 3 (Multi-Peer Audio) is 50% complete (2/4 tasks)**.
 
 **Foundation Complete** (Milestone 1):
 - Directory structure (server/, web/, shared/) with package.json and ES modules
@@ -158,4 +166,13 @@ None currently
 - Audio routing: MediaStreamSource → GainNode → DynamicsCompressor → Destination
 - All acceptance criteria validated: AudioContext creation, state management (suspended → running), browser compatibility, dev tools debugging
 
-**Next Step**: Task 010 (Gain Controls Per Participant) - add UI sliders for volume control, visual mute buttons, level meters per participant (Milestone 3: Multi-Peer Audio).
+**Per-Participant Gain Controls** (Task 010/011):
+- web/js/main.js - Added gain slider, mute button, value display to participant cards (+132 lines)
+- web/css/studio.css - Cross-browser slider styling, mute button states (+115 lines)
+- web/js/signaling-client.js - SDP serialization fix (extract string from RTCSessionDescription)
+- web/js/rtc-manager.js - SDP deserialization fix (handle both string and object formats)
+- test-gain-controls.mjs - Automated Playwright test for gain controls (255 lines)
+- Smooth gain ramping: AudioParam.linearRampToValueAtTime (50ms, no clicks/pops)
+- All acceptance criteria validated: Sliders (0-200%), mute buttons, real-time UI updates, state persistence
+
+**Next Step**: Task 012 (Program Bus Mixing) - sum all participants to single stereo bus for Icecast output (Milestone 3: Multi-Peer Audio).

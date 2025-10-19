@@ -223,7 +223,13 @@ export class RTCManager extends EventTarget {
     console.log(`[RTC] Handling offer from ${remotePeerId}`);
 
     const pc = this.createPeerConnection(remotePeerId, false);
-    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+
+    // Handle both string SDP and RTCSessionDescriptionInit object
+    const sdpInit = typeof offer === 'string'
+      ? { type: 'offer', sdp: offer }
+      : offer;
+
+    await pc.setRemoteDescription(new RTCSessionDescription(sdpInit));
     console.log(`[RTC] Remote description set (offer) from ${remotePeerId}`);
 
     const answer = await this.createAnswer(remotePeerId);
@@ -241,7 +247,12 @@ export class RTCManager extends EventTarget {
       throw new Error(`No peer connection found for ${remotePeerId}`);
     }
 
-    await pc.setRemoteDescription(new RTCSessionDescription(answer));
+    // Handle both string SDP and RTCSessionDescriptionInit object
+    const sdpInit = typeof answer === 'string'
+      ? { type: 'answer', sdp: answer }
+      : answer;
+
+    await pc.setRemoteDescription(new RTCSessionDescription(sdpInit));
     console.log(`[RTC] Remote description set (answer) from ${remotePeerId}`);
   }
 
