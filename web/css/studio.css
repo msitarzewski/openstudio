@@ -472,3 +472,199 @@ button:disabled {
     width: 100%;
   }
 }
+
+/* =========================
+   Icecast Streaming Section
+   ========================= */
+
+#streaming-section {
+  max-width: var(--max-width);
+  margin: 0 auto var(--spacing-lg) auto;
+  padding: 0 var(--spacing-lg);
+}
+
+.streaming-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.streaming-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+}
+
+.streaming-status {
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+}
+
+.streaming-status.streaming {
+  background-color: #10b981;
+  color: #ffffff;
+}
+
+.streaming-status.connecting {
+  background-color: #f59e0b;
+  color: #ffffff;
+}
+
+.streaming-status.reconnecting {
+  background-color: #f59e0b;
+  color: #ffffff;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.streaming-status.error {
+  background-color: #ef4444;
+  color: #ffffff;
+}
+
+.streaming-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-secondary);
+  margin-bottom: var(--spacing-sm);
+}
+
+#start-streaming,
+#stop-streaming {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: #10b981;
+  color: #ffffff;
+}
+
+#start-streaming:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+#stop-streaming {
+  background-color: #ef4444;
+}
+
+#stop-streaming:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+#start-streaming:disabled,
+#stop-streaming:disabled {
+  background-color: var(--color-button-disabled-bg);
+  color: var(--color-button-disabled-text);
+  cursor: not-allowed;
+}
+
+.streaming-config {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-left: auto;
+}
+
+.streaming-config label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+#bitrate-select {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+#bitrate-select:hover {
+  border-color: var(--color-button-bg);
+}
+
+#bitrate-select:focus {
+  outline: none;
+  border-color: var(--color-button-bg);
+}
+
+.streaming-info {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-secondary);
+}
+
+.streaming-url {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.streaming-url a {
+  color: var(--color-button-bg);
+  text-decoration: none;
+  margin-left: var(--spacing-xs);
+  font-weight: 500;
+}
+
+.streaming-url a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive adjustments for streaming section */
+@media (max-width: 768px) {
+  #streaming-section {
+    padding: 0 var(--spacing-sm);
+  }
+
+  .streaming-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .streaming-config {
+    margin-left: 0;
+    justify-content: space-between;
+  }
+
+  #start-streaming,
+  #stop-streaming {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .streaming-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+  }
+
+  .streaming-controls {
+    padding: var(--spacing-sm);
+  }
+
+  .streaming-info {
+    padding: var(--spacing-sm);
+  }
+
+  .streaming-url {
+    word-break: break-all;
+  }
+}

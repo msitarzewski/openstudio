@@ -5,11 +5,111 @@
 ## Current Phase
 
 **Release**: 0.1 MVP (Core Loop)
-**Status**: Implementation In Progress (16/20 tasks complete, 80%)
-**Focus**: Milestone 5 - Production Ready (25% complete: 1/4 tasks)
-**Next**: Task 018 - Icecast Integration (after Task 016/017 manual testing)
+**Status**: Implementation In Progress (17/20 tasks complete, 85%)
+**Focus**: Milestone 5 - Production Ready (50% complete: 2/4 tasks)
+**Next**: Task 019 - Stability Testing (after manual testing of 016/017/018)
 
 ## Recent Decisions
+
+### 2025-10-20: Icecast Streaming Integration (Task 018)
+
+**Decision**: Implement Icecast streaming with Fetch API, TransformStream, and MediaRecorder for program bus encoding to Opus
+
+**Rationale**:
+- Completes broadcast pipeline: participants → audio graph → program bus → encoder → Icecast stream
+- Enables core MVP value proposition: hosting live shows with remote participants that listeners can stream
+- Modern browser APIs (Fetch, TransformStream) more efficient than legacy XMLHttpRequest
+- Exponential backoff reconnection provides resilience against Icecast outages
+- Host-only streaming control maintains broadcast integrity
+
+**Implementation**:
+- Created web/js/stream-encoder.js (143 lines) - MediaRecorder wrapper for Opus encoding
+- Created web/js/icecast-streamer.js (298 lines) - HTTP PUT streaming with reconnection logic
+- Modified web/index.html (+23 lines) - Streaming controls section with status and bitrate selector
+- Modified web/css/studio.css (+196 lines) - Status colors (green/orange/red) and responsive design
+- Modified web/js/main.js (+110 lines net) - Integrated streamer with UI and lifecycle management
+
+**Streaming Pipeline**:
+```
+Program Bus MediaStream → StreamEncoder (MediaRecorder, 1s chunks)
+                          ↓
+                       Opus in WebM container
+                          ↓
+            IcecastStreamer (Fetch API + TransformStream)
+                          ↓
+                  HTTP PUT to Icecast (localhost:8000/live.opus)
+                          ↓
+                  Listeners (VLC, browser, mobile apps)
+```
+
+**Configuration**:
+- **Bitrate Options**: 48/96/128/192 kbps (selectable in UI)
+- **Chunk Interval**: 1000ms (balances latency vs network overhead)
+- **Reconnection**: Exponential backoff 5s → 60s max, 10 max attempts
+- **Authorization**: Host-only (UI restriction, server auth needed for production)
+
+**Reconnection Strategy**:
+```
+Attempt 1: 5s delay
+Attempt 2: 10s delay (5s * 2^1)
+Attempt 3: 20s delay (5s * 2^2)
+Attempt 4: 40s delay (5s * 2^3)
+Attempt 5+: 60s delay (capped at max)
+After 10 failed attempts: Give up, show error
+```
+
+**Status UI States**:
+- **Gray** - Not Streaming (initial state)
+- **Orange** - Connecting to Icecast... (connection attempt)
+- **Green** - Streaming to Icecast (active streaming)
+- **Orange Pulse** - Reconnecting in Ns... (reconnection attempt)
+- **Red** - Error: Failed to connect (max retries reached)
+
+**Key Technical Decisions**:
+- **TransformStream for Chunking**: Creates writable stream (app) + readable stream (Fetch) for efficient piping
+- **Event-Driven Reconnection**: IcecastStreamer emits event, app layer restarts with current MediaStream (loose coupling)
+- **1s Chunk Interval**: Not too short (network overhead) or too long (latency), optimal balance
+- **WebM Container**: MediaRecorder's native output, widely supported, minimal overhead
+
+**Testing**:
+- ✅ Syntax validation passing (all files)
+- 🔄 Manual testing pending (stream playback, latency measurement, reconnection validation)
+
+**Architecture Impact**:
+```
+IcecastStreamer API:
+  .start(mediaStream) → Promise<void>
+  .stop() → Promise<void>
+  .updateConfig(config) → void
+  .isActive() → boolean
+  .getStatus() → { isStreaming, reconnectAttempts, config, encoder }
+
+Events:
+  - status-change: { status, message }
+  - chunk-sent: { size }
+  - reconnect-attempt: { attempt }
+
+StreamEncoder API:
+  .start(mediaStream, bitrate?) → void
+  .stop() → void
+  .isEncoding() → boolean
+  .getBitrate() → number
+  .getInfo() → { isRecording, bitrate, state, mimeType }
+
+Events:
+  - chunk: { data: Blob, size }
+  - started
+  - stopped
+  - error: { message, error }
+```
+
+**Known Limitations**:
+- Self-audio in stream (host hears delayed self) - by design, host should monitor locally
+- Browser compatibility requires TransformStream (Chrome 67+, Firefox 102+, Safari 14.1+)
+- No stream quality monitoring (bandwidth, dropped chunks, listener count)
+- Hard-coded Icecast credentials (acceptable for localhost dev, needs server-side solution for production)
+
+**Next Step**: Task 019 will perform stability testing (60+ minute sessions, network resilience, CPU/memory profiling)
 
 ### 2025-10-20: Producer-Authoritative Mute Controls (Task 017)
 

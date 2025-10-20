@@ -71,6 +71,30 @@
         <canvas id="volume-meter" width="400" height="30"></canvas>
       </div>
     </section>
+
+    <!-- Icecast Streaming Controls -->
+    <section id="streaming-section">
+      <div class="streaming-header">
+        <div class="streaming-label">Icecast Streaming</div>
+        <div id="streaming-status" class="streaming-status">Not Streaming</div>
+      </div>
+      <div class="streaming-controls">
+        <button id="start-streaming" disabled>Start Streaming</button>
+        <button id="stop-streaming" disabled style="display: none;">Stop Streaming</button>
+        <div class="streaming-config">
+          <label for="bitrate-select">Bitrate:</label>
+          <select id="bitrate-select">
+            <option value="48000">48 kbps</option>
+            <option value="96000">96 kbps</option>
+            <option value="128000" selected>128 kbps</option>
+            <option value="192000">192 kbps</option>
+          </select>
+        </div>
+      </div>
+      <div id="streaming-info" class="streaming-info">
+        <div class="streaming-url">Stream URL: <a href="http://localhost:8000/live.opus" target="_blank" id="stream-url">http://localhost:8000/live.opus</a></div>
+      </div>
+    </section>
   </main>
 </body>
 </html>

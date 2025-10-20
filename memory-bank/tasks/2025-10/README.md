@@ -33,6 +33,7 @@
 - Task 015 (Mix-Minus Return Feed Routing) completed
 - Task 016 (Mix-Minus Testing) preparation completed, manual testing pending
 - Task 017 (Producer-Authoritative Mute Controls) completed
+- Task 018 (Icecast Integration) completed (code implementation, manual testing pending)
 
 ## Tasks Completed
 
@@ -54,12 +55,13 @@
 16. **191025_task_015_return_feed_routing.md** - Task 015: Mix-minus return feed routing (Milestone 4: Mix-Minus)
 17. **201025_task_016_mix_minus_testing_prep.md** - Task 016: Mix-minus testing preparation and bug fixes (Milestone 4: Mix-Minus, manual testing pending)
 18. **201020_task_017_mute_controls.md** - Task 017: Producer-authoritative mute controls (Milestone 5: Production Ready)
+19. **201020_task_018_icecast_integration.md** - Task 018: Icecast streaming integration (Milestone 5: Production Ready)
 
 ## Next Priorities
 
-1. Continue Release 0.1 tasks sequentially (016 → 020)
-2. Manual testing of 8-peer mesh (Task 013 final acceptance)
-3. Continue Milestone 4: Mix-Minus (tasks 015-016)
+1. Continue Release 0.1 tasks sequentially (018 → 020)
+2. Manual testing: Tasks 016 (mix-minus), 017 (mute controls), 018 (Icecast streaming)
+3. Continue Milestone 5: Production Ready (tasks 019-020)
 3. Track progress with X-marker file renaming
 4. Completed task files marked with X:
    - 001_X_project_structure.yml ✅
@@ -140,6 +142,12 @@
 - **Smooth Mute Ramping**: AudioParam linearRampToValueAtTime (50ms) prevents audio clicks during mute/unmute transitions
 - **Event-Driven Mute Architecture**: MuteManager → Event → Main App → Signaling for separation of concerns
 - **Mute Message Deduplication**: Ignore own mute messages from signaling broadcast to prevent infinite loops
+- **Icecast Streaming via Fetch API**: Use modern Fetch API with TransformStream for efficient HTTP PUT streaming (no XHR legacy)
+- **Opus Encoding in WebM Container**: MediaRecorder with 'audio/webm;codecs=opus' MIME type for browser-native encoding
+- **1-Second Chunk Interval**: Balance latency (not too long) and network overhead (not too short) with 1000ms chunks
+- **Exponential Backoff Reconnection**: 5s → 60s max delay, 10 max attempts for Icecast connection failures
+- **Reconnection via Event Emission**: IcecastStreamer emits event, app layer restarts with current MediaStream (loose coupling)
+- **Host-Only Streaming Authorization**: Only host can start/stop streaming (UI-only restriction for MVP, server auth needed for production)
 
 ## Blockers
 
@@ -147,19 +155,19 @@ None currently
 
 ## Metrics
 
-- **Tasks Completed**: 3 (planning tasks) + 16 (implementation tasks) + 1 (testing prep) = 20 total
-- **Memory Bank Files Created**: 8 core + 22 release files + 18 task docs (48 total)
-- **Code Implemented**: Task 017 complete (producer-authoritative mute controls)
-- **Release 0.1 Progress**: 16/20 tasks complete (80%), Task 016 preparation complete (manual testing pending)
+- **Tasks Completed**: 3 (planning tasks) + 17 (implementation tasks) + 1 (testing prep) = 21 total
+- **Memory Bank Files Created**: 8 core + 22 release files + 19 task docs (49 total)
+- **Code Implemented**: Task 018 complete (Icecast streaming integration)
+- **Release 0.1 Progress**: 17/20 tasks complete (85%), Task 016 preparation complete (manual testing pending)
   - Milestone 1: 100% complete (4/4 tasks)
   - Milestone 2: 100% complete (4/4 tasks)
   - Milestone 3: 100% complete* (4/4 tasks, *automated testing only, manual 8-peer pending)
   - Milestone 4: 75% complete (3/4 tasks - 014 ✅, 015 ✅, 016 prep ✅, 016 manual pending)
-  - Milestone 5: 25% complete (1/4 tasks - 017 ✅)
+  - Milestone 5: 50% complete (2/4 tasks - 017 ✅, 018 ✅)
 - **Dependencies Installed**: Server (16 packages), Web (2 packages - Playwright)
 - **Security Audit**: 0 vulnerabilities
 - **Docker Containers**: 3 running (Icecast, coturn, signaling server operational)
-- **Lines of Code**: Server (1,742 lines), Web (4,064 lines: 562 HTML/CSS + 3,502 JS), Tests (2,886 lines: 1,004 server + 1,882 Playwright), Docs (1,515 lines), Scripts (122 lines)
+- **Lines of Code**: Server (1,742 lines), Web (4,834 lines: 585 HTML/CSS + 4,249 JS), Tests (2,886 lines: 1,004 server + 1,882 Playwright), Docs (1,515 lines), Scripts (122 lines)
 - **Automated Test Coverage**: 7 tests created (6 passing with known limitations for self-mute)
 
 ## Notes

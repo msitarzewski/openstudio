@@ -18,6 +18,7 @@ import { AudioGraph } from './audio-graph.js';
 import { VolumeMeter } from './volume-meter.js';
 import { ReturnFeedManager } from './return-feed.js';
 import { MuteManager } from './mute-manager.js';
+import { IcecastStreamer } from './icecast-streamer.js';
 
 class OpenStudioApp {
   constructor() {
@@ -33,6 +34,7 @@ class OpenStudioApp {
     this.connectionManager = null; // Will be initialized after RTC
     this.returnFeedManager = new ReturnFeedManager();
     this.muteManager = null; // Will be initialized after audio graph
+    this.icecastStreamer = new IcecastStreamer(); // Icecast streaming
 
     // State
     this.currentRoom = null;
@@ -51,10 +53,15 @@ class OpenStudioApp {
     this.startSessionButton = document.getElementById('start-session');
     this.toggleMuteButton = document.getElementById('toggle-mute');
     this.endSessionButton = document.getElementById('end-session');
+    this.startStreamingButton = document.getElementById('start-streaming');
+    this.stopStreamingButton = document.getElementById('stop-streaming');
+    this.streamingStatusElement = document.getElementById('streaming-status');
+    this.bitrateSelect = document.getElementById('bitrate-select');
 
     // Bind event handlers
     this.setupSignalingListeners();
     this.setupAudioListeners();
+    this.setupStreamingListeners();
     this.setupUIListeners();
 
     // Check for room ID in URL hash
@@ -67,6 +74,7 @@ class OpenStudioApp {
     window.audioContextManager = audioContextManager;
     window.audioGraph = this.audioGraph;
     window.returnFeedManager = this.returnFeedManager;
+    window.icecastStreamer = this.icecastStreamer;
     window.app = this;
   }
 
@@ -149,6 +157,9 @@ class OpenStudioApp {
       this.startSessionButton.disabled = true;
       this.endSessionButton.disabled = false;
       this.toggleMuteButton.disabled = false;
+
+      // Enable streaming for host
+      this.startStreamingButton.disabled = false;
 
       // Add self to participants
       this.addParticipant(this.peerId, 'Host (You)', 'host');
@@ -271,6 +282,60 @@ class OpenStudioApp {
 
       // Update UI for this participant
       this.updateParticipantMuteUI(peerId);
+    });
+  }
+
+  /**
+   * Setup Icecast streamer event listeners
+   */
+  setupStreamingListeners() {
+    // Streaming status changed
+    this.icecastStreamer.addEventListener('status-change', (event) => {
+      const { status, message } = event.detail;
+      console.log(`[App] Streaming status: ${status} - ${message}`);
+
+      // Update streaming status UI
+      this.streamingStatusElement.textContent = message;
+      this.streamingStatusElement.className = `streaming-status ${status}`;
+
+      // Update button states based on status
+      if (status === 'streaming') {
+        this.startStreamingButton.style.display = 'none';
+        this.stopStreamingButton.style.display = 'inline-block';
+        this.stopStreamingButton.disabled = false;
+      } else if (status === 'stopped') {
+        this.startStreamingButton.style.display = 'inline-block';
+        this.stopStreamingButton.style.display = 'none';
+        // Re-enable start button only if we're in a session
+        if (this.currentRoom && this.currentRole === 'host') {
+          this.startStreamingButton.disabled = false;
+        }
+      } else if (status === 'error') {
+        this.startStreamingButton.style.display = 'inline-block';
+        this.stopStreamingButton.style.display = 'none';
+        // Re-enable start button for retry
+        if (this.currentRoom && this.currentRole === 'host') {
+          this.startStreamingButton.disabled = false;
+        }
+      }
+    });
+
+    // Chunk sent (for monitoring)
+    this.icecastStreamer.addEventListener('chunk-sent', (event) => {
+      // Could add bandwidth monitoring here if needed
+      // console.log(`[App] Chunk sent: ${event.detail.size} bytes`);
+    });
+
+    // Reconnection attempt
+    this.icecastStreamer.addEventListener('reconnect-attempt', (event) => {
+      console.log(`[App] Icecast reconnect attempt ${event.detail.attempt}`);
+      // Try to restart streaming with current program bus
+      const programBus = this.audioGraph.getProgramBus();
+      const mediaStream = programBus.getMediaStream();
+      if (mediaStream) {
+        const bitrate = parseInt(this.bitrateSelect.value);
+        this.icecastStreamer.start(mediaStream);
+      }
     });
   }
 
@@ -435,6 +500,14 @@ class OpenStudioApp {
     this.toggleMuteButton.addEventListener('click', () => {
       this.handleToggleMute();
     });
+
+    this.startStreamingButton.addEventListener('click', () => {
+      this.handleStartStreaming();
+    });
+
+    this.stopStreamingButton.addEventListener('click', () => {
+      this.handleStopStreaming();
+    });
   }
 
   /**
@@ -497,6 +570,12 @@ class OpenStudioApp {
   handleEndSession() {
     console.log('[App] Ending session...');
 
+    // Stop Icecast streaming if active
+    if (this.icecastStreamer.isActive()) {
+      this.icecastStreamer.stop();
+      console.log('[App] Icecast streaming stopped');
+    }
+
     // Stop volume meter animation
     if (this.volumeMeter) {
       this.volumeMeter.stop();
@@ -537,6 +616,12 @@ class OpenStudioApp {
     this.startSessionButton.disabled = false;
     this.endSessionButton.disabled = true;
     this.toggleMuteButton.disabled = true;
+    this.startStreamingButton.disabled = true;
+    this.stopStreamingButton.disabled = true;
+    this.startStreamingButton.style.display = 'inline-block';
+    this.stopStreamingButton.style.display = 'none';
+    this.streamingStatusElement.textContent = 'Not Streaming';
+    this.streamingStatusElement.className = 'streaming-status';
     window.location.hash = '';
 
     // Reconnect to signaling
@@ -564,6 +649,62 @@ class OpenStudioApp {
     } else {
       this.toggleMuteButton.textContent = 'Unmute';
       console.log('[App] Muted microphone');
+    }
+  }
+
+  /**
+   * Handle Start Streaming button
+   */
+  async handleStartStreaming() {
+    console.log('[App] Starting Icecast streaming...');
+
+    // Only host can stream
+    if (this.currentRole !== 'host') {
+      alert('Only the host can start streaming.');
+      return;
+    }
+
+    // Get program bus MediaStream
+    const programBus = this.audioGraph.getProgramBus();
+    const mediaStream = programBus.getMediaStream();
+
+    if (!mediaStream) {
+      console.error('[App] No program bus MediaStream available');
+      alert('Program bus not ready. Please try again.');
+      return;
+    }
+
+    // Get selected bitrate
+    const bitrate = parseInt(this.bitrateSelect.value);
+    console.log(`[App] Starting stream with bitrate: ${bitrate}bps`);
+
+    // Disable start button during connection attempt
+    this.startStreamingButton.disabled = true;
+
+    try {
+      // Update Icecast configuration with selected bitrate
+      this.icecastStreamer.updateConfig({ bitrate });
+
+      // Start streaming
+      await this.icecastStreamer.start(mediaStream);
+    } catch (error) {
+      console.error('[App] Failed to start streaming:', error);
+      alert(`Failed to start streaming: ${error.message}`);
+      this.startStreamingButton.disabled = false;
+    }
+  }
+
+  /**
+   * Handle Stop Streaming button
+   */
+  async handleStopStreaming() {
+    console.log('[App] Stopping Icecast streaming...');
+
+    try {
+      await this.icecastStreamer.stop();
+      console.log('[App] Streaming stopped successfully');
+    } catch (error) {
+      console.error('[App] Error stopping stream:', error);
     }
   }
 
