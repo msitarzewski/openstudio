@@ -4,7 +4,7 @@
 
 import { WebSocketServer } from 'ws';
 import * as logger from './logger.js';
-import { PeerRegistry, relayMessage } from './signaling-protocol.js';
+import { PeerRegistry, relayMessage, broadcastToRoom } from './signaling-protocol.js';
 import { validateSignalingMessage } from './message-validator.js';
 import { RoomManager } from './room-manager.js';
 
@@ -124,6 +124,10 @@ function handleMessage(ws, message) {
     case 'answer':
     case 'ice-candidate':
       handleSignalingMessage(ws, message, peerId);
+      break;
+
+    case 'mute':
+      handleMuteMessage(ws, message, peerId);
       break;
 
     default:
@@ -254,6 +258,36 @@ function handleJoinRoom(ws, message, peerId) {
       message: result.error
     }));
   }
+}
+
+/**
+ * Handle mute message (broadcast to all peers in room)
+ * @param {import('ws').WebSocket} ws - WebSocket connection
+ * @param {object} message - Mute message
+ * @param {string} peerId - Sender's peer ID
+ */
+function handleMuteMessage(ws, message, peerId) {
+  if (!peerId) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Must register before sending mute messages'
+    }));
+    return;
+  }
+
+  // Get room for this peer
+  const room = roomManager.getRoomForPeer(peerId);
+  if (!room) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Not in a room'
+    }));
+    return;
+  }
+
+  // Broadcast mute message to all participants in room (including sender for state sync)
+  const count = broadcastToRoom(room, message, null);
+  logger.info(`Broadcasted mute message from ${peerId} to ${count} participants (peerId: ${message.peerId}, muted: ${message.muted}, authority: ${message.authority})`);
 }
 
 export default { createWebSocketServer };

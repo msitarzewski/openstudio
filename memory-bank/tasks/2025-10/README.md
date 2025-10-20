@@ -32,6 +32,7 @@
 - Task 014 (Mix-Minus Calculation Logic) completed
 - Task 015 (Mix-Minus Return Feed Routing) completed
 - Task 016 (Mix-Minus Testing) preparation completed, manual testing pending
+- Task 017 (Producer-Authoritative Mute Controls) completed
 
 ## Tasks Completed
 
@@ -52,6 +53,7 @@
 15. **191025_task_014_mix_minus_calculation.md** - Task 014: Mix-minus calculation logic (Milestone 4: Mix-Minus)
 16. **191025_task_015_return_feed_routing.md** - Task 015: Mix-minus return feed routing (Milestone 4: Mix-Minus)
 17. **201025_task_016_mix_minus_testing_prep.md** - Task 016: Mix-minus testing preparation and bug fixes (Milestone 4: Mix-Minus, manual testing pending)
+18. **201020_task_017_mute_controls.md** - Task 017: Producer-authoritative mute controls (Milestone 5: Production Ready)
 
 ## Next Priorities
 
@@ -132,6 +134,12 @@
 - **setLocalDescription() Without Arguments**: MDN best practice auto-creates correct offer/answer, prevents m-line ordering errors
 - **Staggered Return Feed Sending**: Polite peer sends first (500ms), impolite peer waits (2500ms) to avoid renegotiation collisions
 - **negotiationneeded Guard**: Only handle event when makingOffer=false OR trackCount>1 to avoid interfering with initial connection
+- **Producer-Authoritative Mute**: Host can mute any participant (producer authority), participants can self-mute (self authority), producer overrides self
+- **Mute Signaling Broadcast**: Mute messages broadcast to all peers in room (not point-to-point) for state synchronization
+- **Mute Visual States**: Three states: Green (unmuted), Yellow (self-muted), Red (producer-muted with "Host" label)
+- **Smooth Mute Ramping**: AudioParam linearRampToValueAtTime (50ms) prevents audio clicks during mute/unmute transitions
+- **Event-Driven Mute Architecture**: MuteManager → Event → Main App → Signaling for separation of concerns
+- **Mute Message Deduplication**: Ignore own mute messages from signaling broadcast to prevent infinite loops
 
 ## Blockers
 
@@ -139,19 +147,20 @@ None currently
 
 ## Metrics
 
-- **Tasks Completed**: 3 (planning tasks) + 15 (implementation tasks) + 1 (testing prep) = 19 total
-- **Memory Bank Files Created**: 8 core + 22 release files + 17 task docs (47 total)
-- **Code Implemented**: Task 016 preparation complete (bug fixes, test infrastructure)
-- **Release 0.1 Progress**: 15/20 tasks complete (75%), Task 016 preparation complete (manual testing pending)
+- **Tasks Completed**: 3 (planning tasks) + 16 (implementation tasks) + 1 (testing prep) = 20 total
+- **Memory Bank Files Created**: 8 core + 22 release files + 18 task docs (48 total)
+- **Code Implemented**: Task 017 complete (producer-authoritative mute controls)
+- **Release 0.1 Progress**: 16/20 tasks complete (80%), Task 016 preparation complete (manual testing pending)
   - Milestone 1: 100% complete (4/4 tasks)
   - Milestone 2: 100% complete (4/4 tasks)
   - Milestone 3: 100% complete* (4/4 tasks, *automated testing only, manual 8-peer pending)
   - Milestone 4: 75% complete (3/4 tasks - 014 ✅, 015 ✅, 016 prep ✅, 016 manual pending)
+  - Milestone 5: 25% complete (1/4 tasks - 017 ✅)
 - **Dependencies Installed**: Server (16 packages), Web (2 packages - Playwright)
 - **Security Audit**: 0 vulnerabilities
 - **Docker Containers**: 3 running (Icecast, coturn, signaling server operational)
-- **Lines of Code**: Server (1706 lines), Web (3708 lines: 538 HTML/CSS + 3170 JS), Tests (2549 lines: 1004 server + 1545 Playwright), Docs (610 lines), Scripts (122 lines)
-- **Automated Test Coverage**: 6/6 tests passing (100% pass rate)
+- **Lines of Code**: Server (1,742 lines), Web (4,064 lines: 562 HTML/CSS + 3,502 JS), Tests (2,886 lines: 1,004 server + 1,882 Playwright), Docs (1,515 lines), Scripts (122 lines)
+- **Automated Test Coverage**: 7 tests created (6 passing with known limitations for self-mute)
 
 ## Notes
 

@@ -115,6 +115,10 @@ export class SignalingClient extends EventTarget {
         this.dispatchEvent(new CustomEvent('ice-candidate', { detail: message }));
         break;
 
+      case 'mute':
+        this.dispatchEvent(new CustomEvent('mute', { detail: message }));
+        break;
+
       case 'error':
         console.error('[Signaling] Server error:', message.message);
         this.dispatchEvent(new CustomEvent('error', { detail: message }));
@@ -243,6 +247,23 @@ export class SignalingClient extends EventTarget {
       from: this.peerId,
       to: targetPeerId,
       candidate: candidate
+    });
+  }
+
+  /**
+   * Send mute state change (broadcast to all peers in room)
+   *
+   * @param {string} targetPeerId - Peer being muted/unmuted
+   * @param {boolean} muted - True if muted, false if unmuted
+   * @param {'producer'|'self'} authority - Who initiated the mute
+   */
+  sendMute(targetPeerId, muted, authority) {
+    return this.send({
+      type: 'mute',
+      from: this.peerId,
+      peerId: targetPeerId,  // The peer being muted/unmuted
+      muted: muted,
+      authority: authority
     });
   }
 

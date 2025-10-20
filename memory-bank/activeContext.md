@@ -5,11 +5,93 @@
 ## Current Phase
 
 **Release**: 0.1 MVP (Core Loop)
-**Status**: Implementation In Progress (15/20 tasks complete, 75%)
-**Focus**: Milestone 4 - Mix-Minus (75% complete: 3/4 tasks, Task 016 manual testing pending)
-**Next**: Task 016 Phase 2 - Manual 6-Participant Testing, then Task 017 - Global Mute Controls
+**Status**: Implementation In Progress (16/20 tasks complete, 80%)
+**Focus**: Milestone 5 - Production Ready (25% complete: 1/4 tasks)
+**Next**: Task 018 - Icecast Integration (after Task 016/017 manual testing)
 
 ## Recent Decisions
+
+### 2025-10-20: Producer-Authoritative Mute Controls (Task 017)
+
+**Decision**: Implement producer-authoritative mute controls with signaling synchronization and three visual states (green/yellow/red)
+
+**Rationale**:
+- Essential for managing live broadcast sessions (emergency control for disruptive participants)
+- Producer (host) must have absolute authority to mute anyone (cannot be overridden)
+- Participants need ability to self-mute when not speaking (professional workflow)
+- Visual feedback critical for understanding mute state and authority level
+- Mute latency must be <150ms for professional feel
+
+**Implementation**:
+- Created web/js/mute-manager.js (205 lines) - MuteManager with state tracking and conflict resolution
+- Modified web/js/signaling-client.js (+21 lines) - Added sendMute() and 'mute' event handler
+- Modified server/lib/websocket-server.js (+36 lines) - Added handleMuteMessage() for room broadcast
+- Modified web/css/studio.css (+24 lines) - Three visual states (green/yellow/red buttons)
+- Modified web/js/main.js (+122 lines net) - Integrated MuteManager, signaling listeners, UI updates
+- Created test-mute-controls.mjs (337 lines) - Automated Playwright test
+
+**Authority Hierarchy**:
+```
+Producer (host) > Self (participant)
+
+Conflict Resolution:
+- Producer mute beats self-unmute ✅
+- Self mute can be overridden by producer unmute ✅
+- Alert shown if participant tries to override producer mute ✅
+```
+
+**Visual States**:
+- **Green** (🔊 Unmuted) - Participant unmuted and can speak
+- **Yellow** (🔇 Muted) - Participant self-muted
+- **Red** (🔇 Muted (Host)) - Host muted the participant (cursor: not-allowed)
+
+**Mute Message Protocol**:
+```javascript
+{
+  type: 'mute',
+  from: 'initiator-peer-id',    // Who initiated mute
+  peerId: 'target-peer-id',      // Who is being muted/unmuted
+  muted: true|false,             // New mute state
+  authority: 'producer'|'self'   // Authority level
+}
+```
+
+**Broadcast Implementation**:
+- Server broadcasts mute messages to ALL peers in room (including sender)
+- Client ignores own messages (from === this.peerId) to prevent infinite loop
+- All peers receive state updates for UI synchronization
+
+**Known Limitation**:
+- Self-mute has architectural limitation (participants don't route own microphone through audio graph)
+- Host mute works perfectly (routes remote peer audio through audio graph)
+- Workaround: Future task will implement microphone track muting for true self-mute
+
+**Testing**:
+- ✅ Producer-authoritative mute working
+- ✅ Conflict resolution working (producer > self)
+- ✅ Visual states working (green/yellow/red)
+- ✅ Audio graph synchronization (gain = 0 when muted)
+- ✅ Signaling propagation working
+- ⚠️ Self-mute limited by architecture (requires microphone track muting)
+
+**Architecture Impact**:
+```
+MuteManager (new class):
+- setMute(peerId, muted, authority) → boolean
+- canOverride(existingAuthority, newAuthority) → boolean
+- applyMute(peerId, muted, authority)
+- getMuteState(peerId) → {muted, authority, previousGain}
+- Events: 'mute-changed'
+
+SignalingClient additions:
+- sendMute(targetPeerId, muted, authority)
+- 'mute' event handler
+
+WebSocket Server additions:
+- handleMuteMessage() broadcasts to room
+```
+
+**Next Step**: Task 018 will implement Icecast integration for program bus streaming
 
 ### 2025-10-19: Return Feed Routing (Task 015)
 
@@ -957,9 +1039,15 @@ notes (implementation hints)
    - Critical renegotiation bug fixed
    - **PENDING**: Manual 6-person testing session
 
-### Short Term - Milestone 5 (Tasks 017-020)
+### In Progress - Milestone 5: Production Ready (Tasks 017-020)
 
-- **M5**: Production Ready (017-020) - Global mute controls, Icecast integration, stability testing, documentation
+17. ✅ **Task 017**: Producer-authoritative mute controls (COMPLETE)
+   - MuteManager class with conflict resolution
+   - Signaling synchronization (broadcast to room)
+   - Three visual states (green/yellow/red)
+   - Producer authority > self authority
+   - Automated Playwright testing
+   - **Known Limitation**: Self-mute architectural limitation (requires future microphone track muting)
 
 ### Future Work (Post-MVP)
 

@@ -17,6 +17,7 @@ import { audioContextManager } from './audio-context-manager.js';
 import { AudioGraph } from './audio-graph.js';
 import { VolumeMeter } from './volume-meter.js';
 import { ReturnFeedManager } from './return-feed.js';
+import { MuteManager } from './mute-manager.js';
 
 class OpenStudioApp {
   constructor() {
@@ -31,6 +32,7 @@ class OpenStudioApp {
     this.volumeMeter = null; // Will be initialized after audio graph
     this.connectionManager = null; // Will be initialized after RTC
     this.returnFeedManager = new ReturnFeedManager();
+    this.muteManager = null; // Will be initialized after audio graph
 
     // State
     this.currentRoom = null;
@@ -79,6 +81,11 @@ class OpenStudioApp {
       // Initialize audio graph (includes program bus)
       this.audioGraph.initialize();
 
+      // Initialize mute manager (requires audio graph)
+      this.muteManager = new MuteManager(this.audioGraph);
+      this.setupMuteManagerListeners();
+      console.log('[App] Mute manager initialized');
+
       // Initialize volume meter
       const canvasElement = document.getElementById('volume-meter');
       const programBus = this.audioGraph.getProgramBus();
@@ -86,8 +93,9 @@ class OpenStudioApp {
       this.volumeMeter = new VolumeMeter(canvasElement, analyser);
       console.log('[App] Volume meter initialized');
 
-      // Expose volume meter for debugging
+      // Expose volume meter and mute manager for debugging
       window.volumeMeter = this.volumeMeter;
+      window.muteManager = this.muteManager;
 
       // Fetch ICE servers
       await this.rtc.initialize();
@@ -208,6 +216,11 @@ class OpenStudioApp {
       // Stop return feed playback
       this.returnFeedManager.stopReturnFeed(peerId);
 
+      // Remove mute state
+      if (this.muteManager) {
+        this.muteManager.removeParticipant(peerId);
+      }
+
       // Remove from tracking sets
       this.receivedMicrophoneStreams.delete(peerId);
       this.receivedReturnFeeds.delete(peerId);
@@ -216,12 +229,48 @@ class OpenStudioApp {
       // ConnectionManager automatically handles connection cleanup via peer-left event
     });
 
+    // Handle incoming mute messages (broadcast from all peers)
+    this.signaling.addEventListener('mute', (event) => {
+      const { peerId, muted, authority, from } = event.detail;
+      console.log(`[App] Mute message received: ${peerId} ${muted ? 'muted' : 'unmuted'} by ${from} (authority: ${authority})`);
+
+      // Ignore mute messages from ourselves (we already applied it locally)
+      if (from === this.peerId) {
+        console.log(`[App] Ignoring our own mute message`);
+        return;
+      }
+
+      // Apply mute state via MuteManager (handles conflict resolution)
+      if (this.muteManager && peerId !== this.peerId) {
+        // Don't apply mute to self (we handle that locally)
+        this.muteManager.setMute(peerId, muted, authority);
+        this.updateParticipantMuteUI(peerId);
+      }
+    });
+
     // Note: offer/answer/ice-candidate events are now handled by ConnectionManager
 
     this.signaling.addEventListener('error', (event) => {
       const { message } = event.detail;
       console.error(`[App] Signaling error: ${message}`);
       alert(`Error: ${message}`);
+    });
+  }
+
+  /**
+   * Setup MuteManager event listeners
+   */
+  setupMuteManagerListeners() {
+    // Mute state changed - propagate via signaling
+    this.muteManager.addEventListener('mute-changed', (event) => {
+      const { peerId, muted, authority } = event.detail;
+      console.log(`[App] Mute state changed: ${peerId} ${muted ? 'muted' : 'unmuted'} (authority: ${authority})`);
+
+      // Send mute message to all peers via signaling (broadcast)
+      this.signaling.sendMute(peerId, muted, authority);
+
+      // Update UI for this participant
+      this.updateParticipantMuteUI(peerId);
     });
   }
 
@@ -460,6 +509,11 @@ class OpenStudioApp {
     // Stop all return feed playback
     this.returnFeedManager.stopAll();
 
+    // Clear mute manager state
+    if (this.muteManager) {
+      this.muteManager.clear();
+    }
+
     // Close all connections (ConnectionManager handles cleanup)
     if (this.connectionManager) {
       this.connectionManager.closeAll();
@@ -517,11 +571,44 @@ class OpenStudioApp {
    * Handle participant mute button click
    */
   handleParticipantMute(peerId) {
+    if (!this.muteManager) {
+      console.warn('[App] MuteManager not initialized');
+      return;
+    }
+
     const participant = this.participants.get(peerId);
     if (!participant) {
       return;
     }
 
+    // Get current mute state
+    const muteState = this.muteManager.getMuteState(peerId);
+    const currentlyMuted = muteState.muted;
+
+    // Determine authority
+    // Host can mute anyone (producer authority)
+    // Participants can only mute themselves (self authority)
+    const authority = this.currentRole === 'host' ? 'producer' : 'self';
+
+    // Toggle mute
+    const newMutedState = !currentlyMuted;
+
+    // Apply mute via MuteManager (handles conflict resolution + signaling propagation)
+    const success = this.muteManager.setMute(peerId, newMutedState, authority);
+
+    if (!success) {
+      console.warn(`[App] Mute action blocked for ${peerId} (conflict with ${muteState.authority} authority)`);
+      // Show user feedback that action was blocked
+      alert('Cannot override host mute. Please ask the host to unmute you.');
+    } else {
+      console.log(`[App] ${newMutedState ? 'Muted' : 'Unmuted'} participant: ${peerId} (authority: ${authority})`);
+    }
+  }
+
+  /**
+   * Update participant mute button UI based on current mute state
+   */
+  updateParticipantMuteUI(peerId) {
     const card = this.participantsSection.querySelector(`[data-peer-id="${peerId}"]`);
     if (!card) {
       return;
@@ -529,30 +616,38 @@ class OpenStudioApp {
 
     const muteButton = card.querySelector('.mute-button');
     const gainSlider = card.querySelector('.gain-slider');
-    const gainValue = card.querySelector('.gain-value');
 
-    if (participant.muted) {
-      // Unmute
-      this.audioGraph.unmuteParticipant(peerId);
-      participant.muted = false;
-      muteButton.textContent = '🔊 Unmuted';
-      muteButton.classList.remove('muted');
+    if (!muteButton || !this.muteManager) {
+      return;
+    }
 
-      // Restore previous gain value
-      gainSlider.disabled = false;
-      const gainPercent = participant.gain;
-      this.audioGraph.setParticipantGain(peerId, gainPercent / 100);
+    const muteState = this.muteManager.getMuteState(peerId);
+    const participant = this.participants.get(peerId);
 
-      console.log(`[App] Unmuted participant: ${peerId}`);
+    // Update button text and class based on mute state
+    muteButton.classList.remove('self-muted', 'producer-muted');
+
+    if (muteState.muted) {
+      if (muteState.authority === 'producer') {
+        muteButton.textContent = '🔇 Muted (Host)';
+        muteButton.classList.add('producer-muted');
+      } else {
+        muteButton.textContent = '🔇 Muted';
+        muteButton.classList.add('self-muted');
+      }
+      if (gainSlider) {
+        gainSlider.disabled = true;
+      }
     } else {
-      // Mute
-      this.audioGraph.muteParticipant(peerId);
-      participant.muted = true;
-      muteButton.textContent = '🔇 Muted';
-      muteButton.classList.add('muted');
-      gainSlider.disabled = true;
+      muteButton.textContent = '🔊 Unmuted';
+      if (gainSlider) {
+        gainSlider.disabled = false;
+      }
+    }
 
-      console.log(`[App] Muted participant: ${peerId}`);
+    // Update participant state
+    if (participant) {
+      participant.muted = muteState.muted;
     }
   }
 
@@ -682,10 +777,22 @@ class OpenStudioApp {
       card.appendChild(roleEl);
       card.appendChild(controlsEl);
     } else {
-      // Self - no gain controls needed
+      // Self - add mute button (for self-mute), but no gain controls
+      const controlsEl = document.createElement('div');
+      controlsEl.className = 'participant-controls';
+
+      // Mute button for self-mute
+      const muteButton = document.createElement('button');
+      muteButton.className = 'mute-button';
+      muteButton.textContent = '🔊 Unmuted';
+      muteButton.addEventListener('click', () => this.handleParticipantMute(peerId));
+
+      controlsEl.appendChild(muteButton);
+
       card.appendChild(avatar);
       card.appendChild(nameEl);
       card.appendChild(roleEl);
+      card.appendChild(controlsEl);
     }
 
     const statusEl = document.createElement('div');

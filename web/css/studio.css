@@ -194,7 +194,7 @@ main {
   font-size: 0.75rem;
   font-weight: 500;
   min-width: auto;
-  background-color: var(--color-button-bg);
+  background-color: #10b981; /* Green for unmuted */
   color: var(--color-button-text);
   border: none;
   cursor: pointer;
@@ -202,16 +202,28 @@ main {
 }
 
 .mute-button:hover {
-  background-color: var(--color-button-bg-hover);
+  background-color: #059669; /* Darker green on hover */
 }
 
-.mute-button.muted {
-  background-color: #f59e0b;
+/* Self-muted state (participant muted themselves) */
+.mute-button.self-muted {
+  background-color: #f59e0b; /* Yellow/orange */
   color: var(--color-button-text);
 }
 
-.mute-button.muted:hover {
-  background-color: #d97706;
+.mute-button.self-muted:hover {
+  background-color: #d97706; /* Darker orange on hover */
+}
+
+/* Producer-muted state (host muted the participant) */
+.mute-button.producer-muted {
+  background-color: #ef4444; /* Red */
+  color: var(--color-button-text);
+  cursor: not-allowed; /* Participant cannot unmute themselves */
+}
+
+.mute-button.producer-muted:hover {
+  background-color: #dc2626; /* Darker red on hover */
 }
 
 .gain-control {
