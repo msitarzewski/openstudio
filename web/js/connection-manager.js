@@ -164,6 +164,34 @@ export class ConnectionManager extends EventTarget {
       // Pass through to app layer
       this.dispatchEvent(new CustomEvent('remote-stream', { detail: event.detail }));
     });
+
+    // Negotiation needed (Perfect Negotiation pattern for renegotiation)
+    this.rtcManager.addEventListener('negotiation-needed', async (event) => {
+      const { remotePeerId } = event.detail;
+      const state = this.getConnectionState(remotePeerId);
+
+      console.log(`[ConnectionManager] Negotiation needed for ${remotePeerId} (makingOffer: ${state.makingOffer}, status: ${state.status})`);
+
+      // Don't handle if we're already making an offer (prevents duplicate offers)
+      if (state.makingOffer) {
+        console.log(`[ConnectionManager] Ignoring negotiation-needed for ${remotePeerId} - already making offer`);
+        return;
+      }
+
+      // Set makingOffer flag (Perfect Negotiation pattern)
+      this.setConnectionState(remotePeerId, { makingOffer: true });
+
+      try {
+        // Create and send offer
+        const offer = await this.rtcManager.createOffer(remotePeerId);
+        this.signalingClient.sendOffer(remotePeerId, offer);
+        console.log(`[ConnectionManager] Negotiation offer sent to ${remotePeerId}`);
+      } catch (error) {
+        console.error(`[ConnectionManager] Failed to create negotiation offer for ${remotePeerId}:`, error);
+      } finally {
+        this.setConnectionState(remotePeerId, { makingOffer: false });
+      }
+    });
   }
 
   /**
@@ -348,29 +376,17 @@ export class ConnectionManager extends EventTarget {
    * @param {string} remotePeerId - Remote peer identifier
    * @param {MediaStream} mixMinusStream - Mix-minus stream (all participants except remotePeerId)
    */
-  async addReturnFeedTrack(remotePeerId, mixMinusStream) {
-    const state = this.getConnectionState(remotePeerId);
-
-    if (state.status !== 'connected') {
-      console.warn(`[ConnectionManager] Cannot add return feed to ${remotePeerId}: not connected (status: ${state.status})`);
-      return;
-    }
-
+  addReturnFeedTrack(remotePeerId, mixMinusStream) {
     console.log(`[ConnectionManager] Adding return feed track to ${remotePeerId}`);
-    this.setConnectionState(remotePeerId, { makingOffer: true });
 
     try {
-      // Add return feed track and get renegotiation offer
-      const offer = await this.rtcManager.addReturnFeedTrack(remotePeerId, mixMinusStream);
-
-      // Send offer via signaling
-      this.signalingClient.sendOffer(remotePeerId, offer);
-
-      console.log(`[ConnectionManager] Return feed renegotiation offer sent to ${remotePeerId}`);
-      this.setConnectionState(remotePeerId, { makingOffer: false });
+      // Add return feed track
+      // Perfect Negotiation: We can add tracks anytime, negotiationneeded event handles timing
+      // The event only fires when signalingState is stable, preventing race conditions
+      this.rtcManager.addReturnFeedTrack(remotePeerId, mixMinusStream);
+      console.log(`[ConnectionManager] Return feed track added for ${remotePeerId} (renegotiation will happen automatically)`);
     } catch (error) {
       console.error(`[ConnectionManager] Failed to add return feed for ${remotePeerId}:`, error);
-      this.setConnectionState(remotePeerId, { makingOffer: false });
     }
   }
 

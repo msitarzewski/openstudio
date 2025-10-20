@@ -178,12 +178,26 @@ export class RTCManager extends EventTarget {
       }
     });
 
+    // Handle negotiation needed (Perfect Negotiation pattern)
+    // This event fires when tracks are added/removed and renegotiation is needed
+    // The event only fires when signalingState is "stable", preventing race conditions
+    pc.addEventListener('negotiationneeded', async () => {
+      console.log(`[RTC] Negotiation needed for ${remotePeerId}`);
+
+      this.dispatchEvent(new CustomEvent('negotiation-needed', {
+        detail: {
+          remotePeerId
+        }
+      }));
+    });
+
     this.peerConnections.set(remotePeerId, pc);
     return pc;
   }
 
   /**
-   * Create SDP offer
+   * Create SDP offer (Perfect Negotiation pattern)
+   * Uses setLocalDescription() without arguments which automatically creates the right offer
    */
   async createOffer(remotePeerId) {
     const pc = this.peerConnections.get(remotePeerId);
@@ -192,11 +206,13 @@ export class RTCManager extends EventTarget {
     }
 
     console.log(`[RTC] Creating offer for ${remotePeerId}`);
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
+
+    // Perfect Negotiation: setLocalDescription() without arguments
+    // automatically creates and sets the appropriate description
+    await pc.setLocalDescription();
     console.log(`[RTC] Local description set (offer) for ${remotePeerId}`);
 
-    return offer;
+    return pc.localDescription;
   }
 
   /**
@@ -275,14 +291,13 @@ export class RTCManager extends EventTarget {
   }
 
   /**
-   * Add return feed track to peer connection and renegotiate
-   * This sends the mix-minus audio back to the remote peer
+   * Add return feed track to peer connection
+   * This triggers the 'negotiationneeded' event which handles renegotiation automatically (Perfect Negotiation pattern)
    *
    * @param {string} remotePeerId - Remote peer identifier
    * @param {MediaStream} mixMinusStream - Mix-minus audio stream (all participants except remotePeerId)
-   * @returns {RTCSessionDescriptionInit} New offer with return feed track
    */
-  async addReturnFeedTrack(remotePeerId, mixMinusStream) {
+  addReturnFeedTrack(remotePeerId, mixMinusStream) {
     const pc = this.peerConnections.get(remotePeerId);
     if (!pc) {
       throw new Error(`No peer connection found for ${remotePeerId}`);
@@ -295,32 +310,19 @@ export class RTCManager extends EventTarget {
     console.log(`[RTC] Adding return feed track to ${remotePeerId}`);
     console.log(`[RTC] Mix-minus stream ID: ${mixMinusStream.id}, Tracks: ${mixMinusStream.getAudioTracks().length}`);
 
-    try {
-      // Get the audio track from mix-minus stream
-      const tracks = mixMinusStream.getAudioTracks();
-      if (tracks.length === 0) {
-        throw new Error('Mix-minus stream has no audio tracks');
-      }
-
-      const returnFeedTrack = tracks[0];
-      console.log(`[RTC] Return feed track: ${returnFeedTrack.id}, kind: ${returnFeedTrack.kind}, label: ${returnFeedTrack.label}`);
-
-      // Add track to peer connection
-      // Use the mix-minus stream as the second parameter so it's associated correctly
-      const sender = pc.addTrack(returnFeedTrack, mixMinusStream);
-      console.log(`[RTC] Return feed track added to peer connection for ${remotePeerId}`);
-
-      // Create new offer (renegotiation)
-      console.log(`[RTC] Creating renegotiation offer for ${remotePeerId}`);
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      console.log(`[RTC] Renegotiation offer created for ${remotePeerId}`);
-
-      return offer;
-    } catch (error) {
-      console.error(`[RTC] Failed to add return feed track for ${remotePeerId}:`, error);
-      throw error;
+    // Get the audio track from mix-minus stream
+    const tracks = mixMinusStream.getAudioTracks();
+    if (tracks.length === 0) {
+      throw new Error('Mix-minus stream has no audio tracks');
     }
+
+    const returnFeedTrack = tracks[0];
+    console.log(`[RTC] Return feed track: ${returnFeedTrack.id}, kind: ${returnFeedTrack.kind}`);
+
+    // Add track to peer connection
+    // This will trigger the 'negotiationneeded' event which handles creating and sending the offer
+    pc.addTrack(returnFeedTrack, mixMinusStream);
+    console.log(`[RTC] Return feed track added (negotiationneeded event will fire)`);
   }
 
   /**

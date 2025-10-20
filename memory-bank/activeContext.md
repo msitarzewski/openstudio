@@ -1,13 +1,13 @@
 # Active Context: OpenStudio
 
-**Last Updated**: 2025-10-19
+**Last Updated**: 2025-10-20
 
 ## Current Phase
 
 **Release**: 0.1 MVP (Core Loop)
 **Status**: Implementation In Progress (15/20 tasks complete, 75%)
-**Focus**: Milestone 4 - Mix-Minus (50% complete: 2/4 tasks)
-**Next**: Task 016 - Mix-Minus Testing
+**Focus**: Milestone 4 - Mix-Minus (75% complete: 3/4 tasks, Task 016 manual testing pending)
+**Next**: Task 016 Phase 2 - Manual 6-Participant Testing, then Task 017 - Global Mute Controls
 
 ## Recent Decisions
 
@@ -94,6 +94,81 @@ Main.js additions:
 ```
 
 **Next Step**: Task 016 will validate return feed system with 3+ peer testing and quality assessment
+
+### 2025-10-20: WebRTC Renegotiation Bug Fix (Task 016 Preparation)
+
+**Decision**: Implement Perfect Negotiation pattern for renegotiation using `onnegotiationneeded` event handler instead of manual offer creation
+
+**Rationale**:
+- Discovered critical bug during Task 016 pre-validation: return feeds only worked in one direction
+- Peer B could send return feed to Peer A, but Peer A's connection got stuck in "connecting" state
+- Manual offer creation in `addReturnFeedTrack()` bypassed Perfect Negotiation collision detection
+- WebSearch revealed MDN/Mozilla documentation on proper renegotiation handling
+
+**Problem Analysis**:
+```
+Initial Connection (Working):
+A ←─ Mic track ──→ B  ✅
+
+Simultaneous Renegotiation (Broken):
+A ──→ addTrack(returnFeed) + createOffer() ──→ B's connection → "connecting"
+B ──→ addTrack(returnFeed) + createOffer() ──→ A's connection → "connecting" (STUCK)
+
+Result: Both connections in "connecting", neither completes renegotiation ❌
+```
+
+**Solution Implemented**:
+- Added `onnegotiationneeded` event listener to RTCPeerConnection
+- Event only fires when `signalingState` is "stable" (prevents race conditions)
+- Simplified `addReturnFeedTrack()` to just add track (event handles offer creation)
+- Changed `createOffer()` to use `setLocalDescription()` without arguments (MDN best practice)
+- Added guard: Only handle `negotiationneeded` if `makingOffer === false`
+
+**Files Modified**:
+- web/js/rtc-manager.js (+15 lines) - Added event listener, modified createOffer, simplified addReturnFeedTrack
+- web/js/connection-manager.js (+29 lines) - Added negotiation-needed handler with makingOffer guard
+- web/js/main.js (+9 lines) - Added pendingReturnFeeds tracking, staggered delays (polite: 500ms, impolite: 2500ms)
+- test-audio-graph.mjs (-7 lines) - Changed to headless, auto-close
+- test-gain-controls.mjs (-3 lines) - Changed to headless, auto-close
+
+**Testing**:
+- ✅ All 6 automated tests passing (100% pass rate)
+- ✅ Return feeds work bidirectionally (both peers receive)
+- ✅ No connection stuck in "connecting" state
+- ✅ No "m-line ordering" errors
+- ✅ Renegotiation completes successfully for both peers
+
+**Test Infrastructure Created**:
+- docs/testing/mix-minus-test-protocol.md (610 lines) - Manual testing procedure for 6 participants
+- run-pre-validation.sh (122 lines) - Runs all 6 automated tests before manual testing
+
+**Architecture Impact**:
+```
+Before:
+addReturnFeedTrack() {
+  pc.addTrack(track);
+  offer = await pc.createOffer();  // Manual offer creation ❌
+  await pc.setLocalDescription(offer);
+  sendOffer(offer);
+}
+
+After:
+addReturnFeedTrack() {
+  pc.addTrack(track);  // Triggers negotiationneeded event ✅
+}
+
+pc.onnegotiationneeded = async () => {
+  if (makingOffer) return;  // Guard against duplicates
+  makingOffer = true;
+  await pc.setLocalDescription();  // Auto-creates correct offer
+  sendOffer(pc.localDescription);
+  makingOffer = false;
+}
+```
+
+**Key Insight**: Perfect Negotiation requires **event-driven** renegotiation, not manual offer creation. The `negotiationneeded` event's built-in `signalingState` check prevents race conditions.
+
+**Next Step**: Task 016 Phase 2 - Manual testing with 6 participants to validate mix-minus eliminates self-echo
 
 ### 2025-10-19: Mix-Minus Calculation Logic (Task 014)
 
@@ -858,12 +933,33 @@ notes (implementation hints)
    - Volume meter: RMS calculation, peak hold, color-coded thresholds
    - Automated Playwright testing
 
-13. **Task 013**: Audio quality testing - NEXT
+13. ✅ **Task 013**: Multi-peer support with ConnectionManager (COMPLETE)
+   - ConnectionManager class with Perfect Negotiation, retry logic
+   - Connection state tracking and race condition prevention
+   - Automated testing passing
 
-### Short Term - Milestone 4-5 (Tasks 014-020)
+### Completed - Milestone 4: Mix-Minus (Tasks 014-016)
 
-- **M4**: Mix-Minus (014-016) - Per-caller mixes, return feeds, testing
-- **M5**: Production Ready (017-020) - Mute controls, Icecast, stability testing, docs
+14. ✅ **Task 014**: Mix-minus calculation logic (COMPLETE)
+   - O(N) phase-inversion algorithm
+   - Automatic mix-minus bus creation/destruction
+   - 3-peer automated testing passing
+
+15. ✅ **Task 015**: Return feed routing (COMPLETE)
+   - ReturnFeedManager for direct playback
+   - WebRTC renegotiation for return feeds
+   - Stream order tracking (mic vs return feed)
+   - 2-peer automated testing passing
+
+16. **Task 016**: Mix-minus testing (PREPARATION COMPLETE, MANUAL TESTING PENDING)
+   - Test protocol documented (6-participant procedure)
+   - Pre-validation automation (all 6 tests passing)
+   - Critical renegotiation bug fixed
+   - **PENDING**: Manual 6-person testing session
+
+### Short Term - Milestone 5 (Tasks 017-020)
+
+- **M5**: Production Ready (017-020) - Global mute controls, Icecast integration, stability testing, documentation
 
 ### Future Work (Post-MVP)
 

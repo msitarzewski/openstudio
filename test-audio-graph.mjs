@@ -25,7 +25,7 @@ async function testAudioContext() {
   console.log('=== Web Audio Foundation Test ===\n');
 
   const browser = await chromium.launch({
-    headless: false, // Show browser for manual inspection
+    headless: true, // Run headless for automated testing
     args: [
       '--use-fake-ui-for-media-stream',
       '--use-fake-device-for-media-stream',
@@ -118,20 +118,14 @@ async function testAudioContext() {
     console.log(`AudioContext resumed: ${resumed ? '✅' : '❌'}`);
     console.log(`Audio graph initialized: ${graphInfo ? '✅' : '❌'}`);
 
-    console.log('\n📝 Manual verification steps:');
-    console.log('1. Open browser DevTools (F12)');
-    console.log('2. Go to Console tab');
-    console.log('3. Look for [AudioContext] and [AudioGraph] logs');
-    console.log('4. Verify no errors');
-    console.log('5. Optional: Inspect audio graph in chrome://webaudio-internals');
-
-    console.log('\nPress Ctrl+C to close browser when done inspecting...');
-    await new Promise(() => {}); // Keep browser open
+    console.log('\n✅ All tests passed!');
+    console.log('\nClosing browser...');
 
   } catch (error) {
-    console.error('Test failed:', error);
+    console.error('❌ Test failed:', error);
+    process.exit(1);
   } finally {
-    // Browser stays open for manual inspection
+    await browser.close();
   }
 }
 

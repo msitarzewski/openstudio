@@ -41,6 +41,7 @@ class OpenStudioApp {
     // Each peer sends TWO streams: microphone (first) and return feed (second)
     this.receivedMicrophoneStreams = new Set(); // peerIds that have sent microphone
     this.receivedReturnFeeds = new Set(); // peerIds that have sent return feed
+    this.pendingReturnFeeds = new Map(); // peerId -> true (return feeds waiting for connection to be ready)
 
     // UI elements
     this.statusElement = document.getElementById('status');
@@ -210,6 +211,7 @@ class OpenStudioApp {
       // Remove from tracking sets
       this.receivedMicrophoneStreams.delete(peerId);
       this.receivedReturnFeeds.delete(peerId);
+      this.pendingReturnFeeds.delete(peerId);
 
       // ConnectionManager automatically handles connection cleanup via peer-left event
     });
@@ -243,17 +245,29 @@ class OpenStudioApp {
           this.audioGraph.addParticipant(remotePeerId, stream);
           this.receivedMicrophoneStreams.add(remotePeerId);
 
-          // After adding participant, get their mix-minus stream and send it back
+          // Mark that we need to send return feed for this peer
           // Wait a moment for audio graph to fully initialize the mix-minus
-          setTimeout(async () => {
+          // AND stagger return feed sending to avoid renegotiation collisions:
+          // Polite peer sends first (500ms), impolite peer waits longer (2500ms)
+          const connectionState = this.connectionManager.getConnectionState(remotePeerId);
+          const isPolite = connectionState?.isPolite || false;
+          const delay = isPolite ? 500 : 2500; // Polite first, impolite waits
+
+          console.log(`[App] Will create return feed for ${remotePeerId} (${isPolite ? 'polite' : 'impolite'}) in ${delay}ms`);
+
+          setTimeout(() => {
             const mixMinusStream = this.audioGraph.getMixMinusStream(remotePeerId);
             if (mixMinusStream) {
-              console.log(`[App] Mix-minus stream created for ${remotePeerId}, adding return feed track`);
-              await this.connectionManager.addReturnFeedTrack(remotePeerId, mixMinusStream);
+              console.log(`[App] Mix-minus stream created for ${remotePeerId}, marking return feed as pending`);
+              this.pendingReturnFeeds.set(remotePeerId, true);
+
+              // Check if connection is already in "connected" state
+              // If so, send the return feed immediately
+              this.trySendPendingReturnFeed(remotePeerId);
             } else {
               console.warn(`[App] No mix-minus stream available for ${remotePeerId}`);
             }
-          }, 100); // Small delay to ensure mix-minus is fully created
+          }, delay); // Staggered delay to avoid renegotiation collisions
         } catch (error) {
           console.error(`[App] Failed to add ${remotePeerId} to audio graph:`, error);
         }
@@ -276,10 +290,16 @@ class OpenStudioApp {
     // Connection state changed
     this.connectionManager.addEventListener('connection-state-changed', (event) => {
       const { remotePeerId, state } = event.detail;
-      console.log(`[App] Connection state for ${remotePeerId}:`, state.status);
+      console.log(`[App] Connection state for ${remotePeerId}: ${state.status}`);
 
       // Update participant card status
       this.updateParticipantStatus(remotePeerId, state.status);
+
+      // If connection is now connected, try to send any pending return feeds
+      if (state.status === 'connected') {
+        console.log(`[App] Connection is now connected, trying to send pending return feed to ${remotePeerId}`);
+        this.trySendPendingReturnFeed(remotePeerId);
+      }
     });
 
     // Connection permanently failed
@@ -317,6 +337,38 @@ class OpenStudioApp {
       const { message } = event.detail;
       console.error(`[App] Audio graph error: ${message}`);
     });
+  }
+
+  /**
+   * Try to send pending return feed for a peer if connection is ready
+   */
+  async trySendPendingReturnFeed(remotePeerId) {
+    // Check if we have a pending return feed for this peer
+    if (!this.pendingReturnFeeds.has(remotePeerId)) {
+      return;
+    }
+
+    // Get the mix-minus stream
+    const mixMinusStream = this.audioGraph.getMixMinusStream(remotePeerId);
+    if (!mixMinusStream) {
+      console.error(`[App] No mix-minus stream available for ${remotePeerId}, cannot send return feed`);
+      this.pendingReturnFeeds.delete(remotePeerId);
+      return;
+    }
+
+    // Remove from pending FIRST to prevent retries
+    this.pendingReturnFeeds.delete(remotePeerId);
+
+    console.log(`[App] Adding return feed track for ${remotePeerId}`);
+
+    try {
+      // Add return feed track
+      // This triggers negotiationneeded event which handles renegotiation automatically
+      this.connectionManager.addReturnFeedTrack(remotePeerId, mixMinusStream);
+      console.log(`[App] Return feed track added for ${remotePeerId}`);
+    } catch (error) {
+      console.error(`[App] Failed to add return feed for ${remotePeerId}:`, error);
+    }
   }
 
   /**
@@ -424,6 +476,7 @@ class OpenStudioApp {
     // Clear tracking sets
     this.receivedMicrophoneStreams.clear();
     this.receivedReturnFeeds.clear();
+    this.pendingReturnFeeds.clear();
 
     // Reset UI
     this.clearParticipants();

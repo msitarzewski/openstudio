@@ -31,6 +31,7 @@
 - Task 013 (Multi-Peer Support) completed (automated testing), manual testing pending
 - Task 014 (Mix-Minus Calculation Logic) completed
 - Task 015 (Mix-Minus Return Feed Routing) completed
+- Task 016 (Mix-Minus Testing) preparation completed, manual testing pending
 
 ## Tasks Completed
 
@@ -50,6 +51,7 @@
 14. **191025_task_013_multi_peer_support.md** - Task 013: Multi-peer support with ConnectionManager (Milestone 3: Multi-Peer Audio)
 15. **191025_task_014_mix_minus_calculation.md** - Task 014: Mix-minus calculation logic (Milestone 4: Mix-Minus)
 16. **191025_task_015_return_feed_routing.md** - Task 015: Mix-minus return feed routing (Milestone 4: Mix-Minus)
+17. **201025_task_016_mix_minus_testing_prep.md** - Task 016: Mix-minus testing preparation and bug fixes (Milestone 4: Mix-Minus, manual testing pending)
 
 ## Next Priorities
 
@@ -126,6 +128,10 @@
 - **Stream Order Tracking**: Distinguish microphone (first) vs return feed (second) by tracking stream reception order per peer
 - **HTMLAudioElement for Return Feed**: Direct playback bypasses audio graph to prevent feedback loop (return feed already processed)
 - **100ms Return Feed Delay**: Small delay after participant addition ensures mix-minus bus fully created before sending
+- **Perfect Negotiation Renegotiation**: Use onnegotiationneeded event instead of manual offer creation for WebRTC renegotiation
+- **setLocalDescription() Without Arguments**: MDN best practice auto-creates correct offer/answer, prevents m-line ordering errors
+- **Staggered Return Feed Sending**: Polite peer sends first (500ms), impolite peer waits (2500ms) to avoid renegotiation collisions
+- **negotiationneeded Guard**: Only handle event when makingOffer=false OR trackCount>1 to avoid interfering with initial connection
 
 ## Blockers
 
@@ -133,15 +139,19 @@ None currently
 
 ## Metrics
 
-- **Tasks Completed**: 3 (planning tasks) + 15 (implementation tasks) = 18 total
-- **Memory Bank Files Created**: 8 core + 22 release files + 16 task docs (46 total)
-- **Code Implemented**: 75% (Task 001-015 complete: Milestone 1 100%, Milestone 2 100%, Milestone 3 100%*, Milestone 4 50%)
-- **Release 0.1 Progress**: 15/20 tasks complete (75%, skipped redundant task 010)
-  - *Milestone 3 automated testing complete, manual 8-peer testing pending
+- **Tasks Completed**: 3 (planning tasks) + 15 (implementation tasks) + 1 (testing prep) = 19 total
+- **Memory Bank Files Created**: 8 core + 22 release files + 17 task docs (47 total)
+- **Code Implemented**: Task 016 preparation complete (bug fixes, test infrastructure)
+- **Release 0.1 Progress**: 15/20 tasks complete (75%), Task 016 preparation complete (manual testing pending)
+  - Milestone 1: 100% complete (4/4 tasks)
+  - Milestone 2: 100% complete (4/4 tasks)
+  - Milestone 3: 100% complete* (4/4 tasks, *automated testing only, manual 8-peer pending)
+  - Milestone 4: 75% complete (3/4 tasks - 014 ✅, 015 ✅, 016 prep ✅, 016 manual pending)
 - **Dependencies Installed**: Server (16 packages), Web (2 packages - Playwright)
 - **Security Audit**: 0 vulnerabilities
 - **Docker Containers**: 3 running (Icecast, coturn, signaling server operational)
-- **Lines of Code**: Server (1706 lines), Web (3631 lines: 538 HTML/CSS + 3093 JS), Tests (2560 lines: 1004 server + 1556 Playwright)
+- **Lines of Code**: Server (1706 lines), Web (3708 lines: 538 HTML/CSS + 3170 JS), Tests (2549 lines: 1004 server + 1545 Playwright), Docs (610 lines), Scripts (122 lines)
+- **Automated Test Coverage**: 6/6 tests passing (100% pass rate)
 
 ## Notes
 
@@ -244,4 +254,18 @@ None currently
 - HTMLAudioElement playback: Return feeds bypass audio graph (prevents feedback loop)
 - All acceptance criteria validated: Microphone to audio graph ✅, Mix-minus sent ✅, Return feed playing ✅, No self-echo ✅, Updates on join/leave ✅
 
-**Next Step**: Task 016 (Mix-Minus Testing) - Multi-peer testing and quality validation (Milestone 4: Mix-Minus).
+**Mix-Minus Testing Preparation** (Task 016 - Phase 1):
+- docs/testing/mix-minus-test-protocol.md - Comprehensive 6-participant manual test protocol (610 lines)
+- run-pre-validation.sh - Automated test suite runner (122 lines)
+- Modified web/js/rtc-manager.js - Added onnegotiationneeded event handler, Perfect Negotiation pattern for renegotiation (+15 lines net)
+- Modified web/js/connection-manager.js - Added negotiation-needed handler with makingOffer guard (+29 lines net)
+- Modified web/js/main.js - Added pendingReturnFeeds tracking, staggered delays (+9 lines net)
+- Modified test-audio-graph.mjs - Changed to headless mode, auto-close (-7 lines)
+- Modified test-gain-controls.mjs - Changed to headless mode, auto-close (-3 lines)
+- Critical bug fix: WebRTC renegotiation race condition (return feeds now work bidirectionally)
+- Solution: Use onnegotiationneeded event instead of manual offer creation (MDN Perfect Negotiation pattern)
+- setLocalDescription() without arguments: Auto-creates correct offer/answer, prevents m-line ordering errors
+- All 6 automated tests now passing (100% pass rate): WebRTC ✅, Audio Graph ✅, Gain Controls ✅, Program Bus ✅, Mix-Minus ✅, Return Feed ✅
+- System ready for manual 6-participant testing session
+
+**Next Step**: Task 016 Phase 2 (Manual Testing) - Conduct 6-participant session following test protocol, then Task 017 (Global Mute Controls).

@@ -1,6 +1,6 @@
 # Progress: OpenStudio
 
-**Last Updated**: 2025-10-19 (Post-Task 015)
+**Last Updated**: 2025-10-20 (Post-Task 016 Preparation)
 
 ## What's Working
 
@@ -112,17 +112,18 @@
 
 ### Immediate (This Week)
 
-1. **Mix-Minus Testing** (Task 016 - NEXT)
-   - Multi-peer testing with 3+ participants
-   - Verify return feeds update when participants join/leave
-   - Network resilience testing (peer disconnect/reconnect)
-   - Subjective audio quality assessment
+1. **Mix-Minus Testing - Manual Session** (Task 016 Phase 2 - NEXT)
+   - Gather 6 participants with headphones (3 hosts + 3 callers)
+   - Follow protocol in docs/testing/mix-minus-test-protocol.md
+   - Verify zero self-echo across all participants (CRITICAL)
+   - Test 10+ minute session stability
+   - Test join/leave edge cases
+   - Measure latency (<200ms target)
+   - Document results in test report
 
-2. **Manual 8-Peer Testing** (Task 013 Final Acceptance)
-   - Open 8 browser windows (3 hosts + 5 callers)
-   - Verify full mesh connections
-   - Test dynamic join/leave stability
-   - Monitor CPU/memory (target <30%, no dropouts)
+2. **Global Mute Controls** (Task 017 - After 016)
+   - Implement host ability to mute all participants
+   - Emergency "kill switch" for feedback situations
 
 ### Short Term (Next 2-4 Weeks)
 
@@ -294,6 +295,25 @@
 ✅ All acceptance criteria validated: Mic to audio graph ✅, Mix-minus as MediaStream ✅, Renegotiation ✅, Remote playback ✅, Updates on join/leave ✅
 ✅ **Milestone 4 (Mix-Minus) now 50% complete (2/4 tasks)**
 ✅ **OpenStudio audio architecture complete**: Mic → Audio Graph → Program Bus → Mix-Minus → Return Feed → Speakers
+
+### 2025-10-20 (Part 7)
+
+✅ **Task 016 Preparation Complete**: Test infrastructure and critical bug fixes - system ready for manual 6-participant validation
+✅ Created docs/testing/mix-minus-test-protocol.md - Comprehensive manual test protocol for 6 participants (610 lines)
+✅ Created run-pre-validation.sh - Automated test suite runner, validates system readiness (122 lines)
+✅ Modified web/js/rtc-manager.js - Added onnegotiationneeded event handler for Perfect Negotiation renegotiation (+15 lines net)
+✅ Modified web/js/connection-manager.js - Added negotiation-needed handler with makingOffer guard (+29 lines net)
+✅ Modified web/js/main.js - Added pendingReturnFeeds tracking, staggered delays for renegotiation (+9 lines net)
+✅ Modified test-audio-graph.mjs - Changed to headless mode, auto-close for automated testing (-7 lines)
+✅ Modified test-gain-controls.mjs - Changed to headless mode, auto-close for automated testing (-3 lines)
+✅ Critical bug fix - WebRTC renegotiation race condition: Return feeds now work bidirectionally ✅
+✅ Root cause - Manual offer creation bypassed Perfect Negotiation's collision detection
+✅ Solution from WebSearch - MDN/Mozilla documentation: Use onnegotiationneeded event, setLocalDescription() without arguments
+✅ Perfect Negotiation compliance - negotiationneeded event only fires when signalingState is "stable" (prevents race conditions)
+✅ All 6 automated tests passing (100% pass rate): WebRTC ✅, Audio Graph ✅, Gain Controls ✅, Program Bus ✅, Mix-Minus ✅, Return Feed ✅
+✅ Pre-validation complete - System validated and ready for manual 6-participant testing session
+✅ **Milestone 4 (Mix-Minus) now 75% complete (3/4 tasks, manual testing pending)**
+⏸️ **Task 016 Phase 2 pending**: Manual 6-participant testing session (requires real people with headphones, 45-60 minutes)
 
 ### 2025-10-19 (Part 5)
 

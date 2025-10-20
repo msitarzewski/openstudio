@@ -18,7 +18,7 @@ async function testGainControls() {
   console.log('=== Gain Controls UI Test ===\n');
 
   const browser = await chromium.launch({
-    headless: false,
+    headless: true,
     args: [
       '--use-fake-ui-for-media-stream',
       '--use-fake-device-for-media-stream',
@@ -244,11 +244,17 @@ async function testGainControls() {
     const allPassed = hostHasGainControls && gainAdjusted && muteWorking && audioGraphUpdated && unmuteWorking;
     console.log(`\nOverall: ${allPassed ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED'}`);
 
-    console.log('\nPress Ctrl+C to close browser when done inspecting...');
-    await new Promise(() => {}); // Keep browser open for manual inspection
+    console.log('\nClosing browser...');
+    await browser.close();
+
+    if (!allPassed) {
+      process.exit(1);
+    }
 
   } catch (error) {
-    console.error('Test failed:', error);
+    console.error('❌ Test failed:', error);
+    await browser.close();
+    process.exit(1);
   }
 }
 
