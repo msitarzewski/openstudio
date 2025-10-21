@@ -29,27 +29,75 @@
    git log -1
    ```
 
-### Common Commands
+### Development Modes
 
-**Development Server** (when ready):
+OpenStudio supports two development workflows configured via `.env` file:
+
+**Docker Mode** (default):
 ```bash
-# Signaling server (in server/)
-npm run dev
+# In .env
+DEV_MODE=docker
 
-# Web client (in web/)
-npm run dev
+# Start all services
+./dev.sh
+# OR manually:
+docker compose up -d
 ```
 
-**Docker Management**:
+**Local Mode** (hot reload):
 ```bash
-# Start infrastructure
+# In .env
+DEV_MODE=local
+
+# Start local dev server
+./dev.sh
+# OR manually:
+docker compose stop signaling
+cd server && npm run dev
+```
+
+**Switch between modes**:
+```bash
+./dev-switch.sh
+```
+
+### Common Commands
+
+**Universal Development Script**:
+```bash
+# Start development environment (reads .env for mode)
+./dev.sh
+
+# Switch development mode interactively
+./dev-switch.sh
+```
+
+**Docker Management** (manual):
+```bash
+# Start all services
 docker compose up -d
 
-# Stop infrastructure
+# Stop all services
 docker compose down
 
+# Stop only signaling (for local mode)
+docker compose stop signaling
+
 # View logs
-docker compose logs -f
+docker compose logs -f signaling
+docker compose logs -f icecast
+
+# Rebuild signaling after code changes
+docker compose up --build -d signaling
+```
+
+**Local Development** (manual):
+```bash
+# Signaling server with hot reload (in server/)
+npm run dev
+
+# Web client static server (in web/)
+python3 -m http.server 8086
 ```
 
 **Testing WebRTC**:

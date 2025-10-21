@@ -12,7 +12,12 @@
       "Bash(docker logs openstudio-icecast)",
       "Bash(nc:*)",
       "Bash(lsof:*)",
-      "Bash(docker logs:*)"
+      "Bash(docker logs:*)",
+      "Bash(chmod:*)",
+      "Bash(cat:*)",
+      "Bash(./dev.sh)",
+      "Bash(timeout:*)",
+      "Bash(./dev-switch.sh)"
     ],
     "deny": [],
     "ask": []

@@ -1,6 +1,6 @@
 # Progress: OpenStudio
 
-**Last Updated**: 2025-10-21 (Post-Multi-Platform Docker Support)
+**Last Updated**: 2025-10-21 (Post-Dual-Mode Development)
 
 ## What's Working
 
@@ -281,7 +281,27 @@
 
 ## Recent Achievements
 
-### 2025-10-21 (Infrastructure Enhancement)
+### 2025-10-21 (Part 2 - Infrastructure Enhancement)
+
+✅ **Dual-Mode Development Complete**: Flexible development workflow with .env configuration resolves port conflicts and provides production parity vs hot reload options
+✅ Created .env.example - Configuration template with DEV_MODE=docker default (10 lines)
+✅ Created dev.sh - Universal development script reads .env and starts appropriate mode (63 lines)
+✅ Created dev-switch.sh - Interactive mode switcher provides menu-driven workflow switching (38 lines)
+✅ Modified .gitignore - Exclude .env, keep .env.example (+4 lines)
+✅ Modified README.md - Quick Start, Development Modes, Troubleshooting sections (+62 lines)
+✅ Modified memory-bank/quick-start.md - Development mode documentation (+36 lines)
+✅ **Problem solved**: Users following README no longer encounter `EADDRINUSE: address already in use :::6736` error
+✅ **Docker Mode** (default): All services in containers, production parity, recommended for most users
+✅ **Local Mode**: Signaling locally with --watch hot reload, Icecast/coturn in Docker, for core development
+✅ **Mode switching**: `./dev-switch.sh` provides interactive menu (1=docker, 2=local), updates .env automatically
+✅ **Auto-configuration**: dev.sh creates .env from .env.example if missing
+✅ **Icecast/coturn preserved**: Local mode only stops signaling container (media infrastructure continues)
+✅ All workflows tested: Docker mode ✅, Local mode ✅, Mode switching ✅, Port conflict resolved ✅
+✅ Verification complete: `./dev.sh` starts all services without port conflicts, `./dev-switch.sh` correctly updates .env
+✅ **Zero breaking changes**: Existing docker compose commands still work, new scripts provide convenience layer
+✅ **Clear documentation**: README and quick-start.md explain both modes and when to use each
+
+### 2025-10-21 (Part 1 - Infrastructure Maintenance)
 
 ✅ **Docker Multi-Platform Support Complete**: OpenStudio now builds natively on Apple Silicon Macs (ARM64) without emulation
 ✅ Created icecast/Dockerfile - Custom Alpine-based multi-platform Icecast image (28 lines)

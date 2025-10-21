@@ -60,6 +60,7 @@
 20. **201020_task_019_stability_testing_prep.md** - Task 019: Stability testing preparation and documentation (Milestone 5: Production Ready, manual testing pending)
 21. **201025_port_reconfiguration.md** - Port reconfiguration to avoid common development tool conflicts (Infrastructure maintenance)
 22. **201021_docker_multiplatform_support.md** - Docker multi-platform support for macOS ARM64/x86_64/Linux (Infrastructure maintenance)
+23. **211021_dual_mode_development.md** - Dual-mode development with .env configuration (Infrastructure enhancement)
 
 ## Next Priorities
 
@@ -161,6 +162,11 @@
 - **Multi-Platform Monitoring Support**: Provide detailed instructions for Linux/macOS/Windows to enable diverse test participant platforms
 - **5-Second Sampling Interval**: Balance between high-frequency data capture (720 samples over 60 min) and manageable storage overhead
 - **Automated + Manual Data Collection**: Combine automated scripts (system-level metrics) with manual observation (qualitative anomaly detection) for comprehensive dataset
+- **Dual-Mode Development**: .env-based workflow switching between Docker (production parity, default) and local (hot reload) modes
+- **Docker Default Mode**: DEV_MODE=docker by default (recommended for most users, production parity)
+- **Universal Development Script**: ./dev.sh reads .env and starts appropriate mode automatically
+- **Interactive Mode Switcher**: ./dev-switch.sh provides menu-driven workflow switching
+- **Icecast/coturn Preservation**: Local mode only stops signaling container, keeps media infrastructure in Docker
 
 ## Blockers
 
@@ -168,8 +174,8 @@ None currently
 
 ## Metrics
 
-- **Tasks Completed**: 3 (planning tasks) + 18 (implementation tasks) + 1 (testing prep) + 2 (infrastructure) = 24 total
-- **Memory Bank Files Created**: 8 core + 22 release files + 20 task docs (50 total)
+- **Tasks Completed**: 3 (planning tasks) + 18 (implementation tasks) + 1 (testing prep) + 3 (infrastructure) = 25 total
+- **Memory Bank Files Created**: 8 core + 22 release files + 23 task docs (53 total)
 - **Code Implemented**: Task 019 complete (Stability testing documentation)
 - **Release 0.1 Progress**: 18/20 tasks complete (90%), Task 019 preparation complete (manual testing pending)
   - Milestone 1: 100% complete (4/4 tasks)

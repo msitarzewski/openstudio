@@ -1,6 +1,6 @@
 # Active Context: OpenStudio
 
-**Last Updated**: 2025-10-21
+**Last Updated**: 2025-10-21 (Post-Dual-Mode Development)
 
 ## Current Phase
 
@@ -10,6 +10,92 @@
 **Next**: Task 020 - Documentation and Deployment (final task)
 
 ## Recent Decisions
+
+### 2025-10-21: Dual-Mode Development with .env Configuration (Infrastructure Enhancement)
+
+**Decision**: Implement flexible development workflow with `.env`-based mode switching to resolve port conflicts and provide production parity vs hot reload options
+
+**Problem**:
+- Users following README instructions encountered port conflict: `listen EADDRINUSE: address already in use :::6736`
+- Docker signaling container uses port 6736, conflicts with `npm run dev`
+- No clear guidance on Docker vs local development workflow
+- Frustrating first-run experience (immediate error after following docs)
+
+**Solution**:
+```
+Dual-Mode Development:
+- Docker Mode (default): All services in containers, production parity
+- Local Mode: Signaling locally with hot reload, Icecast/coturn in Docker
+- Universal Script: ./dev.sh reads .env and starts appropriate mode
+- Mode Switcher: ./dev-switch.sh provides interactive workflow switching
+```
+
+**Implementation**:
+- Created .env.example - Configuration template (DEV_MODE=docker default)
+- Created dev.sh - Universal development script (63 lines)
+- Created dev-switch.sh - Interactive mode switcher (38 lines)
+- Modified .gitignore - Exclude .env, keep .env.example
+- Modified README.md - Quick Start, Development Modes, Troubleshooting (+62 lines)
+- Modified quick-start.md - Development mode documentation (+36 lines)
+
+**Configuration**:
+```bash
+# .env.example
+DEV_MODE=docker  # docker | local
+LOCAL_SIGNALING_PORT=6736  # Only used in local mode
+```
+
+**User Workflow** (Docker Mode - Default):
+```bash
+cp .env.example .env
+./dev.sh  # Starts all services in Docker
+# In another terminal:
+cd web && python3 -m http.server 8086
+```
+
+**Developer Workflow** (Local Mode - Hot Reload):
+```bash
+./dev-switch.sh  # Select option 2 (local)
+./dev.sh  # Stops Docker signaling, starts local server with --watch
+# Edit server/ files, server auto-restarts
+```
+
+**Testing**:
+```bash
+# Docker mode
+./dev.sh  # All services started ✅
+curl http://localhost:6736/health  # {"status":"ok"} ✅
+
+# Local mode
+./dev-switch.sh && ./dev.sh  # Signaling stopped, local started ✅
+docker compose ps  # Icecast/coturn still running ✅
+
+# Mode switching
+echo "1" | ./dev-switch.sh  # Docker mode ✅
+cat .env  # DEV_MODE=docker ✅
+echo "2" | ./dev-switch.sh  # Local mode ✅
+cat .env  # DEV_MODE=local ✅
+```
+
+**Impact**:
+- ✅ **Zero port conflicts**: Users can follow README without EADDRINUSE errors
+- ✅ **Production parity default**: Docker mode recommended for most users (same as deployment)
+- ✅ **Hot reload available**: Local mode for rapid backend development
+- ✅ **Simple mode switching**: One interactive command to change workflow
+- ✅ **Auto-configuration**: Creates .env from example if missing
+- ✅ **Clear documentation**: README and quick-start.md explain both modes
+- ✅ **Icecast/coturn preserved**: Local mode only stops signaling (not media infrastructure)
+
+**Lessons Learned**:
+- `sed -i.bak` for cross-platform compatibility (macOS/Linux)
+- Environment variable export scoped to script execution
+- `docker compose stop signaling` targets single service (preserves others)
+- `.gitignore` negation pattern `!.env.example` overrides `.*` exclusion
+- Interactive input testing: `echo "n" | ./dev.sh` for non-interactive automation
+
+**Next Step**: Users no longer encounter port conflicts on first run, clear choice between production parity and rapid iteration workflows
+
+---
 
 ### 2025-10-21: Docker Multi-Platform Support (Infrastructure Maintenance)
 

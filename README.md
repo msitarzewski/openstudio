@@ -99,30 +99,87 @@ Host interviews remote guest, audience calls in with questions, producer manages
 - Modern browser (Chrome, Firefox, or Safari)
 - 5 minutes
 
-### Get Broadcasting
+### First Time Setup
 
 ```bash
 # Clone the repository
 git clone https://github.com/msitarzewski/openstudio.git
 cd openstudio
 
-# Configure your station
+# Create your local configuration
+cp .env.example .env
+
+# Install dependencies
+cd server && npm install && cd ..
+cd web && npm install && cd ..
+
+# Configure your station (optional - has sensible defaults)
 cp station-manifest.sample.json station-manifest.json
+```
 
-# Start infrastructure (Icecast + coturn STUN/TURN server)
-docker compose up -d
+### Start Development Environment
 
-# Run signaling server
-cd server && npm install && npm run dev
+```bash
+# Start all services (Docker mode - recommended for most users)
+./dev.sh
 
-# Launch web studio (in another terminal)
-cd web && npm install && npm run dev
+# In another terminal, start the web client
+cd web && python3 -m http.server 8086
 
-# Open browser to https://localhost:8086
+# Open browser to http://localhost:8086
 # Start broadcasting! 🎙️
 ```
 
 That's it. You're now running a professional broadcast studio on your own infrastructure.
+
+### Development Modes
+
+OpenStudio supports two development workflows configured via `.env` file:
+
+**Docker Mode** (default, recommended for most users):
+- All services run in Docker containers
+- Production parity (same as deployment)
+- Best for: Testing, integration work, deployment validation
+
+**Local Mode** (for core development):
+- Signaling server runs locally with hot reload
+- Icecast and coturn remain in Docker
+- Faster iteration (automatic restart on file changes)
+- Best for: Backend development, debugging, rapid prototyping
+
+**Switch between modes**:
+```bash
+./dev-switch.sh   # Interactive mode switcher
+# OR edit .env file manually and change DEV_MODE
+```
+
+### Troubleshooting
+
+**Port 6736 already in use**:
+```bash
+# Check what's using the port
+lsof -i :6736  # macOS/Linux
+netstat -ano | findstr :6736  # Windows
+
+# If Docker signaling is running
+docker compose stop signaling
+
+# If local dev server is running (Ctrl+C to stop)
+```
+
+**Services not starting**:
+```bash
+# Check Docker services status
+docker compose ps
+
+# View logs
+docker compose logs -f signaling
+docker compose logs -f icecast
+
+# Restart all services
+docker compose down
+docker compose up -d
+```
 
 ---
 

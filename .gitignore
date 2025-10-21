@@ -6,10 +6,13 @@ yarn-error.log*
 package-lock.json
 .npm
 
-# Environment variables
+# Environment variables (user-specific)
 .env
 .env.local
 .env.*.local
+
+# Keep example file in repo
+!.env.example
 
 # Station configuration (user-specific)
 station-manifest.json
