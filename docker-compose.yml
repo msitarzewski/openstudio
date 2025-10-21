@@ -1,6 +1,8 @@
 services:
   icecast:
-    image: moul/icecast
+    build:
+      context: ./icecast
+      dockerfile: Dockerfile
     container_name: openstudio-icecast
     ports:
       - "6737:8000"

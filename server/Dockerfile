@@ -15,11 +15,11 @@ COPY station-manifest*.json ../
 COPY server/ .
 
 # Expose signaling server port
-EXPOSE 3000
+EXPOSE 6736
 
 # Health check (uses HTTP endpoint)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:6736/health || exit 1
 
 # Start signaling server
 CMD ["node", "server.js"]

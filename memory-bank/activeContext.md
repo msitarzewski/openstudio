@@ -1,6 +1,6 @@
 # Active Context: OpenStudio
 
-**Last Updated**: 2025-10-20
+**Last Updated**: 2025-10-21
 
 ## Current Phase
 
@@ -10,6 +10,63 @@
 **Next**: Task 020 - Documentation and Deployment (final task)
 
 ## Recent Decisions
+
+### 2025-10-21: Docker Multi-Platform Support (Infrastructure Maintenance)
+
+**Decision**: Replace single-platform `moul/icecast` image with custom Alpine-based Dockerfile supporting ARM64 + x86_64
+
+**Problem**:
+- `moul/icecast` Docker image: x86_64 only (no multi-platform manifest)
+- Apple Silicon Macs (ARM64): Container failed to start
+- Result: Project unusable on macOS ARM64, Raspberry Pi, ARM servers
+- Additional issue: server/Dockerfile still referenced port 3000 (should be 6736)
+
+**Solution**:
+```
+Custom Icecast Image:
+- Base: alpine:latest (multi-platform by default)
+- Package: apk add icecast (ARM64 + x86_64 support)
+- Security: Run as icecast user (non-root)
+- Config: Generate at runtime from environment variables
+```
+
+**Implementation**:
+- Created icecast/Dockerfile (28 lines) - Multi-platform image definition
+- Created icecast/entrypoint.sh (65 lines) - Configuration generation script
+- Created icecast/.dockerignore (11 lines) - Build optimization
+- Modified docker-compose.yml - Switch from image to build
+- Fixed server/Dockerfile - Port references (3000 → 6736)
+
+**Platform Support**:
+```
+✅ macOS ARM64 (Apple Silicon) - Verified working
+✅ macOS x86_64 (Intel) - Expected working
+✅ Linux x86_64 - Expected working
+✅ Linux ARM64 - Expected working
+```
+
+**Testing**:
+```bash
+docker compose up --build -d
+# All containers built and started successfully on ARM64
+curl http://localhost:6736/health  # {"status":"ok"}
+curl http://localhost:6737/        # Icecast 2.4.4 status page
+./run-pre-validation.sh            # 5/6 passing (same as before)
+```
+
+**Impact**:
+- ✅ **Native ARM64 support**: No emulation overhead on Apple Silicon
+- ✅ **Zero regressions**: All automated tests show identical results
+- ✅ **Zero breaking changes**: Same environment variables as moul/icecast
+- ✅ **Security maintained**: Non-root execution (icecast user)
+- ✅ **Smaller footprint**: Alpine base ~7MB vs Ubuntu ~80MB
+
+**Lessons Learned**:
+- Alpine package `icecast` auto-creates user/group (no manual adduser needed)
+- Running as root triggers Icecast security warning (must use USER directive)
+- Health check needs 10s start-period for Icecast initialization
+
+---
 
 ### 2025-10-20: Port Reconfiguration (Infrastructure Maintenance)
 

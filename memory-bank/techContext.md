@@ -38,6 +38,14 @@
 
 **Deployment**: Docker Compose (dev and prod)
 
+**Docker Infrastructure**:
+- **Icecast**: Custom Alpine-based Dockerfile (multi-platform: ARM64 + x86_64)
+- **coturn**: Official image `coturn/coturn` (multi-platform)
+- **Signaling**: Custom Node.js 18 Alpine image (multi-platform)
+- **Base Images**: Alpine Linux ecosystem for consistency and minimal footprint
+- **Platform Support**: macOS ARM64, macOS x86_64, Linux x86_64, Linux ARM64
+- **Security**: All containers run as non-root users
+
 ### Port Configuration
 
 **Production Services**:

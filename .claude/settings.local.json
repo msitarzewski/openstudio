@@ -6,7 +6,13 @@
       "Bash(docker compose ps:*)",
       "Bash(./run-pre-validation.sh:*)",
       "Bash(npm install)",
-      "Bash(timeout 180 ./run-pre-validation.sh:*)"
+      "Bash(timeout 180 ./run-pre-validation.sh:*)",
+      "Bash(docker manifest inspect:*)",
+      "Bash(docker compose:*)",
+      "Bash(docker logs openstudio-icecast)",
+      "Bash(nc:*)",
+      "Bash(lsof:*)",
+      "Bash(docker logs:*)"
     ],
     "deny": [],
     "ask": []
