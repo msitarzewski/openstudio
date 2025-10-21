@@ -101,7 +101,7 @@ docker compose up -d
   "stationId": "unique-id",
   "name": "Station Name",
   "signaling": {
-    "url": "wss://localhost:8080"
+    "url": "ws://localhost:6736"
   },
   "ice": {
     "stun": ["stun:localhost:3478"],

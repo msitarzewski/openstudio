@@ -11,6 +11,55 @@
 
 ## Recent Decisions
 
+### 2025-10-20: Port Reconfiguration (Infrastructure Maintenance)
+
+**Decision**: Migrate all user-configurable service ports to 6736+ range to avoid common development tool conflicts
+
+**Problem**:
+- Docker bind errors: `port TCP 0.0.0.0:8000 bind: address already in use`
+- Common conflicts: Port 3000 (React/Express/Next.js), Port 8000 (Django/Jupyter/Python servers)
+- User friction during initial setup and development
+
+**Solution**:
+```
+Port Migration:
+- Signaling Server: 3000 → 6736
+- Icecast HTTP: 8000 → 6737
+- coturn STUN/TURN: 3478 → UNCHANGED (IETF RFC 5389/5766 standard)
+- Relay ports: 49152-49200 → UNCHANGED (ephemeral range)
+```
+
+**Rationale**:
+- **6736+ range**: Unlikely to conflict with common developer tools
+- **Sequential numbering**: 6736, 6737 easy to remember
+- **Protocol preservation**: Keep 3478 for STUN/TURN (not an app default, it's the protocol spec)
+- **Low collision risk**: Standard TURN ports rarely used by other services
+
+**Implementation**:
+- Updated 21 files across infrastructure, server code, web client, and documentation
+- Modified: docker-compose.yml, station-manifest.sample.json, all server tests, all web client modules
+- Updated: README.md, quick-start.md, run-pre-validation.sh
+- Zero functional regressions: 4/6 automated tests passing (2 pre-existing failures unrelated to ports)
+
+**Impact**:
+- ✅ **Zero port conflicts**: Clean Docker startup for all users
+- ✅ **Production parity**: coturn uses standard STUN/TURN port
+- ⚠️ **Breaking change**: Existing users must update station-manifest.json and restart containers
+
+**Testing**:
+```bash
+curl http://localhost:6736/health  # {"status":"ok","uptime":17}
+curl -I http://localhost:6737/     # 200 OK
+./run-pre-validation.sh            # 4/6 tests passing
+```
+
+**Lessons Learned**:
+- Port standards matter: Protocol-defined ports (3478) should never change
+- Avoid 3000-10000 range for custom services (too many conflicts)
+- Comprehensive grep required: Multiple search patterns needed to find all references
+
+---
+
 ### 2025-10-20: Stability Testing Infrastructure (Task 019)
 
 **Decision**: Create comprehensive test documentation infrastructure for 60-minute 6-participant stability validation

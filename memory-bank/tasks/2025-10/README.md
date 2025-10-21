@@ -58,6 +58,7 @@
 18. **201020_task_017_mute_controls.md** - Task 017: Producer-authoritative mute controls (Milestone 5: Production Ready)
 19. **201020_task_018_icecast_integration.md** - Task 018: Icecast streaming integration (Milestone 5: Production Ready)
 20. **201020_task_019_stability_testing_prep.md** - Task 019: Stability testing preparation and documentation (Milestone 5: Production Ready, manual testing pending)
+21. **201025_port_reconfiguration.md** - Port reconfiguration to avoid common development tool conflicts (Infrastructure maintenance)
 
 ## Next Priorities
 
@@ -95,7 +96,9 @@
 - **Docker Infrastructure**: Docker Compose with Icecast, coturn, signaling placeholder (network_mode: host for coturn simplicity)
 - **Development Credentials**: Default passwords (admin/hackme, source/hackme, openstudio:hackme) for local development only
 - **Limited Port Range**: coturn relay ports 49152-49200 (49 ports) instead of full range (avoid massive port allocation)
-- **Signaling Server Port**: Port 3000 standard (matches docker-compose.yml, avoids confusion with task spec port 8080)
+- **Signaling Server Port**: Port 6736 (changed from 3000 to avoid conflicts with common dev tools like React/Express/Next.js)
+- **Icecast Port**: Port 6737 (changed from 8000 to avoid conflicts with Django/Jupyter/Python dev servers)
+- **Protocol-Standard Ports**: coturn uses 3478 per IETF RFC 5389/5766 (unchanged, protocol specification not app default)
 - **Server Entry Point**: server.js (matches package.json main field, updated all task docs for consistency)
 - **Configuration Management**: Load and validate station-manifest.json on startup, fail fast on invalid config
 - **Development Mode Fallback**: Use station-manifest.sample.json if main file missing (convenience for setup)
@@ -162,7 +165,7 @@ None currently
 
 ## Metrics
 
-- **Tasks Completed**: 3 (planning tasks) + 18 (implementation tasks) + 1 (testing prep) = 22 total
+- **Tasks Completed**: 3 (planning tasks) + 18 (implementation tasks) + 1 (testing prep) + 1 (infrastructure) = 23 total
 - **Memory Bank Files Created**: 8 core + 22 release files + 20 task docs (50 total)
 - **Code Implemented**: Task 019 complete (Stability testing documentation)
 - **Release 0.1 Progress**: 18/20 tasks complete (90%), Task 019 preparation complete (manual testing pending)

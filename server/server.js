@@ -20,7 +20,7 @@ try {
 }
 
 // Configuration
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 6736;
 const startTime = Date.now();
 
 // Create HTTP server

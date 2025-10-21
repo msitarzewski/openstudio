@@ -5,7 +5,7 @@
 
 import WebSocket from 'ws';
 
-const SIGNALING_URL = 'ws://localhost:3000';
+const SIGNALING_URL = 'ws://localhost:6736';
 
 function createTestClient(name, peerId) {
   return new Promise((resolve) => {

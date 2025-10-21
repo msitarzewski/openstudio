@@ -14,7 +14,7 @@
 
 import WebSocket from 'ws';
 
-const SERVER_URL = 'ws://localhost:3000';
+const SERVER_URL = 'ws://localhost:6736';
 const TIMEOUT = 5000; // 5 second timeout per test
 
 // Test results

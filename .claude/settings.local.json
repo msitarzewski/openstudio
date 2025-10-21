@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(test:*)",
+      "Bash(curl:*)",
+      "Bash(docker compose ps:*)",
+      "Bash(./run-pre-validation.sh:*)",
+      "Bash(npm install)",
+      "Bash(timeout 180 ./run-pre-validation.sh:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

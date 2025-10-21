@@ -38,6 +38,23 @@
 
 **Deployment**: Docker Compose (dev and prod)
 
+### Port Configuration
+
+**Production Services**:
+- **Signaling Server**: Port 6736 (customizable, avoids common dev tool conflicts)
+- **Icecast HTTP**: Port 6737 (customizable, mapped from container port 8000)
+- **coturn STUN/TURN**: Port 3478 (IETF RFC 5389/5766 standard, **do not change**)
+- **Relay Ports**: 49152-49200 (ephemeral range, coturn managed)
+
+**Development Services**:
+- **Web Client**: Port 8086 (Python http.server for local testing)
+
+**Port Selection Rationale**:
+- 6736+ range unlikely to conflict with common development tools
+- Avoided 3000 (React/Express/Next.js), 8000 (Django/Jupyter/Python servers)
+- Protocol-standard ports (3478) preserved for WebRTC compatibility
+- Sequential numbering (6736, 6737) easy to remember
+
 ### Distributed Directory (Release 0.2+)
 
 **Options Under Consideration**:
@@ -176,7 +193,7 @@
 3. `docker compose up -d` (starts Icecast + coturn + signaling)
 4. `cd server && npm install && npm run dev` (signaling server)
 5. `cd web && npm install && npm run dev` (web studio, if using bundler)
-6. Open `https://localhost:3000` (or similar)
+6. Open `http://localhost:8086` (web client served by http.server)
 
 ### Testing Strategy
 

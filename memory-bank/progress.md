@@ -1,6 +1,6 @@
 # Progress: OpenStudio
 
-**Last Updated**: 2025-10-20 (Post-Task 019 Implementation)
+**Last Updated**: 2025-10-20 (Post-Port Reconfiguration)
 
 ## What's Working
 
@@ -14,9 +14,9 @@
 
 ✅ **Docker Infrastructure Operational**
 - docker-compose.yml configured and validated
-- Icecast container running (HTTP 200 at localhost:8000)
-- coturn container running (STUN port 3478 listening)
-- Signaling server operational (WebSocket + HTTP on port 3000)
+- Icecast container running (HTTP 200 at localhost:6737)
+- coturn container running (STUN port 3478 listening - IETF standard)
+- Signaling server operational (WebSocket + HTTP on port 6736)
 
 ✅ **Memory Bank System Initialized**
 - Core files created (toc.md, projectbrief.md, etc.)
@@ -40,7 +40,7 @@
 - Configuration management with validation
 
 ✅ **Signaling Server** (Tasks 003-006 - Complete)
-- WebSocket server operational (port 3000)
+- WebSocket server operational (port 6736)
 - HTTP server with health check endpoint
 - Ping/pong message protocol working
 - Graceful shutdown on SIGTERM/SIGINT

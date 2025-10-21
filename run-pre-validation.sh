@@ -58,12 +58,12 @@ run_test() {
 }
 
 # Run all tests
-run_test "WebRTC Connection" "test-webrtc.mjs" 60
-run_test "Audio Graph Foundation" "test-audio-graph.mjs" 60
-run_test "Gain Controls" "test-gain-controls.mjs" 60
-run_test "Program Bus Mixing" "test-program-bus.mjs" 60
-run_test "Mix-Minus Calculation" "test-mix-minus.mjs" 60
-run_test "Return Feed Routing" "test-return-feed.mjs" 60
+run_test "WebRTC Connection" "tests/test-webrtc.mjs" 60
+run_test "Audio Graph Foundation" "tests/test-audio-graph.mjs" 60
+run_test "Gain Controls" "tests/test-gain-controls.mjs" 60
+run_test "Program Bus Mixing" "tests/test-program-bus.mjs" 60
+run_test "Mix-Minus Calculation" "tests/test-mix-minus.mjs" 60
+run_test "Return Feed Routing" "tests/test-return-feed.mjs" 60
 
 # Summary
 echo "================================================================================"
@@ -90,7 +90,7 @@ if [ $FAILED -eq 0 ]; then
     echo "  2. Gather 6 participants with headphones"
     echo "  3. Start web server: cd web && python3 -m http.server 8086"
     echo "  4. Verify infrastructure:"
-    echo "     - Signaling server: curl http://localhost:3000/health"
+    echo "     - Signaling server: curl http://localhost:6736/health"
     echo "     - Web client: curl http://localhost:8086"
     echo "  5. Begin manual testing session"
     echo ""
@@ -115,7 +115,7 @@ else
     echo "Common issues:"
     echo "  - Web server not running (cd web && python3 -m http.server 8086)"
     echo "  - Signaling server not running (sudo docker compose up -d)"
-    echo "  - Port conflicts (check ports 3000, 8086, 8000, 3478)"
+    echo "  - Port conflicts (check ports 6736, 8086, 6737, 3478)"
     echo "  - Chromium not installed for Playwright (npx playwright install chromium)"
     echo ""
     exit 1

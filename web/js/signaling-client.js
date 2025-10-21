@@ -10,7 +10,7 @@
  * - ICE candidate relay
  */
 
-const SIGNALING_URL = 'ws://localhost:3000';
+const SIGNALING_URL = 'ws://localhost:6736';
 const RECONNECT_DELAY_MS = 2000;
 const MAX_RECONNECT_DELAY_MS = 30000;
 

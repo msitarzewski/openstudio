@@ -10,7 +10,7 @@
  * - ICE candidate generation
  */
 
-const API_STATION_URL = 'http://localhost:3000/api/station';
+const API_STATION_URL = 'http://localhost:6736/api/station';
 
 export class RTCManager extends EventTarget {
   constructor(peerId) {

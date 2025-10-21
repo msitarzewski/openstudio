@@ -103,7 +103,7 @@ Host interviews remote guest, audience calls in with questions, producer manages
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/openstudio.git
+git clone https://github.com/msitarzewski/openstudio.git
 cd openstudio
 
 # Configure your station
@@ -118,7 +118,7 @@ cd server && npm install && npm run dev
 # Launch web studio (in another terminal)
 cd web && npm install && npm run dev
 
-# Open browser to https://localhost:3000
+# Open browser to https://localhost:8086
 # Start broadcasting! 🎙️
 ```
 
@@ -266,7 +266,7 @@ OpenStudio is in active development. We need:
 1. Read the [Memory Bank documentation](./memory-bank/toc.md) to understand project architecture
 2. Check [activeContext.md](./memory-bank/activeContext.md) for current priorities
 3. Review [projectRules.md](./memory-bank/projectRules.md) for coding standards
-4. Look at [open issues](https://github.com/yourusername/openstudio/issues) for tasks
+4. Look at [open issues](https://github.com/msitarzewski/openstudio/issues) for tasks
 5. Join our community (Discord/Matrix link coming soon)
 
 ### Development Workflow

@@ -2,7 +2,7 @@
   "stationId": "openstudio-dev",
   "name": "OpenStudio Development Station",
   "signaling": {
-    "url": "ws://localhost:3000"
+    "url": "ws://localhost:6736"
   },
   "ice": {
     "stun": [

@@ -3,7 +3,7 @@ services:
     image: moul/icecast
     container_name: openstudio-icecast
     ports:
-      - "8000:8000"
+      - "6737:8000"
     environment:
       - ICECAST_SOURCE_PASSWORD=hackme
       - ICECAST_ADMIN_PASSWORD=hackme
@@ -36,10 +36,10 @@ services:
       dockerfile: server/Dockerfile
     container_name: openstudio-signaling
     ports:
-      - "3000:3000"
+      - "6736:6736"
     environment:
       - NODE_ENV=development
-      - PORT=3000
+      - PORT=6736
     depends_on:
       - icecast
       - coturn

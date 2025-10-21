@@ -15,7 +15,7 @@ export class IcecastStreamer extends EventTarget {
     // Icecast configuration
     this.config = {
       host: config.host || 'localhost',
-      port: config.port || 8000,
+      port: config.port || 6737,
       mountPoint: config.mountPoint || '/live.opus',
       username: config.username || 'source',
       password: config.password || 'hackme',
