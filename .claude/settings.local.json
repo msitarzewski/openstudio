@@ -17,7 +17,10 @@
       "Bash(cat:*)",
       "Bash(./dev.sh)",
       "Bash(timeout:*)",
-      "Bash(./dev-switch.sh)"
+      "Bash(./dev-switch.sh)",
+      "Bash(node tests/test-gain-controls.mjs:*)",
+      "Bash(node tests/test-return-feed.mjs:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

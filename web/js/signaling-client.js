@@ -286,4 +286,12 @@ export class SignalingClient extends EventTarget {
     this.isRegistered = false;
     console.log('[Signaling] Disconnected');
   }
+
+  /**
+   * Get the underlying WebSocket connection
+   * @returns {WebSocket|null} WebSocket instance or null if not connected
+   */
+  getWebSocket() {
+    return this.ws;
+  }
 }

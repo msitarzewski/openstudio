@@ -158,7 +158,8 @@ async function testGainControls() {
         const muteButton = card.querySelector('.mute-button');
         const slider = card.querySelector('.gain-slider');
 
-        if (muteButton) {
+        // Only test on remote participant cards (those with gain sliders)
+        if (muteButton && slider) {
           // Click mute
           muteButton.click();
 

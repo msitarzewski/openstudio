@@ -334,7 +334,7 @@ class OpenStudioApp {
       const mediaStream = programBus.getMediaStream();
       if (mediaStream) {
         const bitrate = parseInt(this.bitrateSelect.value);
-        this.icecastStreamer.start(mediaStream);
+        this.icecastStreamer.start(mediaStream, this.signaling.getWebSocket());
       }
     });
   }
@@ -462,6 +462,16 @@ class OpenStudioApp {
       return;
     }
 
+    // Check if connection is ready (must be "connected" for renegotiation to work)
+    // Query the actual RTCPeerConnection state, not just our tracked state
+    const pc = this.connectionManager.rtcManager.peerConnections.get(remotePeerId);
+    const rtcState = pc?.connectionState;
+
+    if (!pc || rtcState !== 'connected') {
+      console.log(`[App] Connection not ready for ${remotePeerId} (RTC state: ${rtcState}), keeping return feed pending`);
+      return; // Keep in pendingReturnFeeds, will retry when connection becomes "connected"
+    }
+
     // Get the mix-minus stream
     const mixMinusStream = this.audioGraph.getMixMinusStream(remotePeerId);
     if (!mixMinusStream) {
@@ -473,7 +483,7 @@ class OpenStudioApp {
     // Remove from pending FIRST to prevent retries
     this.pendingReturnFeeds.delete(remotePeerId);
 
-    console.log(`[App] Adding return feed track for ${remotePeerId}`);
+    console.log(`[App] Adding return feed track for ${remotePeerId} (connection is connected)`);
 
     try {
       // Add return feed track
@@ -685,8 +695,8 @@ class OpenStudioApp {
       // Update Icecast configuration with selected bitrate
       this.icecastStreamer.updateConfig({ bitrate });
 
-      // Start streaming
-      await this.icecastStreamer.start(mediaStream);
+      // Start streaming (pass signaling WebSocket for Safari fallback)
+      await this.icecastStreamer.start(mediaStream, this.signaling.getWebSocket());
     } catch (error) {
       console.error('[App] Failed to start streaming:', error);
       alert(`Failed to start streaming: ${error.message}`);

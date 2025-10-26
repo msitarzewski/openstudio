@@ -7,12 +7,22 @@ import * as logger from './logger.js';
 import { PeerRegistry, relayMessage, broadcastToRoom } from './signaling-protocol.js';
 import { validateSignalingMessage } from './message-validator.js';
 import { RoomManager } from './room-manager.js';
+import { IcecastProxy } from './icecast-proxy.js';
 
 // Global peer registry
 const peerRegistry = new PeerRegistry();
 
 // Global room manager
 const roomManager = new RoomManager();
+
+// Global Icecast proxy
+const icecastProxy = new IcecastProxy({
+  host: process.env.ICECAST_HOST || 'localhost',
+  port: parseInt(process.env.ICECAST_PORT || '6737'),
+  mountPoint: process.env.ICECAST_MOUNT || '/live.opus',
+  username: process.env.ICECAST_USER || 'source',
+  password: process.env.ICECAST_PASS || 'hackme'
+});
 
 /**
  * Create and configure WebSocket server
@@ -128,6 +138,18 @@ function handleMessage(ws, message) {
 
     case 'mute':
       handleMuteMessage(ws, message, peerId);
+      break;
+
+    case 'start-stream':
+      handleStartStream(ws, message, peerId);
+      break;
+
+    case 'stream-chunk':
+      handleStreamChunk(ws, message, peerId);
+      break;
+
+    case 'stop-stream':
+      handleStopStream(ws, message, peerId);
       break;
 
     default:
@@ -288,6 +310,66 @@ function handleMuteMessage(ws, message, peerId) {
   // Broadcast mute message to all participants in room (including sender for state sync)
   const count = broadcastToRoom(room, message, null);
   logger.info(`Broadcasted mute message from ${peerId} to ${count} participants (peerId: ${message.peerId}, muted: ${message.muted}, authority: ${message.authority})`);
+}
+
+/**
+ * Handle start-stream message
+ * @param {import('ws').WebSocket} ws - WebSocket connection
+ * @param {object} message - Start stream message
+ * @param {string} peerId - Peer ID
+ */
+async function handleStartStream(ws, message, peerId) {
+  if (!peerId) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Must register before starting stream'
+    }));
+    return;
+  }
+
+  logger.info(`Starting Icecast stream for peer ${peerId}`);
+  await icecastProxy.startStream(peerId, ws);
+}
+
+/**
+ * Handle stream-chunk message
+ * @param {import('ws').WebSocket} ws - WebSocket connection
+ * @param {object} message - Stream chunk message
+ * @param {string} peerId - Peer ID
+ */
+async function handleStreamChunk(ws, message, peerId) {
+  if (!peerId) {
+    return;
+  }
+
+  if (!message.chunk) {
+    logger.warn(`No chunk data in stream-chunk from ${peerId}`);
+    return;
+  }
+
+  // Convert base64 chunk to Buffer
+  const chunk = Buffer.from(message.chunk, 'base64');
+  await icecastProxy.handleChunk(peerId, chunk);
+}
+
+/**
+ * Handle stop-stream message
+ * @param {import('ws').WebSocket} ws - WebSocket connection
+ * @param {object} message - Stop stream message
+ * @param {string} peerId - Peer ID
+ */
+function handleStopStream(ws, message, peerId) {
+  if (!peerId) {
+    return;
+  }
+
+  logger.info(`Stopping Icecast stream for peer ${peerId}`);
+  icecastProxy.stopStream(peerId);
+
+  ws.send(JSON.stringify({
+    type: 'stream-stopped',
+    message: 'Stream stopped successfully'
+  }));
 }
 
 export default { createWebSocketServer };

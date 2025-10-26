@@ -38,8 +38,16 @@ async function createBrowser(name) {
   // Enable console logging
   page.on('console', msg => {
     const type = msg.type();
+    const text = msg.text();
+
+    // Log errors and warnings always
     if (type === 'error' || type === 'warning') {
-      console.log(`[${name}] ${type.toUpperCase()}: ${msg.text()}`);
+      console.log(`[${name}] ${type.toUpperCase()}: ${text}`);
+    }
+
+    // Also log return feed and negotiation related messages
+    if (text.includes('return feed') || text.includes('mix-minus') || text.includes('egotiation') || text.includes('pending')) {
+      console.log(`[${name}] ${text}`);
     }
   });
 
@@ -182,7 +190,7 @@ async function runTest() {
 
     // ===== Wait for WebRTC connections to establish =====
     console.log('--- Waiting for WebRTC connections ---');
-    await sleep(5000); // Allow time for initial connection + renegotiation
+    await sleep(8000); // Allow time for initial connection + renegotiation (increased for staggered delays)
 
     // ===== Verify microphone streams in audio graph =====
     console.log('--- Verifying microphone streams ---');
