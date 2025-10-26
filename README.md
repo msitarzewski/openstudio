@@ -63,7 +63,7 @@ Extend with plugins, integrate with existing tools, own your entire stack.
 - **Simple Join**: Click a link, grant mic permission, you're live—no account required
 - **Crystal Clear Audio**: No echo, no feedback, no weird delays
 - **Privacy Preserved**: Not tracked, not profiled, not monetized
-- **Browser Native**: Works in Chrome, Firefox, Safari—no downloads needed
+- **Browser Native**: Works in Brave, Chrome, Firefox—no downloads needed (Safari supported with limitations)
 
 ### For Developers
 
@@ -96,7 +96,7 @@ Host interviews remote guest, audience calls in with questions, producer manages
 
 - Node.js 18+
 - Docker + Docker Compose
-- Modern browser (Chrome, Firefox, or Safari)
+- Modern browser (Brave, Chrome, or Firefox recommended; Safari has stricter permissions)
 - 5 minutes
 
 ### First Time Setup
@@ -120,8 +120,8 @@ cp station-manifest.sample.json station-manifest.json
 ### Start Development Environment
 
 ```bash
-# Start all services (Docker mode - recommended for most users)
-./dev.sh
+# Start all services (Docker mode - recommended)
+./dev.sh start
 
 # In another terminal, start the web client
 cd web && python3 -m http.server 8086
@@ -131,6 +131,39 @@ cd web && python3 -m http.server 8086
 ```
 
 That's it. You're now running a professional broadcast studio on your own infrastructure.
+
+### Server Management
+
+The `./dev.sh` script provides simple commands for managing OpenStudio services:
+
+```bash
+# Start all services (default command)
+./dev.sh start
+./dev.sh          # same as 'start'
+
+# Stop all services
+./dev.sh stop
+
+# Restart all services (after code changes)
+./dev.sh restart
+
+# Check service status and health
+./dev.sh status
+
+# View logs
+./dev.sh logs              # All services
+./dev.sh logs signaling    # Signaling server only
+./dev.sh logs icecast      # Icecast server only
+
+# Get help
+./dev.sh help
+```
+
+**Quick restart workflow after code changes**:
+```bash
+./dev.sh restart           # Restart all services
+./dev.sh logs signaling    # Watch logs to verify
+```
 
 ### Development Modes
 
@@ -161,24 +194,42 @@ OpenStudio supports two development workflows configured via `.env` file:
 lsof -i :6736  # macOS/Linux
 netstat -ano | findstr :6736  # Windows
 
-# If Docker signaling is running
-docker compose stop signaling
-
-# If local dev server is running (Ctrl+C to stop)
+# Stop OpenStudio services
+./dev.sh stop
 ```
 
 **Services not starting**:
 ```bash
-# Check Docker services status
+# Check service status
+./dev.sh status
+
+# View logs to diagnose
+./dev.sh logs
+
+# Try restarting
+./dev.sh restart
+
+# If still having issues, check Docker directly
 docker compose ps
+docker compose logs
+```
 
-# View logs
-docker compose logs -f signaling
-docker compose logs -f icecast
+**Microphone not working** (macOS):
+```bash
+# 1. Check System Settings → Sound → Input
+#    - Verify correct microphone is selected
+#    - Verify input level shows activity when speaking
 
-# Restart all services
-docker compose down
-docker compose up -d
+# 2. Check browser permissions
+#    - Click microphone icon in address bar
+#    - Ensure correct device is selected
+
+# 3. Safari-specific issues
+#    - Safari has WebAudio quirks (see docs/SAFARI_WEBAUDIO_QUIRKS.md)
+#    - Level meters work but may appear blank initially
+#    - Recommended: Use Brave/Chrome for development
+
+# 4. Restart browser and try again
 ```
 
 ---

@@ -165,6 +165,16 @@ main {
   letter-spacing: 0.05em;
 }
 
+/* Per-participant level meter */
+.participant-level-meter {
+  width: 150px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  margin-top: var(--spacing-xs);
+  display: block;
+}
+
 .participant-status {
   display: flex;
   align-items: center;

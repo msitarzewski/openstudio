@@ -93,6 +93,11 @@ export class AudioGraph extends EventTarget {
       const gain = this.audioContext.createGain();
       gain.gain.value = 1.0; // Unity gain (0 dB)
 
+      // Create AnalyserNode for level metering
+      const analyser = this.audioContext.createAnalyser();
+      analyser.fftSize = 256; // Small FFT for real-time metering
+      analyser.smoothingTimeConstant = 0.3; // Light smoothing
+
       // Create DynamicsCompressorNode for light leveling
       const compressor = this.audioContext.createDynamicsCompressor();
       compressor.threshold.value = -24; // dB
@@ -101,9 +106,10 @@ export class AudioGraph extends EventTarget {
       compressor.attack.value = 0.003; // 3ms
       compressor.release.value = 0.25; // 250ms
 
-      // Connect nodes: source → gain → compressor → program bus
+      // Connect nodes: source → gain → analyser → compressor → program bus
       source.connect(gain);
-      gain.connect(compressor);
+      gain.connect(analyser);
+      analyser.connect(compressor);
 
       // Connect to program bus instead of destination
       this.programBus.connectParticipant(compressor, peerId);
@@ -112,6 +118,7 @@ export class AudioGraph extends EventTarget {
       this.participantNodes.set(peerId, {
         source,
         gain,
+        analyser,
         compressor,
         mediaStream
       });
@@ -129,7 +136,7 @@ export class AudioGraph extends EventTarget {
         detail: { peerId }
       }));
 
-      return { source, gain, compressor };
+      return { source, gain, analyser, compressor };
     } catch (error) {
       console.error(`[AudioGraph] Failed to add participant ${peerId}:`, error);
       this.dispatchEvent(new CustomEvent('error', {
@@ -165,6 +172,7 @@ export class AudioGraph extends EventTarget {
       // Disconnect all nodes
       nodes.source.disconnect();
       nodes.gain.disconnect();
+      nodes.analyser.disconnect();
       nodes.compressor.disconnect();
 
       // Remove from map
@@ -267,6 +275,16 @@ export class AudioGraph extends EventTarget {
    */
   getMixMinusManager() {
     return this.mixMinusManager;
+  }
+
+  /**
+   * Get participant's analyser node for level metering
+   * @param {string} peerId - Participant ID
+   * @returns {AnalyserNode|null}
+   */
+  getParticipantAnalyser(peerId) {
+    const nodes = this.participantNodes.get(peerId);
+    return nodes ? nodes.analyser : null;
   }
 
   /**

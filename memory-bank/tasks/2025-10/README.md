@@ -14,6 +14,14 @@
 
 ✅ **Release 0.1 Task Breakdown** - Comprehensive 20-task YAML breakdown created with 5 milestones, visual progress tracking (X-marker system), and complete workflow documentation.
 
+### Week 4 (Oct 26)
+
+✅ **Per-Participant Level Meters** - Real-time microphone level visualization in participant cards with full Safari WebAudio compatibility (RMS calculation, color-coded levels, works in all browsers).
+
+✅ **Enhanced Server Management** - Complete dev.sh command suite (start/stop/restart/status/logs) with health checks and service-specific log viewing.
+
+✅ **Safari WebAudio Compatibility** - Identified and fixed 4 Safari-specific WebAudio quirks, created comprehensive debugging guide (docs/SAFARI_WEBAUDIO_QUIRKS.md).
+
 ## Active Work
 
 - Release 0.1 implementation in progress
@@ -61,6 +69,7 @@
 21. **201025_port_reconfiguration.md** - Port reconfiguration to avoid common development tool conflicts (Infrastructure maintenance)
 22. **201021_docker_multiplatform_support.md** - Docker multi-platform support for macOS ARM64/x86_64/Linux (Infrastructure maintenance)
 23. **211021_dual_mode_development.md** - Dual-mode development with .env configuration (Infrastructure enhancement)
+24. **261025_per_participant_level_meters.md** - Per-participant microphone level meters with Safari WebAudio compatibility fixes (UX enhancement)
 
 ## Next Priorities
 

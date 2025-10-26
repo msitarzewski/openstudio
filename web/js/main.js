@@ -40,6 +40,7 @@ class OpenStudioApp {
     this.currentRoom = null;
     this.currentRole = null; // 'host' or 'caller'
     this.participants = new Map(); // peerId -> { name, role }
+    this.participantMeters = new Map(); // peerId -> VolumeMeter instance (for per-participant level meters)
 
     // Track which remote streams have been received (for distinguishing microphone vs return feed)
     // Each peer sends TWO streams: microphone (first) and return feed (second)
@@ -168,6 +169,14 @@ class OpenStudioApp {
       try {
         await this.rtc.getLocalStream();
         console.log('[App] Local media stream ready, waiting for callers...');
+
+        // Safari: Resume AudioContext after permission dialog
+        // The permission dialog causes Safari to suspend the context
+        await audioContextManager.resume();
+        console.log('[App] AudioContext resumed after microphone permission');
+
+        // Create level meter for local participant (self)
+        this.createLocalMeter();
       } catch (error) {
         console.error('[App] Failed to get local stream:', error);
       }
@@ -200,6 +209,15 @@ class OpenStudioApp {
       try {
         await this.rtc.getLocalStream();
         console.log('[App] Local stream ready, ConnectionManager will handle peer connections');
+
+        // Safari: Resume AudioContext after permission dialog
+        // The permission dialog causes Safari to suspend the context
+        await audioContextManager.resume();
+        console.log('[App] AudioContext resumed after microphone permission');
+
+        // Create level meter for local participant (self)
+        this.createLocalMeter();
+
         // ConnectionManager automatically handles connections via room-joined event
       } catch (error) {
         console.error('[App] Failed to get local stream:', error);
@@ -358,6 +376,9 @@ class OpenStudioApp {
           // Add to audio graph (creates mix-minus automatically)
           this.audioGraph.addParticipant(remotePeerId, stream);
           this.receivedMicrophoneStreams.add(remotePeerId);
+
+          // Create per-participant level meter
+          this.createParticipantMeter(remotePeerId);
 
           // Mark that we need to send return feed for this peer
           // Wait a moment for audio graph to fully initialize the mix-minus
@@ -889,6 +910,13 @@ class OpenStudioApp {
     roleEl.className = 'participant-role';
     roleEl.textContent = role.charAt(0).toUpperCase() + role.slice(1);
 
+    // Per-participant level meter
+    const levelMeterCanvas = document.createElement('canvas');
+    levelMeterCanvas.className = 'participant-level-meter';
+    levelMeterCanvas.width = 150;
+    levelMeterCanvas.height = 20;
+    levelMeterCanvas.dataset.peerId = peerId; // For debugging
+
     // Gain controls (only for remote participants, not self)
     const isSelf = peerId === this.peerId;
     if (!isSelf) {
@@ -926,6 +954,7 @@ class OpenStudioApp {
       card.appendChild(avatar);
       card.appendChild(nameEl);
       card.appendChild(roleEl);
+      card.appendChild(levelMeterCanvas);
       card.appendChild(controlsEl);
     } else {
       // Self - add mute button (for self-mute), but no gain controls
@@ -943,6 +972,7 @@ class OpenStudioApp {
       card.appendChild(avatar);
       card.appendChild(nameEl);
       card.appendChild(roleEl);
+      card.appendChild(levelMeterCanvas);
       card.appendChild(controlsEl);
     }
 
@@ -961,9 +991,116 @@ class OpenStudioApp {
   removeParticipant(peerId) {
     this.participants.delete(peerId);
 
+    // Cleanup level meter
+    const meter = this.participantMeters.get(peerId);
+    if (meter) {
+      meter.destroy();
+      this.participantMeters.delete(peerId);
+      console.log(`[App] Destroyed level meter for ${peerId}`);
+    }
+
     const card = this.participantsSection.querySelector(`[data-peer-id="${peerId}"]`);
     if (card) {
       card.remove();
+    }
+  }
+
+  /**
+   * Create per-participant level meter
+   */
+  createParticipantMeter(peerId) {
+    // Get the analyser node from audio graph
+    const analyser = this.audioGraph.getParticipantAnalyser(peerId);
+    if (!analyser) {
+      console.warn(`[App] No analyser found for ${peerId}, cannot create level meter`);
+      return;
+    }
+
+    // Get the canvas element from participant card
+    const card = this.participantsSection.querySelector(`[data-peer-id="${peerId}"]`);
+    if (!card) {
+      console.warn(`[App] No participant card found for ${peerId}, cannot create level meter`);
+      return;
+    }
+
+    const canvas = card.querySelector('.participant-level-meter');
+    if (!canvas) {
+      console.warn(`[App] No level meter canvas found for ${peerId}`);
+      return;
+    }
+
+    try {
+      // Create and start the volume meter
+      const volumeMeter = new VolumeMeter(canvas, analyser);
+      volumeMeter.start();
+      this.participantMeters.set(peerId, volumeMeter);
+      console.log(`[App] Created level meter for ${peerId}`);
+    } catch (error) {
+      console.error(`[App] Failed to create level meter for ${peerId}:`, error);
+    }
+  }
+
+  /**
+   * Create level meter for local participant (self)
+   */
+  createLocalMeter() {
+    // Get local stream from RTC manager
+    const localStream = this.rtc.localStream;
+    if (!localStream) {
+      console.warn('[App] No local stream available, cannot create local meter');
+      return;
+    }
+
+    // Get the canvas element for local participant
+    const card = this.participantsSection.querySelector(`[data-peer-id="${this.peerId}"]`);
+    if (!card) {
+      console.warn('[App] No local participant card found, cannot create local meter');
+      return;
+    }
+
+    const canvas = card.querySelector('.participant-level-meter');
+    if (!canvas) {
+      console.warn('[App] No level meter canvas found for local participant');
+      return;
+    }
+
+    try {
+      // Create analyser for local stream
+      const audioContext = audioContextManager.getContext();
+
+      // Safari: Log context state for debugging
+      console.log(`[App] AudioContext state before creating meter: ${audioContext.state}`);
+
+      const source = audioContext.createMediaStreamSource(localStream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.3;
+
+      // Create ultra-low-gain node for Safari compatibility
+      // Safari requires MediaStreamSources to be connected to destination
+      // AND suspends AudioContext when gain = 0, so use 0.001 instead
+      const ultraLowGain = audioContext.createGain();
+      ultraLowGain.gain.value = 0.001; // Nearly silent - prevents Safari suspension
+
+      // Connect: source → analyser → ultraLowGain → destination
+      // This keeps Safari's AudioContext active while being inaudible
+      source.connect(analyser);
+      analyser.connect(ultraLowGain);
+      ultraLowGain.connect(audioContext.destination);
+
+      // Create and start the volume meter
+      const volumeMeter = new VolumeMeter(canvas, analyser);
+      volumeMeter.start();
+      this.participantMeters.set(this.peerId, volumeMeter);
+      console.log('[App] Created level meter for local participant (self)');
+
+      // Safari: Force initial canvas render
+      setTimeout(() => {
+        const level = volumeMeter.getCurrentLevel();
+        console.log('[App] Safari canvas check - current level:', level);
+      }, 500);
+    } catch (error) {
+      console.error('[App] Failed to create local meter:', error);
     }
   }
 

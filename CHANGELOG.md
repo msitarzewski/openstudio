@@ -140,6 +140,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mesh network topology limits practical participant count to 10-15
 - Self-mute has architectural limitation (requires microphone track muting, not yet implemented)
 - Icecast credentials hard-coded (acceptable for localhost, needs server-side auth for production)
+- Safari WebAudio quirks: Requires AudioContext.resume() after permission dialog, zero-gain causes suspension (workaround implemented)
 - Manual testing pending for Tasks 016/017/018/019 (automated infrastructure complete)
 - No DHT station directory yet (planned for Release 0.2)
 - No waiting room/call screening (planned for Release 0.3)
