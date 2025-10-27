@@ -286,6 +286,8 @@
 ✅ **Enhanced Server Management** - Complete dev.sh command suite (start/stop/restart/status/logs/help)
 ✅ **Safari WebAudio Compatibility** - 4 quirks identified and fixed with comprehensive documentation
 ✅ **Browser Compatibility Matrix** - Verified working: Brave, Chrome, Firefox, Safari
+✅ **Room Persistence** - Automatic room recreation via URL, fixes reload bug
+✅ **Role System** - Tri-level roles (host/ops/guest) with permission enforcement
 
 ## Recent Achievements
 
@@ -308,6 +310,37 @@
 ✅ Created comprehensive Safari debugging guide (docs/SAFARI_WEBAUDIO_QUIRKS.md, 200 lines)
 ✅ **Browser compatibility verified**: Brave ✅, Chrome ✅, Firefox ✅, Safari ✅ (all working)
 ✅ **Enhanced Server Management Complete**: Comprehensive dev.sh command suite for development workflow
+
+### 2025-10-26 (Part 4 - Room Persistence & Role System)
+
+✅ **Room Persistence via Recreation Complete**: Automatic room recreation fixes critical reload bug and enables URL-based room sharing
+✅ Added `createOrJoinRoom(roomId, peerId, connection, role)` to room-manager.js (+65 lines)
+✅ Idempotent room access: room exists → join, doesn't exist → create with specified ID
+✅ Custom room ID support: Rooms can be created with user-specified IDs (not just UUIDs)
+✅ Added `create-or-join-room` message handler to websocket-server.js (+54 lines)
+✅ Role validation on server: must be 'host', 'ops', or 'guest'
+✅ **Tri-Level Role System Complete**: Expanded from binary host/caller to host/ops/guest with permission enforcement
+✅ Updated Room constructor to accept creator role parameter (default: 'host')
+✅ Added `getRole(peerId)` method to Room class for permission checks
+✅ Changed default role from 'caller' to 'guest' (more general terminology)
+✅ Added 'ops' role (production crew, future switchboard/mix operator)
+✅ **URL-Based Role Assignment**: Parse `#room-id?role=host|ops|guest` format in client
+✅ Enhanced `checkUrlHash()` in main.js to extract room ID and role parameter (+30 lines)
+✅ URLSearchParams parsing for query string in URL fragment
+✅ Added `createOrJoinRoom(roomId, role)` to signaling-client.js (+12 lines)
+✅ Updated `handleStartSession()` to use create-or-join-room logic (+20 lines)
+✅ **Permission Enforcement (Client + Server)**: Defense-in-depth permission validation
+✅ Client-side: Check role before showing UI controls and sending requests
+✅ Server-side: Validate role before broadcasting mute messages (+25 lines)
+✅ Streaming controls: Visible only to host role
+✅ Mute permissions: Host/ops can mute others (producer authority), guests only self
+✅ Permission errors: Clear user feedback when action denied
+✅ **UI Improvements**: Removed placeholder cards, role-based display names
+✅ Removed hardcoded participant cards from index.html (-29 lines)
+✅ Empty participants section on page load (cards added dynamically)
+✅ Role-aware display names: "Host (You)", "Ops (You)", "You" for self
+✅ CSS classes for role styling: `.role-host`, `.role-ops`, `.role-guest`
+✅ All role references updated from 'caller' to 'guest' throughout codebase
 ✅ Rewrote dev.sh with command support: start|stop|restart|status|logs|help (+149 lines)
 ✅ Implemented start_services() - backward compatible startup
 ✅ Implemented stop_services() - clean shutdown with confirmation

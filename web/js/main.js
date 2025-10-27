@@ -38,7 +38,7 @@ class OpenStudioApp {
 
     // State
     this.currentRoom = null;
-    this.currentRole = null; // 'host' or 'caller'
+    this.currentRole = null; // 'host', 'ops', or 'guest'
     this.participants = new Map(); // peerId -> { name, role }
     this.participantMeters = new Map(); // peerId -> VolumeMeter instance (for per-participant level meters)
 
@@ -144,11 +144,11 @@ class OpenStudioApp {
     });
 
     this.signaling.addEventListener('room-created', async (event) => {
-      const { roomId, hostId } = event.detail;
-      console.log(`[App] Room created: ${roomId}`);
+      const { roomId, hostId, role } = event.detail;
+      console.log(`[App] Room created: ${roomId} as ${role}`);
 
       this.currentRoom = roomId;
-      this.currentRole = 'host';
+      this.currentRole = role || 'host'; // Use role from server, fallback to host
 
       // Update URL with room ID
       window.location.hash = roomId;
@@ -159,11 +159,15 @@ class OpenStudioApp {
       this.endSessionButton.disabled = false;
       this.toggleMuteButton.disabled = false;
 
-      // Enable streaming for host
-      this.startStreamingButton.disabled = false;
+      // Enable streaming only for host
+      if (this.currentRole === 'host') {
+        this.startStreamingButton.disabled = false;
+      }
 
-      // Add self to participants
-      this.addParticipant(this.peerId, 'Host (You)', 'host');
+      // Add self to participants with role from server
+      const displayName = this.currentRole === 'host' ? 'Host (You)' :
+                          this.currentRole === 'ops' ? 'Ops (You)' : 'You';
+      this.addParticipant(this.peerId, displayName, this.currentRole);
 
       // Get local media stream
       try {
@@ -183,11 +187,11 @@ class OpenStudioApp {
     });
 
     this.signaling.addEventListener('room-joined', async (event) => {
-      const { roomId, participants } = event.detail;
-      console.log(`[App] Joined room: ${roomId}`, participants);
+      const { roomId, participants, role } = event.detail;
+      console.log(`[App] Joined room: ${roomId} as ${role}`, participants);
 
       this.currentRoom = roomId;
-      this.currentRole = 'caller';
+      this.currentRole = role || 'guest'; // Use role from server, fallback to guest
 
       // Update UI
       this.setStatus('connected', `Room: ${roomId.substring(0, 8)}...`);
@@ -198,12 +202,16 @@ class OpenStudioApp {
       // Add existing participants
       participants.forEach(p => {
         if (p.peerId !== this.peerId) {
-          this.addParticipant(p.peerId, p.role === 'host' ? 'Host' : 'Caller', p.role);
+          const displayName = p.role === 'host' ? 'Host' :
+                              p.role === 'ops' ? 'Ops' : 'Guest';
+          this.addParticipant(p.peerId, displayName, p.role);
         }
       });
 
-      // Add self
-      this.addParticipant(this.peerId, 'You', 'caller');
+      // Add self with role from server
+      const displayName = this.currentRole === 'host' ? 'Host (You)' :
+                          this.currentRole === 'ops' ? 'Ops (You)' : 'You';
+      this.addParticipant(this.peerId, displayName, this.currentRole);
 
       // Get local media stream
       try {
@@ -228,7 +236,9 @@ class OpenStudioApp {
       const { peerId, role } = event.detail;
       console.log(`[App] Peer joined: ${peerId} (${role})`);
 
-      this.addParticipant(peerId, role === 'host' ? 'Host' : 'Caller', role);
+      const displayName = role === 'host' ? 'Host' :
+                          role === 'ops' ? 'Ops' : 'Guest';
+      this.addParticipant(peerId, displayName, role);
       // ConnectionManager automatically handles connection initiation via peer-joined event
     });
 
@@ -542,13 +552,38 @@ class OpenStudioApp {
   }
 
   /**
-   * Check URL hash for room ID (join flow)
+   * Check URL hash for room ID and role (join flow)
+   * Format: #room-id?role=host|ops|guest
    */
   checkUrlHash() {
     const hash = window.location.hash.substring(1); // Remove '#'
-    if (hash) {
-      console.log(`[App] Found room ID in URL: ${hash}`);
-      this.roomIdFromUrl = hash;
+    if (!hash) {
+      return;
+    }
+
+    // Parse room ID and query parameters
+    const [roomId, queryString] = hash.split('?');
+
+    if (roomId) {
+      console.log(`[App] Found room ID in URL: ${roomId}`);
+      this.roomIdFromUrl = roomId;
+    }
+
+    // Parse role from query string
+    if (queryString) {
+      const params = new URLSearchParams(queryString);
+      const role = params.get('role');
+      if (role && ['host', 'ops', 'guest'].includes(role)) {
+        console.log(`[App] Found role in URL: ${role}`);
+        this.roleFromUrl = role;
+      } else if (role) {
+        console.warn(`[App] Invalid role in URL: ${role}. Using default (guest)`);
+      }
+    }
+
+    // Default to guest if no role specified
+    if (!this.roleFromUrl) {
+      this.roleFromUrl = 'guest';
     }
   }
 
@@ -572,24 +607,26 @@ class OpenStudioApp {
       console.log('[App] Volume meter started');
     }
 
-    // Check if we should create or join
+    // Use create-or-join-room logic
     if (this.roomIdFromUrl) {
-      // Join existing room
-      console.log(`[App] Joining room: ${this.roomIdFromUrl}`);
-      this.signaling.joinRoom(this.roomIdFromUrl);
+      // Room ID in URL - create or join it with role from URL
+      const role = this.roleFromUrl || 'guest';
+      console.log(`[App] Creating or joining room: ${this.roomIdFromUrl} as ${role}`);
+      this.signaling.createOrJoinRoom(this.roomIdFromUrl, role);
     } else {
-      // Create new room
+      // No room ID in URL - prompt user
       const confirmCreate = confirm('Create a new room? Click OK to create, or Cancel to join an existing room.');
 
       if (confirmCreate) {
-        console.log('[App] Creating new room...');
-        this.signaling.createRoom();
+        // Create new room as host
+        console.log('[App] Creating new room as host...');
+        this.signaling.createOrJoinRoom(null, 'host'); // null = generate new UUID
       } else {
         // Prompt for room ID
         const roomId = prompt('Enter room ID to join:');
         if (roomId) {
-          console.log(`[App] Joining room: ${roomId}`);
-          this.signaling.joinRoom(roomId);
+          console.log(`[App] Joining room: ${roomId} as guest`);
+          this.signaling.createOrJoinRoom(roomId, 'guest');
         }
       }
     }
@@ -753,14 +790,25 @@ class OpenStudioApp {
       return;
     }
 
+    // Determine authority based on role
+    // Host and ops can mute anyone (producer authority)
+    // Guests can only mute themselves (self authority)
+    const canMuteOthers = this.currentRole === 'host' || this.currentRole === 'ops';
+    const isSelf = peerId === this.peerId;
+
+    // Check permissions
+    if (!isSelf && !canMuteOthers) {
+      console.warn(`[App] Guest cannot mute other participants`);
+      alert('Only hosts and ops can mute other participants.');
+      return;
+    }
+
     // Get current mute state
     const muteState = this.muteManager.getMuteState(peerId);
     const currentlyMuted = muteState.muted;
 
-    // Determine authority
-    // Host can mute anyone (producer authority)
-    // Participants can only mute themselves (self authority)
-    const authority = this.currentRole === 'host' ? 'producer' : 'self';
+    // Set authority
+    const authority = canMuteOthers && !isSelf ? 'producer' : 'self';
 
     // Toggle mute
     const newMutedState = !currentlyMuted;
@@ -771,7 +819,7 @@ class OpenStudioApp {
     if (!success) {
       console.warn(`[App] Mute action blocked for ${peerId} (conflict with ${muteState.authority} authority)`);
       // Show user feedback that action was blocked
-      alert('Cannot override host mute. Please ask the host to unmute you.');
+      alert('Cannot override host/ops mute. Please ask them to unmute you.');
     } else {
       console.log(`[App] ${newMutedState ? 'Muted' : 'Unmuted'} participant: ${peerId} (authority: ${authority})`);
     }
@@ -907,7 +955,7 @@ class OpenStudioApp {
     nameEl.textContent = name;
 
     const roleEl = document.createElement('div');
-    roleEl.className = 'participant-role';
+    roleEl.className = `participant-role role-${role}`;
     roleEl.textContent = role.charAt(0).toUpperCase() + role.slice(1);
 
     // Per-participant level meter

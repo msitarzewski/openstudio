@@ -63,6 +63,73 @@ export class RoomManager {
   }
 
   /**
+   * Create or join a room (idempotent operation)
+   * If room exists, join it. If not, create it with the specified ID.
+   * @param {string|null} roomId - Room ID to create/join (null = generate new UUID)
+   * @param {string} peerId - Peer ID
+   * @param {import('ws').WebSocket} connection - WebSocket connection
+   * @param {string} role - Participant role: 'host', 'ops', or 'guest' (default: 'guest')
+   * @returns {{success: boolean, roomId?: string, room?: Room, created?: boolean, error?: string}}
+   */
+  createOrJoinRoom(roomId, peerId, connection, role = 'guest') {
+    // Check if peer is already in a room
+    if (this.peerToRoom.has(peerId)) {
+      const existingRoomId = this.peerToRoom.get(peerId);
+      logger.warn(`Peer ${peerId} already in room ${existingRoomId}`);
+      return {
+        success: false,
+        error: `Peer is already in room "${existingRoomId}"`
+      };
+    }
+
+    // Generate room ID if not provided
+    const finalRoomId = roomId || randomUUID();
+
+    // Check if room already exists
+    let room = this.rooms.get(finalRoomId);
+    let created = false;
+
+    if (room) {
+      // Room exists - join it
+      logger.info(`Peer ${peerId} joining existing room ${finalRoomId} as ${role}`);
+
+      const result = room.addParticipant(peerId, connection, role);
+      if (!result.success) {
+        return result;
+      }
+
+      // Store mapping
+      this.peerToRoom.set(peerId, finalRoomId);
+
+      return {
+        success: true,
+        roomId: finalRoomId,
+        room,
+        created: false
+      };
+    } else {
+      // Room doesn't exist - create it
+      logger.info(`Creating new room ${finalRoomId} for peer ${peerId} as ${role}`);
+
+      // Create room with first participant
+      room = new Room(finalRoomId, peerId, connection, role);
+
+      // Store room and mapping
+      this.rooms.set(finalRoomId, room);
+      this.peerToRoom.set(peerId, finalRoomId);
+
+      logger.info(`Room created: ${finalRoomId} by ${peerId} (${role}) (total rooms: ${this.rooms.size})`);
+
+      return {
+        success: true,
+        roomId: finalRoomId,
+        room,
+        created: true
+      };
+    }
+  }
+
+  /**
    * Join an existing room
    * @param {string} roomId - Room ID to join
    * @param {string} peerId - Peer ID

@@ -22,6 +22,8 @@
 
 ✅ **Safari WebAudio Compatibility** - Identified and fixed 4 Safari-specific WebAudio quirks, created comprehensive debugging guide (docs/SAFARI_WEBAUDIO_QUIRKS.md).
 
+✅ **Room Persistence & Role System** - Automatic room recreation on URL-based joins, tri-level role system (host/ops/guest) with permission enforcement, enables URL sharing and pre-show workflows.
+
 ## Active Work
 
 - Release 0.1 implementation in progress
@@ -70,6 +72,7 @@
 22. **201021_docker_multiplatform_support.md** - Docker multi-platform support for macOS ARM64/x86_64/Linux (Infrastructure maintenance)
 23. **211021_dual_mode_development.md** - Dual-mode development with .env configuration (Infrastructure enhancement)
 24. **261025_per_participant_level_meters.md** - Per-participant microphone level meters with Safari WebAudio compatibility fixes (UX enhancement)
+25. **261025_room_persistence_role_system.md** - Room persistence via recreation and tri-level role system (host/ops/guest) with URL-based assignment (UX enhancement)
 
 ## Next Priorities
 

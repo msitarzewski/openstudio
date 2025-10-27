@@ -130,6 +130,10 @@ function handleMessage(ws, message) {
       handleJoinRoom(ws, message, peerId);
       break;
 
+    case 'create-or-join-room':
+      handleCreateOrJoinRoom(ws, message, peerId);
+      break;
+
     case 'offer':
     case 'answer':
     case 'ice-candidate':
@@ -283,6 +287,73 @@ function handleJoinRoom(ws, message, peerId) {
 }
 
 /**
+ * Handle create-or-join-room message (idempotent room access)
+ * @param {import('ws').WebSocket} ws - WebSocket connection
+ * @param {object} message - Create or join room message
+ * @param {string} peerId - Peer ID
+ */
+function handleCreateOrJoinRoom(ws, message, peerId) {
+  if (!peerId) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Must register before creating or joining a room'
+    }));
+    return;
+  }
+
+  // Extract roomId and role from message
+  const roomId = message.roomId || null; // null = generate new UUID
+  const role = message.role || 'guest'; // Default to guest
+
+  // Validate role
+  const validRoles = ['host', 'ops', 'guest'];
+  if (!validRoles.includes(role)) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: `Invalid role "${role}". Must be one of: host, ops, guest`
+    }));
+    return;
+  }
+
+  const result = roomManager.createOrJoinRoom(roomId, peerId, ws, role);
+
+  if (result.success) {
+    // Get participant list
+    const participants = result.room.getParticipants();
+
+    if (result.created) {
+      // Send room-created confirmation to creator
+      ws.send(JSON.stringify({
+        type: 'room-created',
+        roomId: result.roomId,
+        hostId: peerId,
+        role: role
+      }));
+    } else {
+      // Send room-joined confirmation to joiner
+      ws.send(JSON.stringify({
+        type: 'room-joined',
+        roomId: result.roomId,
+        participants: participants,
+        role: role
+      }));
+
+      // Broadcast peer-joined to all existing participants (except the joiner)
+      result.room.broadcast({
+        type: 'peer-joined',
+        peerId: peerId,
+        role: role
+      }, peerId);
+    }
+  } else {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: result.error
+    }));
+  }
+}
+
+/**
  * Handle mute message (broadcast to all peers in room)
  * @param {import('ws').WebSocket} ws - WebSocket connection
  * @param {object} message - Mute message
@@ -307,9 +378,38 @@ function handleMuteMessage(ws, message, peerId) {
     return;
   }
 
+  // Validate permissions based on role and authority
+  const senderRole = room.getRole(peerId);
+  const targetPeerId = message.peerId;
+  const authority = message.authority;
+  const isSelf = targetPeerId === peerId;
+
+  // Check permissions
+  if (authority === 'producer' && !isSelf) {
+    // Producer authority on others requires host or ops role
+    if (senderRole !== 'host' && senderRole !== 'ops') {
+      logger.warn(`Permission denied: ${peerId} (${senderRole}) attempted producer mute on ${targetPeerId}`);
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Only hosts and ops can mute other participants'
+      }));
+      return;
+    }
+  }
+
+  if (authority === 'self' && !isSelf) {
+    // Self authority must be on self
+    logger.warn(`Permission denied: ${peerId} attempted self-mute on ${targetPeerId} (not self)`);
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Self authority can only be used on yourself'
+    }));
+    return;
+  }
+
   // Broadcast mute message to all participants in room (including sender for state sync)
   const count = broadcastToRoom(room, message, null);
-  logger.info(`Broadcasted mute message from ${peerId} to ${count} participants (peerId: ${message.peerId}, muted: ${message.muted}, authority: ${message.authority})`);
+  logger.info(`Broadcasted mute message from ${peerId} (${senderRole}) to ${count} participants (peerId: ${targetPeerId}, muted: ${message.muted}, authority: ${authority})`);
 }
 
 /**

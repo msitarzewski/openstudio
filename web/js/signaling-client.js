@@ -215,6 +215,24 @@ export class SignalingClient extends EventTarget {
   }
 
   /**
+   * Create or join a room (idempotent operation)
+   * @param {string|null} roomId - Room ID to create/join (null = generate new UUID)
+   * @param {string} role - Participant role: 'host', 'ops', or 'guest' (default: 'guest')
+   */
+  createOrJoinRoom(roomId, role = 'guest') {
+    if (!this.isRegistered) {
+      console.error('[Signaling] Cannot create or join room - not registered');
+      return false;
+    }
+
+    return this.send({
+      type: 'create-or-join-room',
+      roomId: roomId, // Can be null to generate new UUID
+      role: role
+    });
+  }
+
+  /**
    * Send SDP offer to target peer
    */
   sendOffer(targetPeerId, sdp) {

@@ -8,33 +8,34 @@ export class Room {
   /**
    * Create a new room
    * @param {string} roomId - Unique room identifier
-   * @param {string} hostId - Peer ID of the host
-   * @param {import('ws').WebSocket} hostConnection - Host's WebSocket connection
+   * @param {string} creatorId - Peer ID of the room creator
+   * @param {import('ws').WebSocket} creatorConnection - Creator's WebSocket connection
+   * @param {string} creatorRole - Creator's role: 'host', 'ops', or 'guest' (default: 'host')
    */
-  constructor(roomId, hostId, hostConnection) {
+  constructor(roomId, creatorId, creatorConnection, creatorRole = 'host') {
     this.roomId = roomId;
-    this.hostId = hostId;
+    this.hostId = creatorId; // Keep for backward compatibility (first creator is considered "host")
 
-    // Map of peerId -> { role: 'host'|'caller', connection: WebSocket }
+    // Map of peerId -> { role: 'host'|'ops'|'guest', connection: WebSocket }
     this.participants = new Map();
 
-    // Add host as first participant
-    this.participants.set(hostId, {
-      role: 'host',
-      connection: hostConnection
+    // Add creator as first participant
+    this.participants.set(creatorId, {
+      role: creatorRole,
+      connection: creatorConnection
     });
 
-    logger.info(`Room created: ${roomId} with host: ${hostId}`);
+    logger.info(`Room created: ${roomId} with creator: ${creatorId} (${creatorRole})`);
   }
 
   /**
    * Add a participant to the room
    * @param {string} peerId - Peer ID
    * @param {import('ws').WebSocket} connection - WebSocket connection
-   * @param {string} role - Participant role ('host' or 'caller')
+   * @param {string} role - Participant role: 'host', 'ops', or 'guest' (default: 'guest')
    * @returns {{success: boolean, error?: string}}
    */
-  addParticipant(peerId, connection, role = 'caller') {
+  addParticipant(peerId, connection, role = 'guest') {
     if (this.participants.has(peerId)) {
       logger.warn(`Peer ${peerId} already in room ${this.roomId}`);
       return {
@@ -71,6 +72,16 @@ export class Room {
       peerId,
       role: data.role
     }));
+  }
+
+  /**
+   * Get role for a specific peer
+   * @param {string} peerId - Peer ID
+   * @returns {string|undefined} Role or undefined if peer not in room
+   */
+  getRole(peerId) {
+    const participant = this.participants.get(peerId);
+    return participant ? participant.role : undefined;
   }
 
   /**
