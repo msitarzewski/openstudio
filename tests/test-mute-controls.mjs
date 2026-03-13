@@ -13,7 +13,7 @@
 
 import { chromium } from 'playwright';
 
-const WEB_URL = 'http://localhost:8086';
+const WEB_URL = 'http://localhost:6736';
 const TIMEOUT = 5000;
 
 async function testMuteControls() {
