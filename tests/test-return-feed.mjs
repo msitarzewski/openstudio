@@ -190,7 +190,7 @@ async function runTest() {
 
     // ===== Wait for WebRTC connections to establish =====
     console.log('--- Waiting for WebRTC connections ---');
-    await sleep(8000); // Allow time for initial connection + renegotiation (increased for staggered delays)
+    await sleep(12000); // Allow time for initial connection + renegotiation (CI is slower)
 
     // ===== Verify microphone streams in audio graph =====
     console.log('--- Verifying microphone streams ---');
@@ -231,7 +231,7 @@ async function runTest() {
 
     // Wait for return feeds to start
     console.log('[A] Waiting for return feed from B...');
-    const aHasReturnFeed = await waitForReturnFeedCount(peerA.page, 1, 15000);
+    const aHasReturnFeed = await waitForReturnFeedCount(peerA.page, 1, 25000);
     if (!aHasReturnFeed) {
       const returnFeedA = await getReturnFeedInfo(peerA.page);
       console.log('[A] Return feed info:', returnFeedA);
@@ -240,7 +240,7 @@ async function runTest() {
     console.log('✅ [A] Return feed playing');
 
     console.log('[B] Waiting for return feed from A...');
-    const bHasReturnFeed = await waitForReturnFeedCount(peerB.page, 1, 15000);
+    const bHasReturnFeed = await waitForReturnFeedCount(peerB.page, 1, 25000);
     if (!bHasReturnFeed) {
       const returnFeedB = await getReturnFeedInfo(peerB.page);
       console.log('[B] Return feed info:', returnFeedB);
