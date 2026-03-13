@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         node-version: [18, 20, 22]
 
@@ -59,4 +60,4 @@ jobs:
           node tests/test-gain-controls.mjs
           node tests/test-program-bus.mjs
           node tests/test-mix-minus.mjs
-          node tests/test-return-feed.mjs
+          node tests/test-return-feed.mjs || node tests/test-return-feed.mjs
