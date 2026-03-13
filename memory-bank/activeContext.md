@@ -1,14 +1,15 @@
 # Active Context: OpenStudio
 
-**Last Updated**: 2026-03-13 (Release 0.2.1 Security Hardening — In Progress)
+**Last Updated**: 2026-03-13 (Release 0.2.1 Security Hardening — PR Open)
 
 ## Current Phase
 
 **Release**: 0.2.1 (Security Hardening)
 **Branch**: `release/0.2.1-security-hardening`
-**Status**: Implementation in progress (changes staged, not yet committed)
-**Focus**: Server-side security hardening, JWT auth, rate limiting, CORS, input validation
-**Next**: Commit, test, merge to main
+**Status**: PR #1 open, CI green (Node 18/20/22), awaiting merge
+**PR**: https://github.com/msitarzewski/openstudio/pull/1
+**Focus**: Merge PR, deploy to production
+**Next**: Merge PR to main, pull on umacbookpro, restart service
 
 ## Recent Decisions
 
