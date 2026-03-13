@@ -140,7 +140,7 @@ async function runTest(name, testFn) {
 // Test 1: Create room
 async function testCreateRoom() {
   const ws = await createConnection();
-  await registerPeer(ws, 'host-1');
+  await registerPeer(ws, '10000001-0001-4001-8001-000000000001');
 
   // Create room
   const response = await sendAndWaitFor(ws, {
@@ -151,7 +151,7 @@ async function testCreateRoom() {
     throw new Error('No roomId in response');
   }
 
-  if (response.hostId !== 'host-1') {
+  if (response.hostId !== '10000001-0001-4001-8001-000000000001') {
     throw new Error('Host ID mismatch');
   }
 
@@ -172,8 +172,8 @@ async function testJoinRoom() {
   ]);
 
   await Promise.all([
-    registerPeer(host, 'host-2'),
-    registerPeer(caller, 'caller-2')
+    registerPeer(host, '10000002-0002-4002-8002-000000000002'),
+    registerPeer(caller, '20000002-0002-4002-8002-000000000002')
   ]);
 
   // Host creates room
@@ -207,7 +207,7 @@ async function testJoinRoom() {
 
   // Verify host received peer-joined event
   const peerJoined = await peerJoinedPromise;
-  if (peerJoined.peerId !== 'caller-2') {
+  if (peerJoined.peerId !== '20000002-0002-4002-8002-000000000002') {
     throw new Error('Peer joined event has wrong peerId');
   }
 
@@ -228,9 +228,9 @@ async function testMultipleParticipants() {
   ]);
 
   await Promise.all([
-    registerPeer(host, 'host-3'),
-    registerPeer(caller1, 'caller-3a'),
-    registerPeer(caller2, 'caller-3b')
+    registerPeer(host, '10000003-0003-4003-8003-000000000003'),
+    registerPeer(caller1, '2000003a-003a-400a-800a-00000000003a'),
+    registerPeer(caller2, '2000003b-003b-400b-800b-00000000003b')
   ]);
 
   // Host creates room
@@ -258,11 +258,11 @@ async function testMultipleParticipants() {
     }, 'room-joined')
   ]);
 
-  if (hostNotif.peerId !== 'caller-3b') {
+  if (hostNotif.peerId !== '2000003b-003b-400b-800b-00000000003b') {
     throw new Error('Host did not receive correct peer-joined');
   }
 
-  if (caller1Notif.peerId !== 'caller-3b') {
+  if (caller1Notif.peerId !== '2000003b-003b-400b-800b-00000000003b') {
     throw new Error('Caller1 did not receive correct peer-joined');
   }
 
@@ -279,8 +279,8 @@ async function testParticipantDisconnect() {
   ]);
 
   await Promise.all([
-    registerPeer(host, 'host-4'),
-    registerPeer(caller, 'caller-4')
+    registerPeer(host, '10000004-0004-4004-8004-000000000004'),
+    registerPeer(caller, '20000004-0004-4004-8004-000000000004')
   ]);
 
   // Create and join room
@@ -304,7 +304,7 @@ async function testParticipantDisconnect() {
 
   // Host should receive peer-left
   const peerLeft = await peerLeftPromise;
-  if (peerLeft.peerId !== 'caller-4') {
+  if (peerLeft.peerId !== '20000004-0004-4004-8004-000000000004') {
     throw new Error('Peer left event has wrong peerId');
   }
 
@@ -314,7 +314,7 @@ async function testParticipantDisconnect() {
 // Test 5: Last participant leaves - room should be deleted
 async function testLastParticipantLeaves() {
   const ws = await createConnection();
-  await registerPeer(ws, 'host-5');
+  await registerPeer(ws, '10000005-0005-4005-8005-000000000005');
 
   // Create room
   const createResponse = await sendAndWaitFor(ws, {
@@ -331,7 +331,7 @@ async function testLastParticipantLeaves() {
 
   // Try to join the now-deleted room
   const newWs = await createConnection();
-  await registerPeer(newWs, 'new-caller');
+  await registerPeer(newWs, '30000005-0005-4005-8005-000000000005');
 
   const errorResponse = await sendAndWaitFor(newWs, {
     type: 'join-room',
@@ -348,7 +348,7 @@ async function testLastParticipantLeaves() {
 // Test 6: Join non-existent room
 async function testJoinNonExistentRoom() {
   const ws = await createConnection();
-  await registerPeer(ws, 'caller-6');
+  await registerPeer(ws, '20000006-0006-4006-8006-000000000006');
 
   const errorResponse = await sendAndWaitFor(ws, {
     type: 'join-room',
@@ -370,8 +370,8 @@ async function testUniqueRoomIds() {
   ]);
 
   await Promise.all([
-    registerPeer(host1, 'host-7a'),
-    registerPeer(host2, 'host-7b')
+    registerPeer(host1, '1000007a-007a-400a-800a-00000000007a'),
+    registerPeer(host2, '1000007b-007b-400b-800b-00000000007b')
   ]);
 
   const [response1, response2] = await Promise.all([
@@ -396,9 +396,9 @@ async function testCannotJoinMultipleRooms() {
   ]);
 
   await Promise.all([
-    registerPeer(host1, 'host-8a'),
-    registerPeer(host2, 'host-8b'),
-    registerPeer(caller, 'caller-8')
+    registerPeer(host1, '1000008a-008a-400a-800a-00000000008a'),
+    registerPeer(host2, '1000008b-008b-400b-800b-00000000008b'),
+    registerPeer(caller, '20000008-0008-4008-8008-000000000008')
   ]);
 
   // Create two rooms

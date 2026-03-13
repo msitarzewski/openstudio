@@ -8,6 +8,7 @@ import { PeerRegistry, relayMessage, broadcastToRoom } from './signaling-protoco
 import { validateSignalingMessage } from './message-validator.js';
 import { RoomManager } from './room-manager.js';
 import { IcecastProxy } from './icecast-proxy.js';
+import { generateRoomToken, generateInviteToken, verifyToken } from './auth.js';
 
 // Global peer registry
 const peerRegistry = new PeerRegistry();
@@ -21,8 +22,52 @@ const icecastProxy = new IcecastProxy({
   port: parseInt(process.env.ICECAST_PORT || '6737'),
   mountPoint: process.env.ICECAST_MOUNT || '/live.opus',
   username: process.env.ICECAST_USER || 'source',
-  password: process.env.ICECAST_PASS || 'hackme'
+  password: process.env.ICECAST_PASS || ''
 });
+
+// Per-connection rate limiting
+const RATE_LIMIT_WINDOW_MS = 10000; // 10 seconds
+const RATE_LIMIT_MAX_SIGNALING = 100; // signaling messages per window
+const RATE_LIMIT_MAX_STREAM = 500; // stream-chunk messages per window
+const MAX_CONNECTIONS_PER_IP = 10;
+const connectionsByIp = new Map(); // ip -> count
+
+// ICE config for room responses (set via setIceConfig from server.js)
+let iceConfig = null;
+
+/**
+ * Set ICE config (called from server.js after config is loaded)
+ */
+export function setIceConfig(ice) {
+  iceConfig = ice;
+}
+
+/**
+ * Simple sliding-window rate limiter
+ */
+function checkRateLimit(ws, messageType) {
+  if (!ws._rateLimitState) {
+    ws._rateLimitState = { signaling: 0, stream: 0, windowStart: Date.now() };
+  }
+
+  const state = ws._rateLimitState;
+  const now = Date.now();
+
+  // Reset window if expired
+  if (now - state.windowStart > RATE_LIMIT_WINDOW_MS) {
+    state.signaling = 0;
+    state.stream = 0;
+    state.windowStart = now;
+  }
+
+  if (messageType === 'stream-chunk') {
+    state.stream++;
+    return state.stream <= RATE_LIMIT_MAX_STREAM;
+  } else {
+    state.signaling++;
+    return state.signaling <= RATE_LIMIT_MAX_SIGNALING;
+  }
+}
 
 /**
  * Create and configure WebSocket server
@@ -30,10 +75,20 @@ const icecastProxy = new IcecastProxy({
  * @returns {WebSocketServer} Configured WebSocket server
  */
 export function createWebSocketServer(httpServer) {
-  const wss = new WebSocketServer({ server: httpServer });
+  const wss = new WebSocketServer({ server: httpServer, maxPayload: 256 * 1024 }); // 256KB max message
 
   wss.on('connection', (ws, request) => {
     const clientIp = request.socket.remoteAddress;
+
+    // Per-IP connection limiting
+    const currentCount = connectionsByIp.get(clientIp) || 0;
+    if (currentCount >= MAX_CONNECTIONS_PER_IP) {
+      logger.warn(`Connection limit exceeded for ${clientIp}`);
+      ws.close(4008, 'Too many connections');
+      return;
+    }
+    connectionsByIp.set(clientIp, currentCount + 1);
+
     logger.info('WebSocket client connected:', clientIp);
 
     // Send welcome message (optional, for debugging)
@@ -43,6 +98,14 @@ export function createWebSocketServer(httpServer) {
     ws.on('message', (data) => {
       try {
         const message = JSON.parse(data.toString());
+
+        // Rate limit check
+        if (!checkRateLimit(ws, message.type)) {
+          logger.warn(`Rate limit exceeded for ${clientIp}`);
+          ws.send(JSON.stringify({ type: 'error', message: 'Rate limit exceeded' }));
+          return;
+        }
+
         handleMessage(ws, message);
       } catch (error) {
         logger.error('Failed to parse WebSocket message:', error.message);
@@ -52,6 +115,14 @@ export function createWebSocketServer(httpServer) {
 
     // Handle client disconnection
     ws.on('close', () => {
+      // Decrement per-IP connection count
+      const count = connectionsByIp.get(clientIp) || 1;
+      if (count <= 1) {
+        connectionsByIp.delete(clientIp);
+      } else {
+        connectionsByIp.set(clientIp, count - 1);
+      }
+
       const peerId = peerRegistry.getPeerId(ws);
 
       if (peerId) {
@@ -144,6 +215,10 @@ function handleMessage(ws, message) {
       handleMuteMessage(ws, message, peerId);
       break;
 
+    case 'request-invite':
+      handleRequestInvite(ws, message, peerId);
+      break;
+
     case 'start-stream':
       handleStartStream(ws, message, peerId);
       break;
@@ -197,7 +272,7 @@ function handleRegister(ws, message) {
  * @param {string} peerId - Sender's peer ID
  */
 function handleSignalingMessage(ws, message, peerId) {
-  const result = relayMessage(peerRegistry, message, peerId);
+  const result = relayMessage(peerRegistry, message, peerId, roomManager);
 
   if (!result.success) {
     ws.send(JSON.stringify({
@@ -305,9 +380,38 @@ function handleCreateOrJoinRoom(ws, message, peerId) {
     return;
   }
 
-  // Extract roomId and role from message
+  // Extract roomId from message
   const roomId = message.roomId || null; // null = generate new UUID
-  const role = message.role || 'guest'; // Default to guest
+  let role = message.role || 'guest'; // Default to guest
+
+  // If an invite token is provided, verify it and use its role
+  if (message.inviteToken) {
+    const tokenResult = verifyToken(message.inviteToken);
+    if (!tokenResult.valid) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: `Invalid invite token: ${tokenResult.error}`
+      }));
+      return;
+    }
+    if (tokenResult.payload.type !== 'invite') {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Expected an invite token'
+      }));
+      return;
+    }
+    // Use the role from the signed token, not the client claim
+    role = tokenResult.payload.role;
+    logger.info(`Invite token verified for room ${tokenResult.payload.roomId}, role: ${role}`);
+  } else if (roomId) {
+    // Room exists but no invite token — force guest role
+    const existingRoom = roomManager.getRoom(roomId);
+    if (existingRoom) {
+      role = 'guest';
+    }
+    // If room doesn't exist, the creator gets whatever role they claim (first joiner = creator)
+  }
 
   // Validate role
   const validRoles = ['host', 'ops', 'guest'];
@@ -322,6 +426,9 @@ function handleCreateOrJoinRoom(ws, message, peerId) {
   const result = roomManager.createOrJoinRoom(roomId, peerId, ws, role);
 
   if (result.success) {
+    // Generate a room token for this peer
+    const token = generateRoomToken(peerId, result.roomId, role);
+
     // Get participant list
     const participants = result.room.getParticipants();
 
@@ -331,7 +438,9 @@ function handleCreateOrJoinRoom(ws, message, peerId) {
         type: 'room-created',
         roomId: result.roomId,
         hostId: peerId,
-        role: role
+        role: role,
+        token,
+        ice: iceConfig
       }));
     } else {
       // Send room-joined confirmation to joiner
@@ -339,7 +448,9 @@ function handleCreateOrJoinRoom(ws, message, peerId) {
         type: 'room-joined',
         roomId: result.roomId,
         participants: participants,
-        role: role
+        role: role,
+        token,
+        ice: iceConfig
       }));
 
       // Broadcast peer-joined to all existing participants (except the joiner)
@@ -355,6 +466,48 @@ function handleCreateOrJoinRoom(ws, message, peerId) {
       message: result.error
     }));
   }
+}
+
+/**
+ * Handle request-invite message — host/ops generates invite tokens
+ */
+function handleRequestInvite(ws, message, peerId) {
+  if (!peerId) {
+    ws.send(JSON.stringify({ type: 'error', message: 'Must register first' }));
+    return;
+  }
+
+  const room = roomManager.getRoomForPeer(peerId);
+  if (!room) {
+    ws.send(JSON.stringify({ type: 'error', message: 'Not in a room' }));
+    return;
+  }
+
+  // Only host/ops can generate invite tokens
+  const senderRole = room.getRole(peerId);
+  if (senderRole !== 'host' && senderRole !== 'ops') {
+    ws.send(JSON.stringify({ type: 'error', message: 'Only hosts and ops can generate invite links' }));
+    return;
+  }
+
+  const inviteRole = message.inviteRole || 'guest';
+  const validRoles = ['ops', 'guest'];
+  if (!validRoles.includes(inviteRole)) {
+    ws.send(JSON.stringify({ type: 'error', message: `Invalid invite role "${inviteRole}"` }));
+    return;
+  }
+
+  const roomId = roomManager.getRoomIdForPeer(peerId);
+  const inviteToken = generateInviteToken(roomId, inviteRole);
+
+  ws.send(JSON.stringify({
+    type: 'invite-token',
+    inviteToken,
+    roomId,
+    role: inviteRole
+  }));
+
+  logger.info(`Invite token generated by ${peerId} for room ${roomId} (role: ${inviteRole})`);
 }
 
 /**
@@ -429,6 +582,16 @@ async function handleStartStream(ws, message, peerId) {
       message: 'Must register before starting stream'
     }));
     return;
+  }
+
+  // Only host/ops can start streaming
+  const room = roomManager.getRoomForPeer(peerId);
+  if (room) {
+    const role = room.getRole(peerId);
+    if (role !== 'host' && role !== 'ops') {
+      ws.send(JSON.stringify({ type: 'error', message: 'Only hosts and ops can start streaming' }));
+      return;
+    }
   }
 
   logger.info(`Starting Icecast stream for peer ${peerId}`);

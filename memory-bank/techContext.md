@@ -168,9 +168,18 @@
 - Station impersonation (mitigated by signed manifests)
 - Man-in-the-middle on media (mitigated by DTLS-SRTP)
 
-**Out of Scope (MVP)**:
-- DoS attacks on signaling server (rate limiting in 0.2+)
-- DHT pollution (signing + reputation in 0.2+)
+**Mitigated in v0.2.1**:
+- DoS on signaling server → rate limiting (100 msg/10s) + per-IP connection cap (10) + maxPayload 256KB
+- Unauthorized room access → JWT room tokens (24h) + invite tokens (4h)
+- Privilege escalation → server-side role validation (host/ops/guest)
+- TURN credential exposure → ICE config via authenticated WebSocket only
+- Icecast admin access → proxy path sanitization, /admin blocked
+- Clickjacking → X-Frame-Options: DENY
+- MIME sniffing → X-Content-Type-Options: nosniff
+- Credential defaults → entrypoint.sh fail-fast validation
+
+**Out of Scope (Current)**:
+- DHT pollution (signing + reputation in 0.3+)
 - Social engineering (user education, not technical solution)
 
 ### Privacy
@@ -253,6 +262,16 @@
 - Room TTL for demo servers
 - README repositioned for conversion
 - GitHub Codespaces, CI improvements, templates
+
+### Release 0.2.1 🔒 (Security Hardening — In Progress 2026-03-13)
+
+- JWT room + invite token authentication
+- WebSocket rate limiting + per-IP connection caps
+- HTTP security headers + CORS allowlist
+- Role-based access control (host/ops/guest)
+- ICE credential protection (WebSocket-only delivery)
+- Icecast proxy path sanitization + credential validation
+- Docker non-root user, input validation (UUID v4)
 
 ### Release 0.3 (Discovery — Planned)
 

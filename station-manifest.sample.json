@@ -12,7 +12,7 @@
       {
         "urls": "turn:localhost:3478",
         "username": "openstudio",
-        "credential": "hackme"
+        "credential": "CHANGE_ME"
       }
     ]
   }

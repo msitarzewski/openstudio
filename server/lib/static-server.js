@@ -65,6 +65,7 @@ export function serveStatic(req, res) {
       'Content-Type': contentType,
       'Content-Length': stat.size,
       'Cache-Control': 'no-cache',
+      'X-Content-Type-Options': 'nosniff',
     });
 
     if (req.method === 'HEAD') {

@@ -71,19 +71,49 @@
 ✅ Auto-config: `station-manifest.json` created from sample on first run
 ✅ `npm start` serves full studio at `localhost:6736`
 
+### v0.2.1 Security Hardening (In Progress)
+
+**Server-Side**:
+✅ `server/lib/auth.js` — JWT room tokens (24h) + invite tokens (4h)
+✅ `server/lib/websocket-server.js` — Rate limiting, per-IP connection limits, JWT integration, RBAC
+✅ `server/lib/message-validator.js` — UUID v4 validation for peerId
+✅ `server/lib/static-server.js` — X-Content-Type-Options: nosniff
+✅ `server/lib/icecast-listener-proxy.js` — Path sanitization (traversal + /admin blocked), CORS
+✅ `server/server.js` — Security headers, CORS allowlist, ICE config via signaling
+✅ `icecast/entrypoint.sh` — Credential validation (fail-fast, no insecure defaults)
+✅ `server/Dockerfile` — Non-root user (appuser), healthcheck
+✅ `deploy/docker-compose.prod.yml` — Icecast bound to 127.0.0.1
+
+**Client-Side**:
+✅ `web/js/signaling-client.js` — roomToken storage, invite token support, requestInviteToken()
+✅ `web/js/rtc-manager.js` — setIceServers() from signaling, fallback API fetch
+✅ `web/js/main.js` — ICE from signaling, role-based UI, debug globals localhost-only
+✅ `web/js/icecast-streamer.js` — Dynamic host
+
+**Tests**:
+✅ `server/test-signaling.js` — Updated peer IDs to valid UUID v4
+✅ `server/test-rooms.js` — Updated peer IDs to valid UUID v4
+
+**Config**:
+✅ `.env.example` — JWT_SECRET, ROOM_TTL_MS
+✅ `station-manifest.sample.json` — TURN creds marked CHANGE_ME
+✅ `deploy/station-manifest.production.json` — TURN creds marked CHANGE_ME
+
 ## What's Next
 
 ### Immediate
 
-1. **Deploy to openstudio.zerologic.com** — Run `deploy/setup.sh` on production server
-2. **End-to-end recording test** — Manual test: record, stop, download, verify tracks
-3. **Playwright tests update** — Update test URLs from port 8086 to 6736
+1. **Commit & test v0.2.1** — Finalize security hardening branch, run full test suite
+2. **Deploy to openstudio.zerologic.com** — Run `deploy/setup.sh` on production server with `JWT_SECRET` and `ALLOWED_ORIGINS` set
+3. **End-to-end recording test** — Manual test: record, stop, download, verify tracks
+4. **Playwright tests update** — Update test URLs from port 8086 to 6736
 
 ### Short Term (Next Sprint)
 
 1. **WAV export UI button** — Add "Export WAV" next to each track download
 2. **Recording size monitoring** — Show estimated size during recording, warn at 500MB
 3. **Room TTL UI feedback** — Show countdown timer for demo rooms
+4. **Invite URL UI** — Add "Copy Invite Link" button using invite tokens
 
 ### Release 0.3 (Planned)
 
@@ -112,6 +142,20 @@
 - README repositioned for conversion
 - Deployment config for openstudio.zerologic.com
 - DX: Codespaces, CI matrix, GitHub templates
+
+### Release 0.2.1 — Security Hardening 🔒 (In Progress 2026-03-13)
+**Status**: Implementation in progress (branch: `release/0.2.1-security-hardening`)
+- JWT room tokens + invite tokens (`server/lib/auth.js`)
+- WebSocket rate limiting (100 signaling/10s, 500 stream/10s) + per-IP connection limit (10)
+- HTTP security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy)
+- CORS origin allowlist (`ALLOWED_ORIGINS` env var)
+- Icecast proxy path sanitization (traversal + /admin blocked)
+- Role-based access control (streaming, invites, muting)
+- ICE credentials moved from public API to authenticated WebSocket flow
+- Icecast entrypoint credential validation (fail-fast)
+- Docker non-root user, healthcheck
+- UUID v4 validation for peer IDs
+- Test suite updated for new validation rules
 
 ### Release 0.3 — Discovery (Planned)
 - DHT station discovery, Nostr NIP-53

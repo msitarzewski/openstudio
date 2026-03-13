@@ -61,11 +61,15 @@ export function validateSignalingMessage(message, registeredPeerId = null) {
  * @param {object} message - Message to validate
  * @param {string[]} errors - Array to accumulate errors
  */
+const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function validateRegisterMessage(message, errors) {
   if (!message.peerId || typeof message.peerId !== 'string') {
     errors.push('Missing or invalid "peerId" field (must be non-empty string)');
   } else if (message.peerId.trim().length === 0) {
     errors.push('Field "peerId" cannot be empty or whitespace');
+  } else if (!UUID_V4_REGEX.test(message.peerId)) {
+    errors.push('Field "peerId" must be a valid UUID v4');
   }
 }
 

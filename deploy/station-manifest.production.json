@@ -13,8 +13,8 @@
     "turn": [
       {
         "urls": "turn:openstudio.zerologic.com:3478",
-        "username": "openbroadcaster",
-        "credential": "openbroadcaster"
+        "username": "CHANGE_ME",
+        "credential": "CHANGE_ME"
       }
     ]
   }

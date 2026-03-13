@@ -17,7 +17,7 @@ export class IcecastProxy {
       port: config.port || 6737,
       mountPoint: config.mountPoint || '/live.opus',
       username: config.username || 'source',
-      password: config.password || 'hackme',
+      password: config.password || '',
       contentType: config.contentType || 'audio/webm'
     };
 

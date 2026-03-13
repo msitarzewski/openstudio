@@ -6,9 +6,9 @@ services:
     ports:
       - "127.0.0.1:6737:8000"
     environment:
-      ICECAST_SOURCE_PASSWORD: "${ICECAST_PASS:-hackme}"
-      ICECAST_ADMIN_PASSWORD: "${ICECAST_ADMIN_PASS:-admin}"
-      ICECAST_RELAY_PASSWORD: "${ICECAST_RELAY_PASS:-relay}"
+      ICECAST_SOURCE_PASSWORD: "${ICECAST_PASS:?Set ICECAST_PASS}"
+      ICECAST_ADMIN_PASSWORD: "${ICECAST_ADMIN_PASS:?Set ICECAST_ADMIN_PASS}"
+      ICECAST_RELAY_PASSWORD: "${ICECAST_RELAY_PASS:?Set ICECAST_RELAY_PASS}"
       ICECAST_HOSTNAME: "openstudio.zerologic.com"
     restart: unless-stopped
 
