@@ -920,10 +920,10 @@ class OpenStudioApp {
   /**
    * Handle Stop Recording button
    */
-  handleStopRecording() {
+  async handleStopRecording() {
     console.log('[App] Stopping recording...');
 
-    const recordings = this.recordingManager.stopAll();
+    const recordings = await this.recordingManager.stopAll();
     this.lastRecordings = recordings;
 
     // Broadcast recording stopped

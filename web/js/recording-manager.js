@@ -128,7 +128,7 @@ export class RecordingManager extends EventTarget {
    * Stop all recordings and return assembled blobs
    * @returns {{ program: Blob|null, tracks: Map<string, Blob> }}
    */
-  stopAll() {
+  async stopAll() {
     this.isRecording = false;
 
     if (this.timerInterval) {
@@ -138,29 +138,50 @@ export class RecordingManager extends EventTarget {
 
     const tracks = new Map();
 
+    // Wait for each recorder to flush its final chunk via onstop
+    const stopPromises = [];
+
     // Stop participant recorders
     for (const [peerId, entry] of this.recorders) {
       if (entry.recorder.state !== 'inactive') {
-        entry.recorder.stop();
+        stopPromises.push(new Promise((resolve) => {
+          entry.recorder.onstop = () => {
+            const blob = new Blob(entry.chunks, { type: entry.recorder.mimeType });
+            tracks.set(peerId, blob);
+            console.log(`[Recording] Stopped recording ${peerId}: ${(blob.size / 1024).toFixed(1)}KB`);
+            resolve();
+          };
+          entry.recorder.stop();
+        }));
+      } else {
+        const blob = new Blob(entry.chunks, { type: entry.recorder.mimeType });
+        tracks.set(peerId, blob);
       }
-      const blob = new Blob(entry.chunks, { type: entry.recorder.mimeType });
-      tracks.set(peerId, blob);
-      console.log(`[Recording] Stopped recording ${peerId}: ${(blob.size / 1024).toFixed(1)}KB`);
     }
-    this.recorders.clear();
 
     // Stop program recorder
     let programBlob = null;
     if (this.programRecorder) {
       if (this.programRecorder.recorder.state !== 'inactive') {
-        this.programRecorder.recorder.stop();
+        const progEntry = this.programRecorder;
+        stopPromises.push(new Promise((resolve) => {
+          progEntry.recorder.onstop = () => {
+            programBlob = new Blob(progEntry.chunks, { type: progEntry.recorder.mimeType });
+            console.log(`[Recording] Stopped program recording: ${(programBlob.size / 1024).toFixed(1)}KB`);
+            resolve();
+          };
+          progEntry.recorder.stop();
+        }));
+      } else {
+        programBlob = new Blob(this.programRecorder.chunks, {
+          type: this.programRecorder.recorder.mimeType
+        });
       }
-      programBlob = new Blob(this.programRecorder.chunks, {
-        type: this.programRecorder.recorder.mimeType
-      });
-      console.log(`[Recording] Stopped program recording: ${(programBlob.size / 1024).toFixed(1)}KB`);
-      this.programRecorder = null;
     }
+
+    await Promise.all(stopPromises);
+    this.recorders.clear();
+    this.programRecorder = null;
 
     const duration = this.startTime ? Date.now() - this.startTime : 0;
     this.startTime = null;

@@ -66,11 +66,16 @@ Each participant gets a personalized audio mix that excludes their own voice —
 - **Zero dependencies** — vanilla JS, Web Audio API, no framework
 - **Safari compatible** — WebSocket streaming fallback
 
-## Live Demo
+## Try It
 
-**[openstudio.zerologic.com](https://openstudio.zerologic.com)**
+1. Open **[openstudio.zerologic.com](https://openstudio.zerologic.com)**
+2. Enter a station name and click **Start Session**
+3. Allow microphone access when prompted
+4. Share the invite URL with a friend (or open it in a second browser tab)
+5. Talk — you'll hear each other with zero echo thanks to mix-minus
+6. Hit **Record** to capture per-participant tracks, then **Download** when done
 
-Create a room, share the URL, start broadcasting. Rooms auto-expire after 15 minutes on the demo.
+Rooms auto-expire after 15 minutes on the demo. Self-host for unlimited sessions.
 
 ## Architecture
 
