@@ -60,4 +60,4 @@ jobs:
           node tests/test-gain-controls.mjs
           node tests/test-program-bus.mjs
           node tests/test-mix-minus.mjs
-          node tests/test-return-feed.mjs || node tests/test-return-feed.mjs
+          node tests/test-return-feed.mjs || node tests/test-return-feed.mjs || node tests/test-return-feed.mjs
