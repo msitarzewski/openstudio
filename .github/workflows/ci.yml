@@ -23,10 +23,10 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Install root dependencies
-        run: npm ci
+        run: npm install
 
       - name: Install server dependencies
-        run: cd server && npm ci
+        run: cd server && npm install
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
