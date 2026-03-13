@@ -19,6 +19,7 @@ import { VolumeMeter } from './volume-meter.js';
 import { ReturnFeedManager } from './return-feed.js';
 import { MuteManager } from './mute-manager.js';
 import { IcecastStreamer } from './icecast-streamer.js';
+import { RecordingManager } from './recording-manager.js';
 
 class OpenStudioApp {
   constructor() {
@@ -35,6 +36,8 @@ class OpenStudioApp {
     this.returnFeedManager = new ReturnFeedManager();
     this.muteManager = null; // Will be initialized after audio graph
     this.icecastStreamer = new IcecastStreamer(); // Icecast streaming
+    this.recordingManager = new RecordingManager();
+    this.lastRecordings = null; // Store last recording results for download
 
     // State
     this.currentRoom = null;
@@ -58,11 +61,18 @@ class OpenStudioApp {
     this.stopStreamingButton = document.getElementById('stop-streaming');
     this.streamingStatusElement = document.getElementById('streaming-status');
     this.bitrateSelect = document.getElementById('bitrate-select');
+    this.startRecordingButton = document.getElementById('start-recording');
+    this.stopRecordingButton = document.getElementById('stop-recording');
+    this.downloadRecordingsButton = document.getElementById('download-recordings');
+    this.recordingIndicator = document.getElementById('recording-indicator');
+    this.recordingTimer = document.getElementById('recording-timer');
+    this.recordingTracksDiv = document.getElementById('recording-tracks');
 
     // Bind event handlers
     this.setupSignalingListeners();
     this.setupAudioListeners();
     this.setupStreamingListeners();
+    this.setupRecordingListeners();
     this.setupUIListeners();
 
     // Check for room ID in URL hash
@@ -76,11 +86,16 @@ class OpenStudioApp {
     window.audioGraph = this.audioGraph;
     window.returnFeedManager = this.returnFeedManager;
     window.icecastStreamer = this.icecastStreamer;
+    window.recordingManager = this.recordingManager;
     window.app = this;
   }
 
   /**
    * Initialize app: connect signaling, fetch ICE config, setup audio
+   */
+  /**
+   * Initialize app: connect signaling, fetch ICE config, setup audio.
+   * @returns {Promise<void>}
    */
   async initializeApp() {
     try {
@@ -164,6 +179,9 @@ class OpenStudioApp {
         this.startStreamingButton.disabled = false;
       }
 
+      // Enable recording
+      this.startRecordingButton.disabled = false;
+
       // Add self to participants with role from server
       const displayName = this.currentRole === 'host' ? 'Host (You)' :
                           this.currentRole === 'ops' ? 'Ops (You)' : 'You';
@@ -198,6 +216,7 @@ class OpenStudioApp {
       this.startSessionButton.disabled = true;
       this.endSessionButton.disabled = false;
       this.toggleMuteButton.disabled = false;
+      this.startRecordingButton.disabled = false;
 
       // Add existing participants
       participants.forEach(p => {
@@ -368,6 +387,49 @@ class OpenStudioApp {
   }
 
   /**
+   * Setup recording event listeners
+   */
+  setupRecordingListeners() {
+    this.recordingManager.addEventListener('timer-update', (event) => {
+      const { elapsed } = event.detail;
+      this.recordingTimer.textContent = RecordingManager.formatTime(elapsed);
+    });
+
+    this.recordingManager.addEventListener('recording-started', () => {
+      this.recordingIndicator.classList.add('active');
+      this.recordingTimer.classList.add('active');
+      this.startRecordingButton.style.display = 'none';
+      this.stopRecordingButton.style.display = 'inline-block';
+      this.stopRecordingButton.disabled = false;
+      this.downloadRecordingsButton.style.display = 'none';
+      this.recordingTracksDiv.style.display = 'none';
+    });
+
+    this.recordingManager.addEventListener('recording-stopped', () => {
+      this.recordingIndicator.classList.remove('active');
+      this.recordingTimer.classList.remove('active');
+      this.stopRecordingButton.style.display = 'none';
+      this.startRecordingButton.style.display = 'inline-block';
+      if (this.currentRoom) {
+        this.startRecordingButton.disabled = false;
+      }
+    });
+
+    // Handle recording state broadcasts
+    this.signaling.addEventListener('recording-state', (event) => {
+      const { recording, from } = event.detail;
+      if (from !== this.peerId) {
+        console.log(`[App] Recording state: ${recording ? 'started' : 'stopped'} by ${from}`);
+        if (recording) {
+          this.recordingIndicator.classList.add('active');
+        } else {
+          this.recordingIndicator.classList.remove('active');
+        }
+      }
+    });
+  }
+
+  /**
    * Setup ConnectionManager event listeners
    */
   setupConnectionManagerListeners() {
@@ -389,6 +451,14 @@ class OpenStudioApp {
 
           // Create per-participant level meter
           this.createParticipantMeter(remotePeerId);
+
+          // If currently recording, auto-start recording for new participant
+          if (this.recordingManager.isRecording) {
+            const recStream = this.audioGraph.getParticipantRecordingStream(remotePeerId);
+            if (recStream) {
+              this.recordingManager.startParticipantRecording(remotePeerId, recStream);
+            }
+          }
 
           // Mark that we need to send return feed for this peer
           // Wait a moment for audio graph to fully initialize the mix-minus
@@ -487,6 +557,11 @@ class OpenStudioApp {
   /**
    * Try to send pending return feed for a peer if connection is ready
    */
+  /**
+   * Send pending return feed for a peer if the RTCPeerConnection is connected.
+   * @param {string} remotePeerId
+   * @returns {Promise<void>}
+   */
   async trySendPendingReturnFeed(remotePeerId) {
     // Check if we have a pending return feed for this peer
     if (!this.pendingReturnFeeds.has(remotePeerId)) {
@@ -548,6 +623,20 @@ class OpenStudioApp {
 
     this.stopStreamingButton.addEventListener('click', () => {
       this.handleStopStreaming();
+    });
+
+    this.startRecordingButton.addEventListener('click', () => {
+      this.handleStartRecording();
+    });
+
+    this.stopRecordingButton.addEventListener('click', () => {
+      this.handleStopRecording();
+    });
+
+    this.downloadRecordingsButton.addEventListener('click', () => {
+      if (this.lastRecordings) {
+        this.recordingManager.downloadAll(this.lastRecordings, this.getParticipantNames());
+      }
     });
   }
 
@@ -638,6 +727,11 @@ class OpenStudioApp {
   handleEndSession() {
     console.log('[App] Ending session...');
 
+    // Stop recording if active
+    if (this.recordingManager.isRecording) {
+      this.recordingManager.stopAll();
+    }
+
     // Stop Icecast streaming if active
     if (this.icecastStreamer.isActive()) {
       this.icecastStreamer.stop();
@@ -690,6 +784,16 @@ class OpenStudioApp {
     this.stopStreamingButton.style.display = 'none';
     this.streamingStatusElement.textContent = 'Not Streaming';
     this.streamingStatusElement.className = 'streaming-status';
+    this.startRecordingButton.disabled = true;
+    this.stopRecordingButton.disabled = true;
+    this.startRecordingButton.style.display = 'inline-block';
+    this.stopRecordingButton.style.display = 'none';
+    this.downloadRecordingsButton.style.display = 'none';
+    this.recordingIndicator.classList.remove('active');
+    this.recordingTimer.classList.remove('active');
+    this.recordingTimer.textContent = '00:00:00';
+    this.recordingTracksDiv.style.display = 'none';
+    this.lastRecordings = null;
     window.location.hash = '';
 
     // Reconnect to signaling
@@ -777,7 +881,135 @@ class OpenStudioApp {
   }
 
   /**
-   * Handle participant mute button click
+   * Handle Start Recording button
+   */
+  handleStartRecording() {
+    console.log('[App] Starting recording...');
+
+    // Collect participant recording streams
+    const participantStreams = new Map();
+
+    // Include host's own microphone
+    if (this.rtc.localStream) {
+      participantStreams.set(this.peerId, this.rtc.localStream);
+    }
+
+    // Include remote participants
+    for (const [peerId] of this.participants) {
+      const stream = this.audioGraph.getParticipantRecordingStream(peerId);
+      if (stream) {
+        participantStreams.set(peerId, stream);
+      }
+    }
+
+    // Get program bus stream
+    const programBus = this.audioGraph.getProgramBus();
+    const programStream = programBus ? programBus.getMediaStream() : null;
+
+    // Start recording
+    this.recordingManager.startAll(participantStreams, programStream);
+
+    // Broadcast recording state to room
+    this.signaling.send({
+      type: 'recording-state',
+      recording: true,
+      from: this.peerId
+    });
+  }
+
+  /**
+   * Handle Stop Recording button
+   */
+  handleStopRecording() {
+    console.log('[App] Stopping recording...');
+
+    const recordings = this.recordingManager.stopAll();
+    this.lastRecordings = recordings;
+
+    // Broadcast recording stopped
+    this.signaling.send({
+      type: 'recording-state',
+      recording: false,
+      from: this.peerId
+    });
+
+    // Show download UI
+    this.showRecordingDownloads(recordings);
+  }
+
+  /**
+   * Show recording download list
+   */
+  showRecordingDownloads(recordings) {
+    this.recordingTracksDiv.innerHTML = '';
+    this.recordingTracksDiv.style.display = 'block';
+    this.downloadRecordingsButton.style.display = 'inline-block';
+    this.downloadRecordingsButton.disabled = false;
+
+    const heading = document.createElement('h4');
+    heading.textContent = 'Recorded Tracks';
+    this.recordingTracksDiv.appendChild(heading);
+
+    // Program mix
+    if (recordings.program) {
+      this.addTrackDownloadItem('Program Mix', recordings.program, 'mix');
+    }
+
+    // Individual tracks
+    for (const [peerId, blob] of recordings.tracks) {
+      const participant = this.participants.get(peerId);
+      const name = participant ? participant.name : peerId.substring(0, 8);
+      this.addTrackDownloadItem(name, blob, peerId);
+    }
+  }
+
+  /**
+   * Add a track item to the download list
+   */
+  addTrackDownloadItem(name, blob, id) {
+    const item = document.createElement('div');
+    item.className = 'recording-track-item';
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'recording-track-name';
+    nameEl.textContent = name;
+
+    const sizeEl = document.createElement('span');
+    sizeEl.className = 'recording-track-size';
+    const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
+    sizeEl.textContent = `${sizeMB} MB`;
+
+    const downloadBtn = document.createElement('button');
+    downloadBtn.className = 'recording-track-download';
+    downloadBtn.textContent = 'Download';
+    downloadBtn.addEventListener('click', () => {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const ext = this.recordingManager.getFileExtension();
+      const safeName = name.replace(/[^a-zA-Z0-9-_]/g, '_');
+      this.recordingManager.downloadTrack(blob, `openstudio-${safeName}-${timestamp}.${ext}`);
+    });
+
+    item.appendChild(nameEl);
+    item.appendChild(sizeEl);
+    item.appendChild(downloadBtn);
+    this.recordingTracksDiv.appendChild(item);
+  }
+
+  /**
+   * Get participant display names map
+   */
+  getParticipantNames() {
+    const names = new Map();
+    names.set(this.peerId, 'host');
+    for (const [peerId, data] of this.participants) {
+      names.set(peerId, data.name);
+    }
+    return names;
+  }
+
+  /**
+   * Handle participant mute button click with role-based authority.
+   * @param {string} peerId - Participant to mute/unmute
    */
   handleParticipantMute(peerId) {
     if (!this.muteManager) {
@@ -874,6 +1106,11 @@ class OpenStudioApp {
   /**
    * Handle gain slider change
    */
+  /**
+   * Handle gain slider change with smooth AudioParam ramping.
+   * @param {string} peerId - Participant whose gain to adjust
+   * @param {string} sliderValue - Slider value (0-200, representing percent)
+   */
   handleGainChange(peerId, sliderValue) {
     const participant = this.participants.get(peerId);
     if (!participant || participant.muted) {
@@ -929,6 +1166,12 @@ class OpenStudioApp {
 
   /**
    * Add participant to UI
+   */
+  /**
+   * Add participant to UI with avatar, role badge, level meter, and controls.
+   * @param {string} peerId - Unique peer identifier
+   * @param {string} name - Display name
+   * @param {string} role - 'host', 'ops', or 'guest'
    */
   addParticipant(peerId, name, role) {
     if (this.participants.has(peerId)) {
@@ -1036,6 +1279,10 @@ class OpenStudioApp {
   /**
    * Remove participant from UI
    */
+  /**
+   * Remove participant from UI and clean up level meter.
+   * @param {string} peerId
+   */
   removeParticipant(peerId) {
     this.participants.delete(peerId);
 
@@ -1055,6 +1302,10 @@ class OpenStudioApp {
 
   /**
    * Create per-participant level meter
+   */
+  /**
+   * Create per-participant level meter using AudioGraph's AnalyserNode.
+   * @param {string} peerId - Remote participant to create meter for
    */
   createParticipantMeter(peerId) {
     // Get the analyser node from audio graph

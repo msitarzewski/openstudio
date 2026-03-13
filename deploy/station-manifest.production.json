@@ -1,0 +1,21 @@
+{
+  "stationId": "openstudio-demo",
+  "name": "OpenStudio Demo",
+  "signaling": {
+    "mode": "p2p_mesh",
+    "maxParticipants": 15
+  },
+  "ice": {
+    "stun": [
+      "stun:stun.l.google.com:19302",
+      "stun:openstudio.zerologic.com:3478"
+    ],
+    "turn": [
+      {
+        "urls": "turn:openstudio.zerologic.com:3478",
+        "username": "openbroadcaster",
+        "credential": "openbroadcaster"
+      }
+    ]
+  }
+}

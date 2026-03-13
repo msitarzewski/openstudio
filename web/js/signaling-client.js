@@ -10,7 +10,7 @@
  * - ICE candidate relay
  */
 
-const SIGNALING_URL = 'ws://localhost:6736';
+const SIGNALING_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}`;
 const RECONNECT_DELAY_MS = 2000;
 const MAX_RECONNECT_DELAY_MS = 30000;
 
@@ -117,6 +117,10 @@ export class SignalingClient extends EventTarget {
 
       case 'mute':
         this.dispatchEvent(new CustomEvent('mute', { detail: message }));
+        break;
+
+      case 'recording-state':
+        this.dispatchEvent(new CustomEvent('recording-state', { detail: message }));
         break;
 
       case 'error':

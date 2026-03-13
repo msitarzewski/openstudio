@@ -13,8 +13,9 @@ export class IcecastStreamer extends EventTarget {
     super();
 
     // Icecast configuration
+    // Direct PUT to Icecast uses host/port; listener proxy goes through /stream/*
     this.config = {
-      host: config.host || 'localhost',
+      host: config.host || location.hostname,
       port: config.port || 6737,
       mountPoint: config.mountPoint || '/live.opus',
       username: config.username || 'source',

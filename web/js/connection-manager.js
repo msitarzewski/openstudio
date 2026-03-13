@@ -19,6 +19,11 @@ const INITIAL_RETRY_DELAY_MS = 2000;
 const MAX_RETRY_DELAY_MS = 8000;
 
 export class ConnectionManager extends EventTarget {
+  /**
+   * @param {string} peerId - Local peer identifier
+   * @param {SignalingClient} signalingClient - WebSocket signaling client
+   * @param {RTCManager} rtcManager - WebRTC connection manager
+   */
   constructor(peerId, signalingClient, rtcManager) {
     super();
     this.peerId = peerId;
@@ -38,6 +43,10 @@ export class ConnectionManager extends EventTarget {
   /**
    * Connection state tracking
    */
+  /**
+   * @param {string} remotePeerId - Remote peer identifier
+   * @returns {{ status: string, retryCount: number, retryTimeout: number|null, isPolite: boolean, makingOffer: boolean, ignoreOffer: boolean }}
+   */
   getConnectionState(remotePeerId) {
     return this.connections.get(remotePeerId) || {
       status: 'disconnected', // disconnected | connecting | connected | failed
@@ -49,6 +58,11 @@ export class ConnectionManager extends EventTarget {
     };
   }
 
+  /**
+   * @param {string} remotePeerId - Remote peer identifier
+   * @param {Object} updates - Properties to merge into connection state
+   * @returns {{ status: string, retryCount: number, retryTimeout: number|null, isPolite: boolean, makingOffer: boolean, ignoreOffer: boolean }}
+   */
   setConnectionState(remotePeerId, updates) {
     const current = this.getConnectionState(remotePeerId);
     const newState = { ...current, ...updates };
@@ -65,6 +79,10 @@ export class ConnectionManager extends EventTarget {
   /**
    * Determine if this peer should be "polite" in negotiation
    * Polite peer = lower peer ID (alphabetically)
+   */
+  /**
+   * @param {string} remotePeerId
+   * @returns {boolean}
    */
   isPolite(remotePeerId) {
     return this.peerId < remotePeerId;
@@ -197,6 +215,9 @@ export class ConnectionManager extends EventTarget {
   /**
    * Wait for local media stream to be ready
    */
+  /**
+   * @returns {Promise<void>}
+   */
   async waitForLocalStream() {
     const maxWait = 10000; // 10 seconds max
     const startTime = Date.now();
@@ -214,6 +235,10 @@ export class ConnectionManager extends EventTarget {
 
   /**
    * Initiate connection to a remote peer
+   */
+  /**
+   * @param {string} remotePeerId - Remote peer to connect to
+   * @returns {Promise<void>}
    */
   async initiateConnection(remotePeerId) {
     const state = this.getConnectionState(remotePeerId);
@@ -251,6 +276,11 @@ export class ConnectionManager extends EventTarget {
 
   /**
    * Handle incoming offer (Perfect Negotiation pattern)
+   */
+  /**
+   * @param {string} remotePeerId - Peer that sent the offer
+   * @param {string|RTCSessionDescriptionInit} sdp - SDP offer
+   * @returns {Promise<void>}
    */
   async handleOffer(remotePeerId, sdp) {
     const state = this.getConnectionState(remotePeerId);
@@ -293,6 +323,11 @@ export class ConnectionManager extends EventTarget {
 
   /**
    * Handle incoming answer
+   */
+  /**
+   * @param {string} remotePeerId - Peer that sent the answer
+   * @param {string|RTCSessionDescriptionInit} sdp - SDP answer
+   * @returns {Promise<void>}
    */
   async handleAnswer(remotePeerId, sdp) {
     console.log(`[ConnectionManager] Handling answer from ${remotePeerId}`);
@@ -393,6 +428,9 @@ export class ConnectionManager extends EventTarget {
   /**
    * Close connection to a remote peer
    */
+  /**
+   * @param {string} remotePeerId - Remote peer to disconnect from
+   */
   closeConnection(remotePeerId) {
     const state = this.getConnectionState(remotePeerId);
 
@@ -432,6 +470,9 @@ export class ConnectionManager extends EventTarget {
 
   /**
    * Get info about all connections (for debugging)
+   */
+  /**
+   * @returns {{ peerId: string, connectionCount: number, connections: Array<{ remotePeerId: string, status: string, isPolite: boolean, retryCount: number }> }}
    */
   getConnectionsInfo() {
     const info = {

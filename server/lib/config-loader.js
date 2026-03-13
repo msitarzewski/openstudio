@@ -29,17 +29,14 @@ export function loadConfig() {
   let manifestPath = MANIFEST_PATH;
   let usingFallback = false;
 
-  // Check if main manifest exists
+  // Auto-create config from sample on first run
   if (!fs.existsSync(MANIFEST_PATH)) {
-    logger.warn('station-manifest.json not found, using station-manifest.sample.json');
-
-    // Fallback to sample
-    if (!fs.existsSync(SAMPLE_MANIFEST_PATH)) {
+    if (fs.existsSync(SAMPLE_MANIFEST_PATH)) {
+      fs.copyFileSync(SAMPLE_MANIFEST_PATH, MANIFEST_PATH);
+      logger.info('Created station-manifest.json from sample (first run)');
+    } else {
       throw new Error('Neither station-manifest.json nor station-manifest.sample.json found');
     }
-
-    manifestPath = SAMPLE_MANIFEST_PATH;
-    usingFallback = true;
   }
 
   // Read file

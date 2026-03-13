@@ -167,6 +167,51 @@ MediaStreamSource → GainNode → DynamicsCompressor → ChannelMerger → Dest
 - No unencrypted media transport
 - Browser enforces secure contexts (HTTPS required)
 
+### 6. Single-Server Architecture (v0.2)
+
+**Pattern**: One Node.js process serves static files, API, WebSocket signaling, and Icecast listener proxy — all on one port.
+
+**Rationale**:
+- `git clone && npm start` → working studio (zero DX friction)
+- One port simplifies reverse proxy deployment (Caddy just does `reverse_proxy localhost:6736`)
+- Dynamic client URLs (`location.host`, `location.origin`) work for any deployment
+
+**Request handler order**:
+```
+/health          → health check
+/api/station     → ICE config
+/stream/*        → Icecast listener proxy (localhost:6737)
+static files     → serve from web/ directory
+404              → fallback
+```
+
+### 7. Client-Side Multi-Track Recording (v0.2)
+
+**Pattern**: MediaRecorder on per-participant MediaStreamDestination tap points, all client-side.
+
+**Rationale**:
+- Zero server cost (recording happens in browser)
+- Per-participant isolation (tap at gain node, before compressor)
+- Same encoding as streaming (audio/webm;codecs=opus)
+
+**Implementation**:
+```
+Participant: Source → Gain → [recordingDestination] → Analyser → Compressor → Program Bus
+                              ↓
+                     MediaRecorder (per-track)
+
+Program Bus → MediaStreamDestination → MediaRecorder (mix)
+```
+
+### 8. Room TTL for Demo Servers (v0.2)
+
+**Pattern**: Configurable room expiry via environment variable, 60-second sweep interval.
+
+**Implementation**:
+- `ROOM_TTL_MS` env var (default: 0 = no expiry)
+- `roomCreationTimes` map tracks when rooms were created
+- `setInterval` every 60s broadcasts `room-expired` and cleans up
+
 ## Error Handling Patterns
 
 ### Peer Disconnection

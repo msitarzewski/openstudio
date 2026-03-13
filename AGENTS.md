@@ -1,6 +1,6 @@
 # AGENTS.md
 
-**Version**: 2.1 (2025-10-25) | **Compatibility**: Claude, Cursor, Copilot, Cline, Aider, all AGENTS.md-compatible tools
+**Version**: 2.2 (2025-03-04) | **Compatibility**: Claude, Cursor, Copilot, Cline, Aider, all AGENTS.md-compatible tools
 **Status**: Canonical single-file guide for AI-assisted development
 
 ---
@@ -9,6 +9,7 @@
 
 1. [Compliance & Core Rules](#1-compliance--core-rules)
 2. [Session Startup](#2-session-startup)
+   - [Compaction Protocol](#compaction-protocol-mid-session-context-preservation)
 3. [Memory Bank](#3-memory-bank)
 4. [State Machine](#4-state-machine)
 5. [Task Contract & Budgets](#5-task-contract--budgets)
@@ -105,6 +106,45 @@ Append-only JSONL format:
 {"timestamp":"2025-10-25T10:35:00Z","session_id":"uuid","event":"state_transition","from":"PLAN","to":"BUILD"}
 {"timestamp":"2025-10-25T11:00:00Z","session_id":"uuid","event":"approval_requested","state":"APPROVAL"}
 ```
+
+### Compaction Protocol (Mid-Session Context Preservation)
+
+Compaction (context compression) can happen at any time — triggered by the system automatically, by the user via `/compact`, or by platform-level context management. **The agent does not control compaction timing and may not get advance notice.** Therefore, state persistence must be continuous, not deferred to a pre-compaction moment.
+
+#### Continuous State Persistence (At Every State Transition)
+
+At each state transition (`PLAN → BUILD → DIFF → QA → APPROVAL → APPLY → DOCS`), persist the following to the Memory Bank:
+
+1. **State machine position**: Update `activeContext.md` with current state, substate, and working context
+2. **Task progress**: Append current status to `tasks/YYYY-MM/README.md` with `[IN-PROGRESS]` tag
+3. **Decisions**: Append any new architectural decisions to `decisions.md`
+4. **Log transition** to operational log:
+   ```json
+   {"timestamp":"...","session_id":"uuid","event":"state_transition","from":"PLAN","to":"BUILD"}
+   ```
+5. **Loose context**: Capture any information that exists only in conversation (user preferences, verbal requirements, pending questions) into `activeContext.md`
+
+This ensures that when compaction occurs — without warning — the Memory Bank already reflects the latest state.
+
+#### After Compaction (Recovery)
+
+When context has been compressed (detected by loss of earlier conversation detail, or after `/compact`):
+
+1. Re-enter **Session Startup** (Section 2) using **Fast Track** mode — the Memory Bank was just updated via continuous persistence, so full discovery is unnecessary
+2. Confirm state machine position from `activeContext.md`
+3. Resume from saved state — do not restart the current task from scratch
+4. Output recovery confirmation:
+   ```
+   COMPACTION RECOVERY: Resumed [STATE] for [task name]
+   Context restored from: activeContext.md, tasks/YYYY-MM/README.md
+   ```
+
+#### Rules
+
+- State persistence happens at every transition, not "before compaction" — you cannot rely on advance notice
+- After detecting compaction, always re-read Memory Bank before taking any action
+- If the current state is `APPROVAL` or `DIFF`, the diff summary should already be in `activeContext.md` from the transition save
+- Compaction does not reset budgets — carry forward cycle/token/minute counts from the operational log
 
 ---
 
@@ -577,7 +617,7 @@ Create outline for approval. After approval, do work. Do not document until I ap
 2. **Task** (current task): Files being modified, direct dependencies, related tests
 3. **Reference** (on-demand): Arch patterns, similar implementations, historical decisions
 
-**Context Rotation**: After each state transition, drop Task Context, reload only what's needed for next state. Keep Core Context persistent.
+**Context Rotation**: After each state transition, drop Task Context, reload only what's needed for next state. Keep Core Context persistent. State is persisted to Memory Bank at every transition per **Compaction Protocol** (Section 2), so compaction recovery is automatic.
 
 **Parallel Execution**:
 ```
@@ -896,7 +936,7 @@ Stuck? → Cycles ≥3?
 | Issue | Symptoms | Resolution |
 |-------|----------|------------|
 | **Loop** | Same diff multiple times, QA fails repeatedly, no progress after 3+ cycles | Check budgets → Load more MB → Clarify requirements → Check environment → Agent swap |
-| **Context Exceeded** | Token limit approaching, slow/truncated responses, forgetting earlier info | Rotate context (drop Task, reload essentials) → Focused mode (MB summaries only) → Break into subtasks → Agent swap |
+| **Context Exceeded** | Token limit approaching, slow/truncated responses, forgetting earlier info | State already persisted via **Compaction Protocol** (Section 2) → Rotate context (drop Task, reload essentials) → Focused mode (MB summaries only) → Break into subtasks → Agent swap |
 | **CI ≠ Local** | QA passes, CI fails | Compare environments → Verify dependency versions → Check timing/concurrency → Check state cleanup → Document waiver if CI issue |
 | **Security Fail** | Security checklist incomplete, sensitive data exposed, auth/authz bypassed | Never bypass → Return to BUILD → Fix all issues → Re-test → Document pattern if new |
 

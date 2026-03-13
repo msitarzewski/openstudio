@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install server dependencies
+        run: cd server && npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run server tests
+        run: |
+          # Start signaling server in background
+          node server/server.js &
+          SERVER_PID=$!
+
+          # Wait for server to be ready
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:6736/health > /dev/null 2>&1; then
+              echo "Server is ready"
+              break
+            fi
+            sleep 1
+          done
+
+          # Run server tests
+          node server/test-signaling.js
+          node server/test-rooms.js
+
+          # Keep server running for Playwright tests
+
+      - name: Run Playwright tests
+        run: |
+          node tests/test-webrtc.mjs
+          node tests/test-audio-graph.mjs
+          node tests/test-gain-controls.mjs
+          node tests/test-program-bus.mjs
+          node tests/test-mix-minus.mjs
+          node tests/test-return-feed.mjs

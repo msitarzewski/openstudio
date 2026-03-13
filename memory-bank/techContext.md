@@ -54,8 +54,9 @@
 - **coturn STUN/TURN**: Port 3478 (IETF RFC 5389/5766 standard, **do not change**)
 - **Relay Ports**: 49152-49200 (ephemeral range, coturn managed)
 
-**Development Services**:
-- **Web Client**: Port 8086 (Python http.server for local testing)
+**Development Services** (v0.2 — single-server, no separate web server needed):
+- **Web Client**: Served by Node.js signaling server on port 6736 (static file serving built in)
+- **Legacy**: Port 8086 (Python http.server) no longer needed
 
 **Port Selection Rationale**:
 - 6736+ range unlikely to conflict with common development tools
@@ -107,12 +108,13 @@
 
 ### Minimal Install Complexity
 
-**Goal**: `git clone && docker compose up` gets you live
+**Goal**: `git clone && npm install && npm start` gets you live (v0.2 achievement)
 
 **Requirements**:
-- Single Docker Compose file for all services
+- Single Node.js process serves everything (static files, API, WebSocket, Icecast proxy)
+- Auto-copies `station-manifest.sample.json` on first run
+- Docker only needed for Icecast + coturn (optional for basic testing)
 - Sensible defaults in sample config
-- Optional advanced configuration
 
 ### Browser Security Model
 
@@ -194,14 +196,14 @@
 - Wireshark (for debugging RTC media issues)
 - Chrome DevTools → about:webrtc (essential for WebRTC debugging)
 
-### Development Workflow
+### Development Workflow (v0.2)
 
 1. Clone repository
-2. Copy `station-manifest.sample.json` → `station-manifest.json`
-3. `docker compose up -d` (starts Icecast + coturn + signaling)
-4. `cd server && npm install && npm run dev` (signaling server)
-5. `cd web && npm install && npm run dev` (web studio, if using bundler)
-6. Open `http://localhost:8086` (web client served by http.server)
+2. `npm install` (installs server deps automatically)
+3. `npm start` → studio at http://localhost:6736
+4. `npm run dev` → same with `--watch` hot reload
+5. Optional: `docker compose up -d` for Icecast + coturn
+6. `npm test` → runs server test suite
 
 ### Testing Strategy
 
@@ -242,30 +244,27 @@
 
 ## Future Technical Directions
 
-### Release 0.2 (Distributed Stations)
+### Release 0.2 ✅ (Single Server + Recording — Shipped 2026-03-13)
 
-- Implement DHT directory (WebTorrent or libp2p)
-- Ed25519 keypair generation and management
-- Signed station manifests
+- Single-server architecture (static serving, Icecast proxy, all on one port)
+- Multi-track client-side recording (per-participant + program mix)
+- WAV export via OfflineAudioContext
+- Deployment config (Caddy, systemd, Docker Compose)
+- Room TTL for demo servers
+- README repositioned for conversion
+- GitHub Codespaces, CI improvements, templates
 
-### Release 0.3 (Call-in System)
+### Release 0.3 (Discovery — Planned)
 
-- Waiting room UI
-- Screen caller before admitting to program
-- Per-caller gain controls
-- Text chat (optional)
+- DHT station discovery (WebTorrent or libp2p)
+- Nostr NIP-53 integration
+- Ed25519 keypair generation for station identities
 
-### Release 0.4 (Extended Features)
+### Release 0.4 (Scale — Planned)
 
-- Multi-track recording (local, not streamed)
-- Jingle/soundboard playback
-- Remote moderation (delegate control to trusted users)
-
-### Release 0.5 (Federation & APIs)
-
-- REST/WebSocket API for external control
-- Cross-station linking (guest appearances)
-- Matrix bridge for text chat integration
+- SFU for larger rooms (25+ participants)
+- Soundboard/jingle playback
+- Text chat
 
 ## Dependency Philosophy
 

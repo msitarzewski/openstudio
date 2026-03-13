@@ -9,6 +9,8 @@ import http from 'http';
 import * as logger from './lib/logger.js';
 import { createWebSocketServer } from './lib/websocket-server.js';
 import { loadConfig } from './lib/config-loader.js';
+import { serveStatic } from './lib/static-server.js';
+import { proxyIcecastListener } from './lib/icecast-listener-proxy.js';
 
 // Load and validate station manifest (fail fast if invalid)
 let config;
@@ -49,6 +51,16 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // Icecast listener proxy (/stream/*)
+  if (proxyIcecastListener(req, res)) {
+    return;
+  }
+
+  // Static file serving (web/ directory)
+  if (serveStatic(req, res)) {
+    return;
+  }
+
   // 404 for all other routes
   res.writeHead(404, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: 'Not found' }));
@@ -59,9 +71,9 @@ const wss = createWebSocketServer(httpServer);
 
 // Start server
 httpServer.listen(PORT, () => {
-  logger.info(`OpenStudio signaling server listening on port ${PORT}`);
-  logger.info(`Health check: http://localhost:${PORT}/health`);
+  logger.info(`OpenStudio listening on http://localhost:${PORT}`);
   logger.info(`WebSocket: ws://localhost:${PORT}`);
+  logger.info(`Stream proxy: http://localhost:${PORT}/stream/live.opus`);
 });
 
 // Graceful shutdown handler

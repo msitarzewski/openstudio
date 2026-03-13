@@ -14,6 +14,15 @@ export class RoomManager {
     // Map of peerId -> roomId (for fast lookup)
     this.peerToRoom = new Map();
 
+    // Room TTL (for demo server - rooms expire after this duration)
+    this.roomTTL = parseInt(process.env.ROOM_TTL_MS || '0'); // 0 = no expiry
+
+    if (this.roomTTL > 0) {
+      logger.info(`Room TTL enabled: ${this.roomTTL}ms (${this.roomTTL / 60000} minutes)`);
+      this.roomCreationTimes = new Map(); // roomId -> timestamp
+      this.ttlInterval = setInterval(() => this.expireRooms(), 60000);
+    }
+
     logger.info('RoomManager initialized');
   }
 
@@ -43,6 +52,10 @@ export class RoomManager {
     // Store room and mapping
     this.rooms.set(roomId, room);
     this.peerToRoom.set(hostId, roomId);
+
+    if (this.roomTTL > 0) {
+      this.roomCreationTimes.set(roomId, Date.now());
+    }
 
     logger.info(`Room created: ${roomId} by host ${hostId} (total rooms: ${this.rooms.size})`);
 
@@ -117,6 +130,10 @@ export class RoomManager {
       // Store room and mapping
       this.rooms.set(finalRoomId, room);
       this.peerToRoom.set(peerId, finalRoomId);
+
+      if (this.roomTTL > 0) {
+        this.roomCreationTimes.set(finalRoomId, Date.now());
+      }
 
       logger.info(`Room created: ${finalRoomId} by ${peerId} (${role}) (total rooms: ${this.rooms.size})`);
 
@@ -252,11 +269,41 @@ export class RoomManager {
       this.peerToRoom.delete(participant.peerId);
     }
 
+    // Clean up TTL tracking
+    if (this.roomCreationTimes) {
+      this.roomCreationTimes.delete(roomId);
+    }
+
     // Delete room
     this.rooms.delete(roomId);
     logger.info(`Room ${roomId} deleted (total rooms: ${this.rooms.size})`);
 
     return true;
+  }
+
+  /**
+   * Expire rooms that have exceeded TTL
+   */
+  expireRooms() {
+    if (!this.roomTTL || !this.roomCreationTimes) return;
+
+    const now = Date.now();
+    for (const [roomId, createdAt] of this.roomCreationTimes) {
+      if (now - createdAt > this.roomTTL) {
+        const room = this.rooms.get(roomId);
+        if (room) {
+          logger.info(`Room ${roomId} expired (TTL: ${this.roomTTL}ms)`);
+          // Notify all participants
+          room.broadcast({ type: 'room-expired', roomId });
+          // Remove all participants
+          for (const participant of room.getParticipants()) {
+            this.peerToRoom.delete(participant.peerId);
+          }
+          this.rooms.delete(roomId);
+        }
+        this.roomCreationTimes.delete(roomId);
+      }
+    }
   }
 
   /**

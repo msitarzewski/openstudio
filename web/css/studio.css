@@ -678,3 +678,149 @@ button:disabled {
     word-break: break-all;
   }
 }
+
+/* =========================
+   Recording Section
+   ========================= */
+
+#recording-section {
+  max-width: var(--max-width);
+  margin: 0 auto var(--spacing-lg) auto;
+  padding: 0 var(--spacing-lg);
+}
+
+.recording-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.recording-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+}
+
+.recording-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--color-border);
+  transition: background-color 0.3s ease;
+}
+
+.recording-indicator.active {
+  background-color: #ef4444;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.recording-timer {
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--color-text-secondary);
+  min-width: 80px;
+}
+
+.recording-timer.active {
+  color: #ef4444;
+}
+
+.recording-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-secondary);
+  margin-bottom: var(--spacing-sm);
+}
+
+#start-recording {
+  background-color: #ef4444;
+  color: #ffffff;
+}
+
+#start-recording:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+#stop-recording {
+  background-color: var(--color-button-bg);
+  color: #ffffff;
+}
+
+#download-recordings {
+  background-color: #10b981;
+  color: #ffffff;
+}
+
+#download-recordings:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+.recording-tracks {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-secondary);
+}
+
+.recording-tracks h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+  color: var(--color-text-secondary);
+}
+
+.recording-track-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.recording-track-item:last-child {
+  border-bottom: none;
+}
+
+.recording-track-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.recording-track-size {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.recording-track-download {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-button-bg);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+}
+
+.recording-track-download:hover {
+  background-color: var(--color-button-bg-hover);
+}
+
+/* Recording responsive */
+@media (max-width: 768px) {
+  #recording-section {
+    padding: 0 var(--spacing-sm);
+  }
+
+  .recording-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -1,0 +1,3 @@
+openstudio.zerologic.com {
+    reverse_proxy localhost:6736
+}

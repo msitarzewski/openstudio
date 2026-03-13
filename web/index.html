@@ -35,6 +35,23 @@
       <button id="end-session" disabled>End Session</button>
     </section>
 
+    <!-- Recording Controls -->
+    <section id="recording-section">
+      <div class="recording-header">
+        <div class="recording-label">Recording</div>
+        <div id="recording-indicator" class="recording-indicator"></div>
+        <div id="recording-timer" class="recording-timer">00:00:00</div>
+      </div>
+      <div class="recording-controls">
+        <button id="start-recording" disabled>Record</button>
+        <button id="stop-recording" disabled style="display: none;">Stop Recording</button>
+        <button id="download-recordings" disabled style="display: none;">Download All</button>
+      </div>
+      <div id="recording-tracks" class="recording-tracks" style="display: none;">
+        <!-- Track download list appears here after recording stops -->
+      </div>
+    </section>
+
     <!-- Program Bus Volume Meter -->
     <section id="program-bus-section">
       <div class="meter-label">Program Bus</div>
@@ -63,7 +80,7 @@
         </div>
       </div>
       <div id="streaming-info" class="streaming-info">
-        <div class="streaming-url">Stream URL: <a href="http://localhost:6737/live.opus" target="_blank" id="stream-url">http://localhost:6737/live.opus</a></div>
+        <div class="streaming-url">Stream URL: <a href="/stream/live.opus" target="_blank" id="stream-url">/stream/live.opus</a></div>
       </div>
     </section>
   </main>

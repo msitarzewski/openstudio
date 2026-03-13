@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  icecast:
+    image: moul/icecast
+    ports:
+      - "127.0.0.1:6737:8000"
+    environment:
+      ICECAST_SOURCE_PASSWORD: "${ICECAST_PASS:-hackme}"
+      ICECAST_ADMIN_PASSWORD: "${ICECAST_ADMIN_PASS:-admin}"
+      ICECAST_RELAY_PASSWORD: "${ICECAST_RELAY_PASS:-relay}"
+      ICECAST_HOSTNAME: "openstudio.zerologic.com"
+    restart: unless-stopped
+
+  coturn:
+    image: coturn/coturn
+    network_mode: host
+    volumes:
+      - ./turnserver.conf:/etc/turnserver.conf:ro
+    restart: unless-stopped

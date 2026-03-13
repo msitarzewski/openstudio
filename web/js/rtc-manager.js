@@ -10,9 +10,12 @@
  * - ICE candidate generation
  */
 
-const API_STATION_URL = 'http://localhost:6736/api/station';
+const API_STATION_URL = `${location.origin}/api/station`;
 
 export class RTCManager extends EventTarget {
+  /**
+   * @param {string} peerId - Local peer identifier
+   */
   constructor(peerId) {
     super();
     this.peerId = peerId;
@@ -23,6 +26,10 @@ export class RTCManager extends EventTarget {
 
   /**
    * Initialize: fetch ICE servers from station API
+   */
+  /**
+   * Fetch ICE server configuration from station API.
+   * @returns {Promise<boolean>} True if initialization succeeded
    */
   async initialize() {
     try {
@@ -70,6 +77,11 @@ export class RTCManager extends EventTarget {
   /**
    * Get local media stream (microphone audio)
    */
+  /**
+   * Request microphone access and store the local MediaStream.
+   * @returns {Promise<MediaStream>} The local audio stream
+   * @throws {Error} If microphone access is denied or unavailable
+   */
   async getLocalStream() {
     if (this.localStream) {
       console.log('[RTC] Local stream already exists');
@@ -107,6 +119,11 @@ export class RTCManager extends EventTarget {
 
   /**
    * Create RTCPeerConnection for a remote peer
+   */
+  /**
+   * @param {string} remotePeerId - Remote peer identifier
+   * @param {boolean} [isInitiator=false] - Whether this peer initiates the connection
+   * @returns {RTCPeerConnection}
    */
   createPeerConnection(remotePeerId, isInitiator = false) {
     if (this.peerConnections.has(remotePeerId)) {
@@ -199,6 +216,10 @@ export class RTCManager extends EventTarget {
    * Create SDP offer (Perfect Negotiation pattern)
    * Uses setLocalDescription() without arguments which automatically creates the right offer
    */
+  /**
+   * @param {string} remotePeerId
+   * @returns {Promise<RTCSessionDescription>}
+   */
   async createOffer(remotePeerId) {
     const pc = this.peerConnections.get(remotePeerId);
     if (!pc) {
@@ -218,6 +239,10 @@ export class RTCManager extends EventTarget {
   /**
    * Create SDP answer
    */
+  /**
+   * @param {string} remotePeerId
+   * @returns {Promise<RTCSessionDescriptionInit>}
+   */
   async createAnswer(remotePeerId) {
     const pc = this.peerConnections.get(remotePeerId);
     if (!pc) {
@@ -234,6 +259,11 @@ export class RTCManager extends EventTarget {
 
   /**
    * Handle remote SDP offer
+   */
+  /**
+   * @param {string} remotePeerId
+   * @param {string|RTCSessionDescriptionInit} offer - SDP offer (string or object)
+   * @returns {Promise<RTCSessionDescriptionInit>} SDP answer
    */
   async handleOffer(remotePeerId, offer) {
     console.log(`[RTC] Handling offer from ${remotePeerId}`);
@@ -255,6 +285,11 @@ export class RTCManager extends EventTarget {
   /**
    * Handle remote SDP answer
    */
+  /**
+   * @param {string} remotePeerId
+   * @param {string|RTCSessionDescriptionInit} answer - SDP answer (string or object)
+   * @returns {Promise<void>}
+   */
   async handleAnswer(remotePeerId, answer) {
     console.log(`[RTC] Handling answer from ${remotePeerId}`);
 
@@ -274,6 +309,11 @@ export class RTCManager extends EventTarget {
 
   /**
    * Handle remote ICE candidate
+   */
+  /**
+   * @param {string} remotePeerId
+   * @param {RTCIceCandidateInit} candidate
+   * @returns {Promise<void>}
    */
   async handleIceCandidate(remotePeerId, candidate) {
     const pc = this.peerConnections.get(remotePeerId);
@@ -327,6 +367,9 @@ export class RTCManager extends EventTarget {
 
   /**
    * Close peer connection
+   */
+  /**
+   * @param {string} remotePeerId
    */
   closePeerConnection(remotePeerId) {
     const pc = this.peerConnections.get(remotePeerId);

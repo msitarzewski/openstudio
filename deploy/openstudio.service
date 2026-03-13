@@ -1,0 +1,18 @@
+[Unit]
+Description=OpenStudio Signaling Server
+After=network.target
+
+[Service]
+Type=simple
+User=openstudio
+WorkingDirectory=/opt/openstudio
+ExecStart=/usr/bin/node server/server.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=PORT=6736
+Environment=ICECAST_HOST=127.0.0.1
+Environment=ICECAST_PORT=6737
+
+[Install]
+WantedBy=multi-user.target

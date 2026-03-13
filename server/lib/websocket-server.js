@@ -156,6 +156,10 @@ function handleMessage(ws, message) {
       handleStopStream(ws, message, peerId);
       break;
 
+    case 'recording-state':
+      handleRecordingState(ws, message, peerId);
+      break;
+
     default:
       logger.warn('Unknown message type:', message.type);
       ws.send(JSON.stringify({
@@ -450,6 +454,31 @@ async function handleStreamChunk(ws, message, peerId) {
   // Convert base64 chunk to Buffer
   const chunk = Buffer.from(message.chunk, 'base64');
   await icecastProxy.handleChunk(peerId, chunk);
+}
+
+/**
+ * Handle recording-state message (broadcast to all peers in room)
+ */
+function handleRecordingState(ws, message, peerId) {
+  if (!peerId) {
+    ws.send(JSON.stringify({ type: 'error', message: 'Must register before sending recording state' }));
+    return;
+  }
+
+  const room = roomManager.getRoomForPeer(peerId);
+  if (!room) {
+    ws.send(JSON.stringify({ type: 'error', message: 'Not in a room' }));
+    return;
+  }
+
+  // Broadcast to all participants in room
+  broadcastToRoom(room, {
+    type: 'recording-state',
+    recording: message.recording,
+    from: peerId
+  }, null);
+
+  logger.info(`Recording state from ${peerId}: ${message.recording ? 'started' : 'stopped'}`);
 }
 
 /**

@@ -93,6 +93,10 @@ export class AudioGraph extends EventTarget {
       const gain = this.audioContext.createGain();
       gain.gain.value = 1.0; // Unity gain (0 dB)
 
+      // Create recording tap point (parallel to main chain)
+      const recordingDestination = this.audioContext.createMediaStreamDestination();
+      gain.connect(recordingDestination);
+
       // Create AnalyserNode for level metering
       const analyser = this.audioContext.createAnalyser();
       analyser.fftSize = 256; // Small FFT for real-time metering
@@ -120,7 +124,9 @@ export class AudioGraph extends EventTarget {
         gain,
         analyser,
         compressor,
-        mediaStream
+        mediaStream,
+        recordingDestination,
+        recordingStream: recordingDestination.stream
       });
 
       console.log(`[AudioGraph] Participant ${peerId} connected to program bus (gain: ${gain.gain.value})`);
@@ -275,6 +281,16 @@ export class AudioGraph extends EventTarget {
    */
   getMixMinusManager() {
     return this.mixMinusManager;
+  }
+
+  /**
+   * Get participant's recording MediaStream (post-gain, pre-compressor)
+   * @param {string} peerId
+   * @returns {MediaStream|null}
+   */
+  getParticipantRecordingStream(peerId) {
+    const nodes = this.participantNodes.get(peerId);
+    return nodes ? nodes.recordingStream : null;
   }
 
   /**

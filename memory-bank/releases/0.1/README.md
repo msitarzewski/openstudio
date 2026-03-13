@@ -6,7 +6,7 @@ This directory contains the complete task breakdown for OpenStudio Release 0.1.
 
 **Goal**: Build a functional multi-host virtual studio with live callers, mix-minus audio routing, and Icecast streaming output.
 
-**Status**: Ready to start (0/20 tasks complete)
+**Status**: Complete (20/20 tasks complete) — Released as v0.1.0 on 2026-03-12
 
 **Estimated Effort**: 80-120 hours total
 
