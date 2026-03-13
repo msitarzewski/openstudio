@@ -71,7 +71,7 @@
 ✅ Auto-config: `station-manifest.json` created from sample on first run
 ✅ `npm start` serves full studio at `localhost:6736`
 
-### v0.2.1 Security Hardening (In Progress)
+### v0.2.1 Security Hardening (PR #1 Open — CI Green)
 
 **Server-Side**:
 ✅ `server/lib/auth.js` — JWT room tokens (24h) + invite tokens (4h)
@@ -99,14 +99,22 @@
 ✅ `station-manifest.sample.json` — TURN creds marked CHANGE_ME
 ✅ `deploy/station-manifest.production.json` — TURN creds marked CHANGE_ME
 
+**CI Fixes** (resolved during PR):
+✅ Removed `cache: npm` from CI — lock files are gitignored
+✅ Switched `npm ci` → `npm install` in CI
+✅ Updated all 7 Playwright test URLs from port 8086 → 6736
+✅ Fixed `test-program-bus.mjs` headed → headless for CI
+✅ Increased return-feed test timeouts (WebRTC renegotiation flaky in CI)
+✅ Added retry for return-feed test, `fail-fast: false` on matrix
+
 ## What's Next
 
 ### Immediate
 
-1. **Commit & test v0.2.1** — Finalize security hardening branch, run full test suite
-2. **Deploy to openstudio.zerologic.com** — Run `deploy/setup.sh` on production server with `JWT_SECRET` and `ALLOWED_ORIGINS` set
-3. **End-to-end recording test** — Manual test: record, stop, download, verify tracks
-4. **Playwright tests update** — Update test URLs from port 8086 to 6736
+1. **Merge PR #1** — https://github.com/msitarzewski/openstudio/pull/1 (CI green)
+2. **Deploy to umacbookpro** — `git pull` + `systemctl --user restart openstudio` on umacbookpro
+3. **Deploy to openstudio.zerologic.com** — Run `deploy/setup.sh` on production server with `JWT_SECRET` and `ALLOWED_ORIGINS` set
+4. **End-to-end recording test** — Manual test: record, stop, download, verify tracks
 
 ### Short Term (Next Sprint)
 
@@ -143,8 +151,8 @@
 - Deployment config for openstudio.zerologic.com
 - DX: Codespaces, CI matrix, GitHub templates
 
-### Release 0.2.1 — Security Hardening 🔒 (In Progress 2026-03-13)
-**Status**: Implementation in progress (branch: `release/0.2.1-security-hardening`)
+### Release 0.2.1 — Security Hardening 🔒 (PR Open 2026-03-13)
+**Status**: PR #1 open, CI green (Node 18/20/22), awaiting merge
 - JWT room tokens + invite tokens (`server/lib/auth.js`)
 - WebSocket rate limiting (100 signaling/10s, 500 stream/10s) + per-IP connection limit (10)
 - HTTP security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy)
