@@ -81,13 +81,15 @@ class OpenStudioApp {
     // Auto-connect to signaling server
     this.initializeApp();
 
-    // Expose for debugging in browser console
-    window.audioContextManager = audioContextManager;
-    window.audioGraph = this.audioGraph;
-    window.returnFeedManager = this.returnFeedManager;
-    window.icecastStreamer = this.icecastStreamer;
-    window.recordingManager = this.recordingManager;
-    window.app = this;
+    // Expose for debugging in browser console (localhost only)
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      window.audioContextManager = audioContextManager;
+      window.audioGraph = this.audioGraph;
+      window.returnFeedManager = this.returnFeedManager;
+      window.icecastStreamer = this.icecastStreamer;
+      window.recordingManager = this.recordingManager;
+      window.app = this;
+    }
   }
 
   /**
@@ -117,9 +119,11 @@ class OpenStudioApp {
       this.volumeMeter = new VolumeMeter(canvasElement, analyser);
       console.log('[App] Volume meter initialized');
 
-      // Expose volume meter and mute manager for debugging
-      window.volumeMeter = this.volumeMeter;
-      window.muteManager = this.muteManager;
+      // Expose volume meter and mute manager for debugging (localhost only)
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        window.volumeMeter = this.volumeMeter;
+        window.muteManager = this.muteManager;
+      }
 
       // Fetch ICE servers
       await this.rtc.initialize();
@@ -128,8 +132,10 @@ class OpenStudioApp {
       this.connectionManager = new ConnectionManager(this.peerId, this.signaling, this.rtc);
       this.setupConnectionManagerListeners();
 
-      // Expose connection manager for debugging
-      window.connectionManager = this.connectionManager;
+      // Expose connection manager for debugging (localhost only)
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        window.connectionManager = this.connectionManager;
+      }
 
       // Connect to signaling server
       this.signaling.connect();
@@ -159,8 +165,13 @@ class OpenStudioApp {
     });
 
     this.signaling.addEventListener('room-created', async (event) => {
-      const { roomId, hostId, role } = event.detail;
+      const { roomId, hostId, role, ice } = event.detail;
       console.log(`[App] Room created: ${roomId} as ${role}`);
+
+      // Apply ICE config from signaling (includes TURN credentials)
+      if (ice) {
+        this.rtc.setIceServers(ice);
+      }
 
       this.currentRoom = roomId;
       this.currentRole = role || 'host'; // Use role from server, fallback to host
@@ -205,8 +216,13 @@ class OpenStudioApp {
     });
 
     this.signaling.addEventListener('room-joined', async (event) => {
-      const { roomId, participants, role } = event.detail;
+      const { roomId, participants, role, ice } = event.detail;
       console.log(`[App] Joined room: ${roomId} as ${role}`, participants);
+
+      // Apply ICE config from signaling (includes TURN credentials)
+      if (ice) {
+        this.rtc.setIceServers(ice);
+      }
 
       this.currentRoom = roomId;
       this.currentRole = role || 'guest'; // Use role from server, fallback to guest
@@ -641,8 +657,8 @@ class OpenStudioApp {
   }
 
   /**
-   * Check URL hash for room ID and role (join flow)
-   * Format: #room-id?role=host|ops|guest
+   * Check URL hash for room ID, role, and invite token (join flow)
+   * Format: #room-id?role=host|ops|guest or #room-id?token=<jwt>
    */
   checkUrlHash() {
     const hash = window.location.hash.substring(1); // Remove '#'
@@ -658,9 +674,18 @@ class OpenStudioApp {
       this.roomIdFromUrl = roomId;
     }
 
-    // Parse role from query string
+    // Parse query string parameters
     if (queryString) {
       const params = new URLSearchParams(queryString);
+
+      // Check for invite token (new authenticated flow)
+      const token = params.get('token');
+      if (token) {
+        console.log('[App] Found invite token in URL');
+        this.inviteTokenFromUrl = token;
+      }
+
+      // Check for role (legacy flow — will be overridden by server if no invite token)
       const role = params.get('role');
       if (role && ['host', 'ops', 'guest'].includes(role)) {
         console.log(`[App] Found role in URL: ${role}`);
@@ -698,10 +723,11 @@ class OpenStudioApp {
 
     // Use create-or-join-room logic
     if (this.roomIdFromUrl) {
-      // Room ID in URL - create or join it with role from URL
+      // Room ID in URL - create or join it with role from URL (or invite token)
       const role = this.roleFromUrl || 'guest';
-      console.log(`[App] Creating or joining room: ${this.roomIdFromUrl} as ${role}`);
-      this.signaling.createOrJoinRoom(this.roomIdFromUrl, role);
+      const inviteToken = this.inviteTokenFromUrl || null;
+      console.log(`[App] Creating or joining room: ${this.roomIdFromUrl} as ${role}${inviteToken ? ' (with invite token)' : ''}`);
+      this.signaling.createOrJoinRoom(this.roomIdFromUrl, role, inviteToken);
     } else {
       // No room ID in URL - prompt user
       const confirmCreate = confirm('Create a new room? Click OK to create, or Cancel to join an existing room.');

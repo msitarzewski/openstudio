@@ -7,10 +7,10 @@ services:
     ports:
       - "6737:8000"
     environment:
-      - ICECAST_SOURCE_PASSWORD=hackme
-      - ICECAST_ADMIN_PASSWORD=hackme
+      - ICECAST_SOURCE_PASSWORD=${ICECAST_SOURCE_PASSWORD:?Set ICECAST_SOURCE_PASSWORD in .env}
+      - ICECAST_ADMIN_PASSWORD=${ICECAST_ADMIN_PASSWORD:?Set ICECAST_ADMIN_PASSWORD in .env}
       - ICECAST_ADMIN_USERNAME=admin
-      - ICECAST_RELAY_PASSWORD=hackme
+      - ICECAST_RELAY_PASSWORD=${ICECAST_RELAY_PASSWORD:?Set ICECAST_RELAY_PASSWORD in .env}
       - ICECAST_HOSTNAME=localhost
     restart: unless-stopped
     networks:
@@ -26,7 +26,7 @@ services:
       - --listening-port=3478
       - --fingerprint
       - --lt-cred-mech
-      - --user=openstudio:hackme
+      - --user=openstudio:${COTURN_PASSWORD:?Set COTURN_PASSWORD in .env}
       - --realm=openstudio.local
       - --min-port=49152
       - --max-port=49200

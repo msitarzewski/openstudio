@@ -12,14 +12,14 @@
 
 import { chromium } from 'playwright';
 
-const WEB_URL = 'http://localhost:8086';
+const WEB_URL = 'http://localhost:6736';
 const TIMEOUT = 30000;
 
 async function testProgramBus() {
   console.log('=== Program Bus and Volume Meter Test ===\n');
 
   const browser = await chromium.launch({
-    headless: false,
+    headless: true,
     args: [
       '--use-fake-ui-for-media-stream',
       '--use-fake-device-for-media-stream',

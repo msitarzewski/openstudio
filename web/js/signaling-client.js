@@ -23,6 +23,7 @@ export class SignalingClient extends EventTarget {
     this.reconnectTimeout = null;
     this.isIntentionallyClosed = false;
     this.isRegistered = false;
+    this.roomToken = null; // JWT room token from server
   }
 
   /**
@@ -88,11 +89,17 @@ export class SignalingClient extends EventTarget {
         break;
 
       case 'room-created':
+        if (message.token) this.roomToken = message.token;
         this.dispatchEvent(new CustomEvent('room-created', { detail: message }));
         break;
 
       case 'room-joined':
+        if (message.token) this.roomToken = message.token;
         this.dispatchEvent(new CustomEvent('room-joined', { detail: message }));
+        break;
+
+      case 'invite-token':
+        this.dispatchEvent(new CustomEvent('invite-token', { detail: message }));
         break;
 
       case 'peer-joined':
@@ -222,17 +229,33 @@ export class SignalingClient extends EventTarget {
    * Create or join a room (idempotent operation)
    * @param {string|null} roomId - Room ID to create/join (null = generate new UUID)
    * @param {string} role - Participant role: 'host', 'ops', or 'guest' (default: 'guest')
+   * @param {string|null} inviteToken - Optional invite token for authenticated role assignment
    */
-  createOrJoinRoom(roomId, role = 'guest') {
+  createOrJoinRoom(roomId, role = 'guest', inviteToken = null) {
     if (!this.isRegistered) {
       console.error('[Signaling] Cannot create or join room - not registered');
       return false;
     }
 
-    return this.send({
+    const msg = {
       type: 'create-or-join-room',
-      roomId: roomId, // Can be null to generate new UUID
+      roomId: roomId,
       role: role
+    };
+    if (inviteToken) {
+      msg.inviteToken = inviteToken;
+    }
+    return this.send(msg);
+  }
+
+  /**
+   * Request an invite token from the server (host/ops only)
+   * @param {string} inviteRole - Role to assign: 'ops' or 'guest'
+   */
+  requestInviteToken(inviteRole = 'guest') {
+    return this.send({
+      type: 'request-invite',
+      inviteRole
     });
   }
 

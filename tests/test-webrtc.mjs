@@ -5,7 +5,7 @@
 
 import { chromium } from 'playwright';
 
-const WEB_URL = 'http://localhost:8086';
+const WEB_URL = 'http://localhost:6736';
 const TIMEOUT = 10000;
 
 async function sleep(ms) {
@@ -90,7 +90,7 @@ async function runTest() {
       console.log('✅ Web server is running\n');
     } catch (error) {
       console.error('❌ Web server not running at', WEB_URL);
-      console.error('   Please start: cd web && python3 -m http.server 8086');
+      console.error('   Please start: node server/server.js');
       await testBrowser.close();
       process.exit(1);
     }

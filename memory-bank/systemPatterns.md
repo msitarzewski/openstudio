@@ -154,18 +154,33 @@ MediaStreamSource → GainNode → DynamicsCompressor → ChannelMerger → Dest
 - Public key published to directory
 - Clients verify signatures before connecting
 
-### Room Access Control
+### Room Access Control (Updated v0.2.1)
 
-- JWT tokens for room entry
-- Scoped to role: host vs. caller
-- Time-boxed expiration
-- Issued by station owner's signaling server
+- JWT room tokens prove peerId + roomId + role (24h expiry)
+- JWT invite tokens for link sharing (4h expiry, host/ops generate)
+- Server-side role validation (host, ops, guest)
+- No invite token + existing room → forced guest role
+- ICE credentials (TURN) only in authenticated WebSocket messages
 
 ### Media Security
 
 - DTLS-SRTP on all RTC connections
 - No unencrypted media transport
 - Browser enforces secure contexts (HTTPS required)
+
+### Input Validation (v0.2.1)
+
+- UUID v4 regex validation for peerId on register
+- Message type validation before processing
+- From-field spoofing prevention (must match registered peerId)
+- Icecast proxy path sanitization (posix.normalize, block traversal, block /admin)
+- WebSocket maxPayload: 256KB
+
+### Rate Limiting (v0.2.1)
+
+- Per-connection sliding window: 100 signaling / 10s, 500 stream-chunk / 10s
+- Per-IP connection cap: 10 concurrent WebSockets
+- Icecast entrypoint: fail-fast credential validation
 
 ### 6. Single-Server Architecture (v0.2)
 
@@ -211,6 +226,61 @@ Program Bus → MediaStreamDestination → MediaRecorder (mix)
 - `ROOM_TTL_MS` env var (default: 0 = no expiry)
 - `roomCreationTimes` map tracks when rooms were created
 - `setInterval` every 60s broadcasts `room-expired` and cleans up
+
+### 9. JWT Authentication & Invite Tokens (v0.2.1)
+
+**Pattern**: JWT-based room tokens prove identity/role; invite tokens enable authenticated link sharing.
+
+**Implementation**:
+- `server/lib/auth.js`: `generateRoomToken(peerId, roomId, role)` → 24h JWT
+- `generateInviteToken(roomId, role)` → 4h JWT (host/ops only)
+- `verifyToken(token)` → `{ valid, payload?, error? }`
+- JWT_SECRET from env or auto-generated random (dev warning logged)
+- Room creation/join returns token + ICE config via WebSocket
+- Invite tokens embedded in URL, verified server-side on join
+
+### 10. WebSocket Rate Limiting & Connection Caps (v0.2.1)
+
+**Pattern**: Sliding-window rate limiter per connection, per-IP connection cap.
+
+**Implementation**:
+- 100 signaling messages / 10s window, 500 stream-chunk / 10s
+- Max 10 connections per IP (`connectionsByIp` map)
+- `maxPayload: 256KB` on WebSocket server
+- Rate limit exceeded → error message; connection limit → close with 4008
+
+### 11. HTTP Security Headers (v0.2.1)
+
+**Pattern**: Defence-in-depth headers on every HTTP response.
+
+**Headers**:
+- `X-Content-Type-Options: nosniff` (all responses including static files)
+- `X-Frame-Options: DENY`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- CORS: `ALLOWED_ORIGINS` env var (comma-separated allowlist; empty = allow all)
+
+### 12. Role-Based Access Control (v0.2.1)
+
+**Pattern**: Server-side enforcement of role permissions for privileged operations.
+
+**Roles**: `host`, `ops`, `guest` (validated server-side)
+
+**Permissions**:
+- `start-stream`: host/ops only
+- `request-invite`: host/ops only
+- Producer mute on others: host/ops only
+- Self-mute: any role
+- Joining without invite token: forced to `guest` role
+
+### 13. ICE Credential Protection (v0.2.1)
+
+**Pattern**: TURN credentials delivered via authenticated WebSocket, not public API.
+
+**Implementation**:
+- `/api/station` returns station info without ICE credentials
+- ICE config (including TURN username/credential) included in `room-created`/`room-joined` WebSocket messages
+- Client `RTCManager.setIceServers()` applies config from signaling response
+- Fallback: `initialize()` fetches from API if signaling didn't provide ICE (STUN-only)
 
 ## Error Handling Patterns
 

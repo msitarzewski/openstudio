@@ -7,7 +7,7 @@
 
 import http from 'http';
 import * as logger from './lib/logger.js';
-import { createWebSocketServer } from './lib/websocket-server.js';
+import { createWebSocketServer, setIceConfig } from './lib/websocket-server.js';
 import { loadConfig } from './lib/config-loader.js';
 import { serveStatic } from './lib/static-server.js';
 import { proxyIcecastListener } from './lib/icecast-listener-proxy.js';
@@ -25,8 +25,44 @@ try {
 const PORT = process.env.PORT || 6736;
 const startTime = Date.now();
 
+/**
+ * Set security headers on every HTTP response.
+ * Defence-in-depth: these apply regardless of route.
+ */
+function setSecurityHeaders(res) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+}
+
+/**
+ * Origin allowlist for CORS.
+ * When ALLOWED_ORIGINS env var is unset/empty every origin is permitted
+ * (open development mode). In production set a comma-separated list, e.g.
+ *   ALLOWED_ORIGINS=https://studio.example.com,https://app.example.com
+ */
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean);
+
+/**
+ * Return the validated CORS origin header value for the given request,
+ * or null if the origin is not on the allowlist.
+ */
+function getCorsOrigin(req) {
+  const origin = req.headers.origin;
+  if (allowedOrigins.length === 0) {
+    // No allowlist configured — allow all (development mode)
+    return origin || '*';
+  }
+  if (origin && allowedOrigins.includes(origin)) {
+    return origin;
+  }
+  return null;
+}
+
 // Create HTTP server
 const httpServer = http.createServer((req, res) => {
+  setSecurityHeaders(res);
+
   // Health check endpoint
   if (req.method === 'GET' && req.url === '/health') {
     const uptime = Math.floor((Date.now() - startTime) / 1000);
@@ -37,16 +73,17 @@ const httpServer = http.createServer((req, res) => {
 
   // Station info endpoint
   if (req.method === 'GET' && req.url === '/api/station') {
-    res.writeHead(200, {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*', // Allow all origins for development
-      'Access-Control-Allow-Methods': 'GET'
-    });
+    const corsHeaders = { 'Content-Type': 'application/json', 'Access-Control-Allow-Methods': 'GET' };
+    const corsOrigin = getCorsOrigin(req);
+    if (corsOrigin) {
+      corsHeaders['Access-Control-Allow-Origin'] = corsOrigin;
+    }
+    res.writeHead(200, corsHeaders);
     res.end(JSON.stringify({
       stationId: config.stationId,
       name: config.name,
-      signaling: config.signaling,
-      ice: config.ice
+      signaling: config.signaling
+      // ICE credentials are now delivered via WebSocket on room-created/room-joined
     }));
     return;
   }
@@ -65,6 +102,11 @@ const httpServer = http.createServer((req, res) => {
   res.writeHead(404, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: 'Not found' }));
 });
+
+// Pass ICE config to WebSocket server for room responses
+if (config.ice) {
+  setIceConfig(config.ice);
+}
 
 // Create WebSocket server attached to HTTP server
 const wss = createWebSocketServer(httpServer);

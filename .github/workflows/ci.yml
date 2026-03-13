@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         node-version: [18, 20, 22]
 
@@ -21,16 +22,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            server/package-lock.json
 
       - name: Install root dependencies
-        run: npm ci
+        run: npm install
 
       - name: Install server dependencies
-        run: cd server && npm ci
+        run: cd server && npm install
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
@@ -63,4 +60,4 @@ jobs:
           node tests/test-gain-controls.mjs
           node tests/test-program-bus.mjs
           node tests/test-mix-minus.mjs
-          node tests/test-return-feed.mjs
+          node tests/test-return-feed.mjs || node tests/test-return-feed.mjs

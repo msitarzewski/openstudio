@@ -1,111 +1,147 @@
 # Active Context: OpenStudio
 
-**Last Updated**: 2026-03-13 (Release 0.2.0 Complete)
+**Last Updated**: 2026-03-13 (Release 0.2.1 Security Hardening — In Progress)
 
 ## Current Phase
 
-**Release**: 0.2.0 (Single Server + Recording)
-**Status**: Implementation complete (5/5 phases)
-**Focus**: Deployment + manual verification
-**Next**: Deploy to openstudio.zerologic.com, end-to-end recording test
+**Release**: 0.2.1 (Security Hardening)
+**Branch**: `release/0.2.1-security-hardening`
+**Status**: Implementation in progress (changes staged, not yet committed)
+**Focus**: Server-side security hardening, JWT auth, rate limiting, CORS, input validation
+**Next**: Commit, test, merge to main
 
 ## Recent Decisions
 
-### 2026-03-13: v0.2.0 Architecture — Single Server with Static Serving
+### 2026-03-13: v0.2.1 — JWT Room & Invite Tokens
 
-**Decision**: Embed static file serving and Icecast listener proxy directly in the Node.js signaling server, eliminating the need for a separate web server (Python http.server).
-
-**Rationale**:
-- `git clone && npm start` gets you a working studio at localhost:6736
-- One process, one port, one terminal — dramatically reduced DX friction
-- Icecast listener proxy at `/stream/*` keeps everything on one port (critical for Caddy deployment)
-- Dynamic client URLs (`location.host`, `location.origin`) work for any deployment
-
-**Implementation**:
-- `server/lib/static-server.js` — MIME map, `fs.createReadStream`, traversal prevention
-- `server/lib/icecast-listener-proxy.js` — Proxies GET `/stream/*` to localhost:6737
-- Request handler order: health → API → proxy → static → 404
-- Auto-config: copies `station-manifest.sample.json` on first run
-
-### 2026-03-13: Client-Side Multi-Track Recording
-
-**Decision**: Implement recording entirely client-side using MediaRecorder API, no new server dependencies.
+**Decision**: Add JWT-based authentication for room access and invite links.
 
 **Rationale**:
-- Zero server cost for recording (all in browser)
-- Per-participant isolation via MediaStreamDestination tap points on gain nodes
-- Same pattern as existing StreamEncoder (audio/webm;codecs=opus)
-- Safari fallback: audio/mp4 if webm unavailable
+- Room tokens prove peerId + roomId + role (prevents spoofing)
+- Invite tokens allow authenticated role assignment via shareable URLs
+- Only host/ops can generate invite tokens (prevents privilege escalation)
+- ICE credentials (including TURN) delivered via WebSocket on room join, not via public `/api/station` API
 
 **Implementation**:
-- `RecordingManager` — manages per-participant + program recorders
-- `WavEncoder` — client-side WebM→WAV via OfflineAudioContext.decodeAudioData()
-- Recording tap in AudioGraph: `gain → recordingDestination` (parallel to main chain)
-- `recording-state` signaling message broadcasts to all peers (red indicator)
+- `server/lib/auth.js` — NEW: `generateRoomToken()`, `generateInviteToken()`, `verifyToken()`
+- JWT_SECRET from env var or auto-generated random (logged as warning)
+- Room tokens expire in 24h, invite tokens in 4h
+- `create-or-join-room` handler verifies invite tokens and enforces server-side role assignment
+- `request-invite` handler: host/ops only, generates signed invite token
+- Client `SignalingClient` stores `roomToken` from server responses
 
-### 2026-03-13: README Conversion Optimization
+### 2026-03-13: v0.2.1 — WebSocket Rate Limiting & Connection Limits
 
-**Decision**: Replace 584-line manifesto README with 122-line conversion-optimized version. Preserve full vision in `docs/vision.md`.
+**Decision**: Add per-connection rate limiting and per-IP connection caps.
 
-**Key conversion elements**:
-- Comparison table (OpenStudio vs Riverside/Zencastr/StreamYard)
-- 3-line quick start (`git clone && npm install && npm start`)
-- ASCII architecture diagram
-- Live demo link (openstudio.zerologic.com)
+**Rationale**: Prevent DoS and resource exhaustion on signaling server.
 
-### 2026-03-13: Room TTL for Demo Server
+**Implementation**:
+- Sliding window rate limiter: 100 signaling messages / 10s, 500 stream-chunk messages / 10s
+- Per-IP connection limit: max 10 concurrent WebSocket connections
+- `maxPayload: 256KB` on WebSocket server (prevents memory bombs)
+- Close code 4008 for connection limit exceeded
 
-**Decision**: Add configurable room expiry via `ROOM_TTL_MS` environment variable (default: no expiry).
+### 2026-03-13: v0.2.1 — HTTP Security Headers & CORS Allowlist
 
-**Rationale**: Demo server at openstudio.zerologic.com needs rooms to auto-expire (15 minutes) to prevent resource accumulation.
+**Decision**: Set security headers on every HTTP response and add configurable CORS origin allowlist.
 
-**Implementation**: 60-second interval checks room creation times, broadcasts `room-expired`, cleans up.
+**Implementation**:
+- `X-Content-Type-Options: nosniff` (all responses + static files)
+- `X-Frame-Options: DENY`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `ALLOWED_ORIGINS` env var: comma-separated allowlist; empty = allow all (dev mode)
+- CORS applied to `/api/station` and Icecast listener proxy responses
+
+### 2026-03-13: v0.2.1 — Icecast Proxy & Entrypoint Hardening
+
+**Decision**: Sanitize Icecast listener proxy paths and validate credentials at container startup.
+
+**Implementation**:
+- Mount path sanitization: `path.posix.normalize()`, block `..` traversal, block `/admin`
+- 403 Forbidden for invalid paths
+- `icecast/entrypoint.sh`: fail-fast if `ICECAST_SOURCE_PASSWORD`, `ICECAST_ADMIN_PASSWORD`, or `ICECAST_RELAY_PASSWORD` unset
+- Production docker-compose binds Icecast to `127.0.0.1:6737` (not exposed to public)
+
+### 2026-03-13: v0.2.1 — Role-Based Access Control
+
+**Decision**: Enforce role-based permissions server-side for privileged operations.
+
+**Implementation**:
+- Streaming: only host/ops can `start-stream`
+- Invite generation: only host/ops can `request-invite`
+- Mute authority: producer mute on others requires host/ops role
+- Joining existing room without invite token forces `guest` role
+- Valid roles: `host`, `ops`, `guest` (validated server-side)
+
+### 2026-03-13: v0.2.1 — ICE Config Delivery via Signaling
+
+**Decision**: Deliver ICE configuration (including TURN credentials) via WebSocket `room-created`/`room-joined` messages instead of the public `/api/station` endpoint.
+
+**Rationale**: TURN credentials should not be publicly accessible; only authenticated room participants should receive them.
+
+**Implementation**:
+- `server/server.js`: `setIceConfig()` passes ICE config to WebSocket server
+- `server/lib/websocket-server.js`: includes `ice` field in `room-created`/`room-joined` responses
+- `/api/station` no longer includes `ice` field
+- Client `RTCManager.setIceServers()` applies ICE config from signaling; `initialize()` falls back to API fetch if needed
 
 ## Current Working Context
 
-### Architecture (v0.2.0)
+### Architecture (v0.2.1)
 
 ```
 Client (browser) ──────────────── Node.js Server (port 6736)
   │                                  ├─ /health
-  │                                  ├─ /api/station
-  ├─ WebSocket (signaling) ──────────├─ WebSocket (ws)
-  ├─ Static files ───────────────────├─ /web/* (static)
-  ├─ Stream listener ────────────────├─ /stream/* → Icecast:6737
+  │                                  ├─ /api/station (no ICE creds)
+  ├─ WebSocket (signaling) ──────────├─ WebSocket (ws, 256KB max, rate limited)
+  │   ├─ register → registered       │   ├─ JWT room token on join/create
+  │   ├─ create-or-join-room ────────│   ├─ ICE config (incl TURN) in response
+  │   ├─ request-invite ─────────────│   ├─ Invite token generation (host/ops)
+  │   └─ mute (RBAC enforced) ──────│   └─ Per-IP conn limit (10)
+  ├─ Static files ───────────────────├─ /web/* (X-Content-Type-Options, nosniff)
+  ├─ Stream listener ────────────────├─ /stream/* → Icecast:6737 (path sanitized)
+  │                                  ├─ Security headers (X-Frame-Options, etc.)
+  │                                  ├─ CORS allowlist (ALLOWED_ORIGINS)
   │                                  └─ 404
   ├─ WebRTC mesh (peer-to-peer)
   ├─ Web Audio (mix-minus + program bus)
   ├─ MediaRecorder (recording)
-  └─ Fetch/WS → Icecast (streaming)
+  └─ Fetch/WS → Icecast (streaming, host/ops only)
 ```
 
-### Key Files Modified in v0.2.0
+### Key Files Modified in v0.2.1
 
 | File | Change |
 |------|--------|
-| `server/server.js` | Added static + proxy imports and routes |
-| `server/lib/static-server.js` | NEW — serves web/ directory |
-| `server/lib/icecast-listener-proxy.js` | NEW — /stream/* proxy |
-| `server/lib/config-loader.js` | Auto-copy sample config |
-| `server/lib/room-manager.js` | Room TTL support |
-| `server/lib/websocket-server.js` | recording-state handler |
-| `web/js/signaling-client.js` | Dynamic WS URL, recording-state event |
-| `web/js/rtc-manager.js` | Dynamic API URL |
-| `web/js/icecast-streamer.js` | Dynamic host |
-| `web/js/audio-graph.js` | Recording tap points |
-| `web/js/recording-manager.js` | NEW — multi-track recording |
-| `web/js/wav-encoder.js` | NEW — WebM→WAV converter |
-| `web/js/main.js` | Recording integration |
-| `web/index.html` | Recording UI, dynamic stream URL |
-| `web/css/studio.css` | Recording styles |
-| `package.json` | v0.2.0, scripts, metadata |
-| `README.md` | Conversion-optimized rewrite |
-| `docs/vision.md` | Original README preserved |
-| `deploy/*` | Caddyfile, docker-compose, systemd, setup script |
-| `.devcontainer/*` | Codespaces support |
-| `.github/*` | CI update, issue/PR templates |
+| `server/lib/auth.js` | NEW — JWT room tokens + invite tokens |
+| `server/server.js` | Security headers, CORS allowlist, ICE config passthrough |
+| `server/lib/websocket-server.js` | Rate limiting, connection limits, JWT integration, RBAC, invite flow |
+| `server/lib/message-validator.js` | UUID v4 validation for peerId |
+| `server/lib/static-server.js` | X-Content-Type-Options header |
+| `server/lib/icecast-listener-proxy.js` | Path sanitization, CORS, client disconnect cleanup |
+| `server/lib/icecast-proxy.js` | No functional change (already existed) |
+| `server/Dockerfile` | Non-root user, healthcheck |
+| `icecast/entrypoint.sh` | Credential validation (fail-fast) |
+| `docker-compose.yml` | No security-specific changes |
+| `deploy/docker-compose.prod.yml` | Icecast bound to 127.0.0.1 |
+| `deploy/station-manifest.production.json` | TURN creds marked CHANGE_ME |
+| `station-manifest.sample.json` | TURN creds marked CHANGE_ME |
+| `.env.example` | JWT_SECRET, ROOM_TTL_MS |
+| `web/js/signaling-client.js` | roomToken storage, invite token flow, requestInviteToken() |
+| `web/js/rtc-manager.js` | setIceServers() from signaling, fallback API fetch |
+| `web/js/icecast-streamer.js` | Dynamic host from location.hostname |
+| `web/js/main.js` | ICE from signaling, role-based UI, debug globals localhost-only |
+| `server/test-signaling.js` | UUID v4 peer IDs in tests |
+| `server/test-rooms.js` | UUID v4 peer IDs in tests |
 
 ## Blockers & Risks
+
+### Security Hardening
+- JWT_SECRET must be set in production (auto-generated secrets don't survive restarts)
+- ALLOWED_ORIGINS should be configured for production deployment
+- TURN credentials in station-manifest need real values before deploy
+- Invite token flow needs E2E testing with real browser sessions
 
 ### Deployment
 - Need SSH access to production server for `deploy/setup.sh`

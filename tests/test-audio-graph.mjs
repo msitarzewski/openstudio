@@ -8,8 +8,8 @@
  * - Browser compatibility
  *
  * Usage:
- * 1. Start web server: cd web && python3 -m http.server 8086
- * 2. Open browser: http://localhost:8086
+ * 1. Start web server: node server/server.js
+ * 2. Open browser: http://localhost:6736
  * 3. Open DevTools console
  * 4. Look for AudioContext logs
  * 5. Click "Start Session" to resume context
@@ -18,7 +18,7 @@
 
 import { chromium } from 'playwright';
 
-const WEB_URL = 'http://localhost:8086';
+const WEB_URL = 'http://localhost:6736';
 const TIMEOUT = 5000;
 
 async function testAudioContext() {

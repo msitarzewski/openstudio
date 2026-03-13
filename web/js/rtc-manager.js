@@ -25,13 +25,44 @@ export class RTCManager extends EventTarget {
   }
 
   /**
-   * Initialize: fetch ICE servers from station API
+   * Set ICE servers from signaling response (room-created/room-joined)
+   * @param {object} iceConfig - ICE config with stun[] and turn[] arrays
    */
+  setIceServers(iceConfig) {
+    this.iceServers = [];
+
+    if (iceConfig && iceConfig.stun) {
+      iceConfig.stun.forEach(url => {
+        this.iceServers.push({ urls: url });
+      });
+    }
+
+    if (iceConfig && iceConfig.turn) {
+      iceConfig.turn.forEach(server => {
+        this.iceServers.push({
+          urls: server.urls || server.url,
+          username: server.username,
+          credential: server.credential
+        });
+      });
+    }
+
+    console.log('[RTC] ICE servers configured from signaling:', this.iceServers);
+    this.dispatchEvent(new Event('initialized'));
+  }
+
   /**
-   * Fetch ICE server configuration from station API.
+   * Fetch ICE server configuration from station API (fallback).
+   * Prefer setIceServers() from the signaling flow which includes TURN credentials.
    * @returns {Promise<boolean>} True if initialization succeeded
    */
   async initialize() {
+    // If ICE servers were already set via signaling, skip the fetch
+    if (this.iceServers && this.iceServers.length > 0) {
+      console.log('[RTC] ICE servers already configured, skipping API fetch');
+      return true;
+    }
+
     try {
       console.log('[RTC] Fetching ICE servers from station API...');
       const response = await fetch(API_STATION_URL);
@@ -43,7 +74,7 @@ export class RTCManager extends EventTarget {
       const config = await response.json();
       console.log('[RTC] Station config:', config);
 
-      // Extract ICE servers from config
+      // Extract ICE servers from config (public STUN only — TURN requires auth)
       this.iceServers = [];
 
       if (config.ice && config.ice.stun) {
@@ -55,7 +86,7 @@ export class RTCManager extends EventTarget {
       if (config.ice && config.ice.turn) {
         config.ice.turn.forEach(server => {
           this.iceServers.push({
-            urls: server.urls || server.url, // Support both 'urls' and 'url' field names
+            urls: server.urls || server.url,
             username: server.username,
             credential: server.credential
           });

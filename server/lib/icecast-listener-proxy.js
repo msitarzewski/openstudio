@@ -6,6 +6,7 @@
  */
 
 import http from 'http';
+import path from 'path';
 import * as logger from './logger.js';
 
 const ICECAST_HOST = process.env.ICECAST_HOST || 'localhost';
@@ -24,6 +25,14 @@ export function proxyIcecastListener(req, res) {
 
   // Strip /stream prefix to get the Icecast mount path
   const mountPath = '/' + req.url.slice('/stream/'.length).split('?')[0];
+
+  // Sanitize mount path — block traversal and admin access
+  const normalized = path.posix.normalize(mountPath);
+  if (normalized !== mountPath || normalized.includes('..') || normalized.startsWith('/admin')) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Forbidden' }));
+    return true;
+  }
 
   logger.info(`Proxying listener request to Icecast: ${mountPath}`);
 
@@ -50,7 +59,14 @@ export function proxyIcecastListener(req, res) {
       if (proxyRes.headers['icy-description']) {
         headers['Icy-Description'] = proxyRes.headers['icy-description'];
       }
-      headers['Access-Control-Allow-Origin'] = '*';
+      // CORS: respect ALLOWED_ORIGINS when configured (mirrors server.js logic)
+      const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean);
+      const origin = req.headers.origin;
+      if (allowedOrigins.length === 0) {
+        headers['Access-Control-Allow-Origin'] = origin || '*';
+      } else if (origin && allowedOrigins.includes(origin)) {
+        headers['Access-Control-Allow-Origin'] = origin;
+      }
 
       res.writeHead(proxyRes.statusCode, headers);
       proxyRes.pipe(res);

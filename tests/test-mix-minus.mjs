@@ -11,7 +11,7 @@
 
 import { chromium } from 'playwright';
 
-const WEB_SERVER_URL = 'http://localhost:8086';
+const WEB_SERVER_URL = 'http://localhost:6736';
 const TEST_TIMEOUT = 45000;
 
 async function sleep(ms) {

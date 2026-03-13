@@ -133,10 +133,10 @@ async function testPeerRegistration() {
   // Register peer
   const response = await sendAndWaitFor(ws, {
     type: 'register',
-    peerId: 'test-peer-1'
+    peerId: '11111111-1111-4111-8111-111111111111'
   }, 'registered');
 
-  if (response.peerId !== 'test-peer-1') {
+  if (response.peerId !== '11111111-1111-4111-8111-111111111111') {
     throw new Error('Peer ID mismatch in response');
   }
 
@@ -153,13 +153,13 @@ async function testDuplicatePeerIdRejection() {
   // Register first peer
   await sendAndWaitFor(ws1, {
     type: 'register',
-    peerId: 'duplicate-test'
+    peerId: '22222222-2222-4222-8222-222222222222'
   }, 'registered');
 
   // Try to register second peer with same ID
   const errorResponse = await sendAndWaitFor(ws2, {
     type: 'register',
-    peerId: 'duplicate-test'
+    peerId: '22222222-2222-4222-8222-222222222222'
   }, 'error');
 
   if (!errorResponse.message.includes('already registered')) {
@@ -179,15 +179,15 @@ async function testOfferRelay() {
 
   // Register both peers
   await Promise.all([
-    sendAndWaitFor(peerA, { type: 'register', peerId: 'peer-a' }, 'registered'),
-    sendAndWaitFor(peerB, { type: 'register', peerId: 'peer-b' }, 'registered')
+    sendAndWaitFor(peerA, { type: 'register', peerId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }, 'registered'),
+    sendAndWaitFor(peerB, { type: 'register', peerId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }, 'registered')
   ]);
 
   // Send offer from A to B (peerB should receive it)
   const offerMessage = {
     type: 'offer',
-    from: 'peer-a',
-    to: 'peer-b',
+    from: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    to: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
     sdp: 'v=0\r\no=- 123456 2 IN IP4 127.0.0.1\r\n...'
   };
 
@@ -197,10 +197,10 @@ async function testOfferRelay() {
   const receivedOffer = await receivedOfferPromise;
 
   // Verify peer B received the exact offer
-  if (receivedOffer.from !== 'peer-a') {
+  if (receivedOffer.from !== 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') {
     throw new Error('Offer "from" field mismatch');
   }
-  if (receivedOffer.to !== 'peer-b') {
+  if (receivedOffer.to !== 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') {
     throw new Error('Offer "to" field mismatch');
   }
   if (receivedOffer.sdp !== offerMessage.sdp) {
@@ -220,15 +220,15 @@ async function testAnswerRelay() {
 
   // Register both peers
   await Promise.all([
-    sendAndWaitFor(peerA, { type: 'register', peerId: 'peer-a' }, 'registered'),
-    sendAndWaitFor(peerB, { type: 'register', peerId: 'peer-b' }, 'registered')
+    sendAndWaitFor(peerA, { type: 'register', peerId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }, 'registered'),
+    sendAndWaitFor(peerB, { type: 'register', peerId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }, 'registered')
   ]);
 
   // Send answer from B to A (peerA should receive it)
   const answerMessage = {
     type: 'answer',
-    from: 'peer-b',
-    to: 'peer-a',
+    from: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    to: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     sdp: 'v=0\r\no=- 789012 2 IN IP4 127.0.0.1\r\n...'
   };
 
@@ -238,10 +238,10 @@ async function testAnswerRelay() {
   const receivedAnswer = await receivedAnswerPromise;
 
   // Verify peer A received the exact answer
-  if (receivedAnswer.from !== 'peer-b') {
+  if (receivedAnswer.from !== 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') {
     throw new Error('Answer "from" field mismatch');
   }
-  if (receivedAnswer.to !== 'peer-a') {
+  if (receivedAnswer.to !== 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') {
     throw new Error('Answer "to" field mismatch');
   }
   if (receivedAnswer.sdp !== answerMessage.sdp) {
@@ -261,15 +261,15 @@ async function testIceCandidateRelay() {
 
   // Register both peers
   await Promise.all([
-    sendAndWaitFor(peerA, { type: 'register', peerId: 'peer-a' }, 'registered'),
-    sendAndWaitFor(peerB, { type: 'register', peerId: 'peer-b' }, 'registered')
+    sendAndWaitFor(peerA, { type: 'register', peerId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }, 'registered'),
+    sendAndWaitFor(peerB, { type: 'register', peerId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }, 'registered')
   ]);
 
   // Send ICE candidate from A to B (peerB should receive it)
   const candidateMessage = {
     type: 'ice-candidate',
-    from: 'peer-a',
-    to: 'peer-b',
+    from: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    to: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
     candidate: {
       candidate: 'candidate:1 1 UDP 2130706431 192.168.1.100 54321 typ host',
       sdpMLineIndex: 0,
@@ -283,10 +283,10 @@ async function testIceCandidateRelay() {
   const receivedCandidate = await receivedCandidatePromise;
 
   // Verify peer B received the candidate
-  if (receivedCandidate.from !== 'peer-a') {
+  if (receivedCandidate.from !== 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') {
     throw new Error('Candidate "from" field mismatch');
   }
-  if (receivedCandidate.to !== 'peer-b') {
+  if (receivedCandidate.to !== 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') {
     throw new Error('Candidate "to" field mismatch');
   }
   if (JSON.stringify(receivedCandidate.candidate) !== JSON.stringify(candidateMessage.candidate)) {
@@ -304,8 +304,8 @@ async function testUnregisteredPeerRejection() {
   // Try to send offer without registering
   const errorResponse = await sendAndWaitFor(ws, {
     type: 'offer',
-    from: 'peer-a',
-    to: 'peer-b',
+    from: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    to: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
     sdp: 'v=0...'
   }, 'error');
 
@@ -321,12 +321,12 @@ async function testTargetPeerNotFound() {
   const peerA = await createConnection();
 
   // Register peer A
-  await sendAndWaitFor(peerA, { type: 'register', peerId: 'peer-a' }, 'registered');
+  await sendAndWaitFor(peerA, { type: 'register', peerId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }, 'registered');
 
   // Send offer to non-existent peer
   const errorResponse = await sendAndWaitFor(peerA, {
     type: 'offer',
-    from: 'peer-a',
+    from: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     to: 'non-existent-peer',
     sdp: 'v=0...'
   }, 'error');
@@ -343,12 +343,12 @@ async function testSpoofedFromRejection() {
   const peerA = await createConnection();
 
   // Register peer A
-  await sendAndWaitFor(peerA, { type: 'register', peerId: 'peer-a' }, 'registered');
+  await sendAndWaitFor(peerA, { type: 'register', peerId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }, 'registered');
 
   // Try to send offer with spoofed "from" field
   const errorResponse = await sendAndWaitFor(peerA, {
     type: 'offer',
-    from: 'peer-b', // Spoofed!
+    from: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', // Spoofed!
     to: 'peer-c',
     sdp: 'v=0...'
   }, 'error');
@@ -365,13 +365,13 @@ async function testMalformedMessage() {
   const ws = await createConnection();
 
   // Register peer
-  await sendAndWaitFor(ws, { type: 'register', peerId: 'peer-a' }, 'registered');
+  await sendAndWaitFor(ws, { type: 'register', peerId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }, 'registered');
 
   // Send malformed offer (missing sdp)
   const errorResponse = await sendAndWaitFor(ws, {
     type: 'offer',
-    from: 'peer-a',
-    to: 'peer-b'
+    from: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    to: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
     // Missing: sdp
   }, 'error');
 

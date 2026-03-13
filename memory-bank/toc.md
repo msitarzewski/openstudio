@@ -34,6 +34,12 @@
 - 5 phases: Single Server, README, Deployment, Recording, DX
 - See progress.md for detailed file list
 
+### Release 0.2.1 🔒 (In Progress 2026-03-13)
+
+- Security hardening: JWT auth, rate limiting, CORS, RBAC, input validation
+- Branch: `release/0.2.1-security-hardening`
+- See activeContext.md and progress.md for details
+
 ## Quick References
 
 - **quick-start.md** - Common patterns and session data

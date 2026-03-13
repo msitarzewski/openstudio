@@ -1,11 +1,24 @@
 #!/bin/sh
 set -e
 
-# Default values
-SOURCE_PASSWORD="${ICECAST_SOURCE_PASSWORD:-hackme}"
-ADMIN_PASSWORD="${ICECAST_ADMIN_PASSWORD:-hackme}"
+# Validate required credentials (no insecure defaults)
+if [ -z "$ICECAST_SOURCE_PASSWORD" ]; then
+  echo "ERROR: ICECAST_SOURCE_PASSWORD is not set. Aborting." >&2
+  exit 1
+fi
+if [ -z "$ICECAST_ADMIN_PASSWORD" ]; then
+  echo "ERROR: ICECAST_ADMIN_PASSWORD is not set. Aborting." >&2
+  exit 1
+fi
+if [ -z "$ICECAST_RELAY_PASSWORD" ]; then
+  echo "ERROR: ICECAST_RELAY_PASSWORD is not set. Aborting." >&2
+  exit 1
+fi
+
+SOURCE_PASSWORD="$ICECAST_SOURCE_PASSWORD"
+ADMIN_PASSWORD="$ICECAST_ADMIN_PASSWORD"
 ADMIN_USERNAME="${ICECAST_ADMIN_USERNAME:-admin}"
-RELAY_PASSWORD="${ICECAST_RELAY_PASSWORD:-hackme}"
+RELAY_PASSWORD="$ICECAST_RELAY_PASSWORD"
 HOSTNAME="${ICECAST_HOSTNAME:-localhost}"
 
 # Generate Icecast configuration
