@@ -18,7 +18,8 @@
 
 **Core**: Vanilla JavaScript (ES modules)
 **APIs**: Web Audio API, WebRTC API, MediaRecorder API
-**UI**: HTML/CSS initially, avoid framework dependencies in MVP
+**UI**: HTML/CSS with "Signal" design system (no framework dependencies)
+**Fonts**: Google Fonts CDN — Space Grotesk (display), Inter (body), JetBrains Mono (data)
 
 **Future Considerations**:
 - React/Vue/Svelte if UI complexity grows
@@ -272,6 +273,15 @@
 - ICE credential protection (WebSocket-only delivery)
 - Icecast proxy path sanitization + credential validation
 - Docker non-root user, input validation (UUID v4)
+
+### Signal UX Redesign (v0.3-dev — Implemented 2026-03-14)
+
+- "Signal" design system: void/signal/data color palette, atmospheric effects
+- Three-font typography: Space Grotesk, Inter, JetBrains Mono (Google Fonts CDN)
+- Segmented LED meters (canvas), waveform oscilloscope (canvas)
+- CSS-driven broadcast state (`body.broadcasting` class)
+- Collapsible deck panels, channel strip cards, speaking detection
+- All E2E tests passing
 
 ### Release 0.3 (Discovery — Planned)
 

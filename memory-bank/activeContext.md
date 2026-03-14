@@ -1,95 +1,65 @@
 # Active Context: OpenStudio
 
-**Last Updated**: 2026-03-13 (Release 0.2.1 Security Hardening — PR Open)
+**Last Updated**: 2026-03-14 (Signal UX Redesign — Branch Ready)
 
 ## Current Phase
 
-**Release**: 0.2.1 (Security Hardening)
-**Branch**: `release/0.2.1-security-hardening`
-**Status**: PR #1 open, CI green (Node 18/20/22), awaiting merge
-**PR**: https://github.com/msitarzewski/openstudio/pull/1
-**Focus**: Merge PR, deploy to production
-**Next**: Merge PR to main, pull on umacbookpro, restart service
+**Release**: 0.3-dev (Signal UX Redesign)
+**Branch**: `feat/signal-ux-redesign`
+**Status**: Implementation complete, all E2E tests passing, ready for review/merge
+**Focus**: Merge Signal UX redesign, then merge v0.2.1 security PR
+**Next**: Merge both branches to main, deploy
 
 ## Recent Decisions
 
-### 2026-03-13: v0.2.1 — JWT Room & Invite Tokens
+### 2026-03-14: Signal UX Redesign — CSS-Driven State Management
 
-**Decision**: Add JWT-based authentication for room access and invite links.
+**Decision**: Use `body.broadcasting` CSS class as the single source of truth for all visual broadcast state changes.
 
 **Rationale**:
-- Room tokens prove peerId + roomId + role (prevents spoofing)
-- Invite tokens allow authenticated role assignment via shareable URLs
-- Only host/ops can generate invite tokens (prevents privilege escalation)
-- ICE credentials (including TURN) delivered via WebSocket on room join, not via public `/api/station` API
+- One class toggle cascades to all visual elements (header border, wordmark color, card accents, vignette warmth, signal bar)
+- CSS handles all transitions/animations — JS only adds/removes the class
+- Simpler than managing individual element states in JavaScript
 
 **Implementation**:
-- `server/lib/auth.js` — NEW: `generateRoomToken()`, `generateInviteToken()`, `verifyToken()`
-- JWT_SECRET from env var or auto-generated random (logged as warning)
-- Room tokens expire in 24h, invite tokens in 4h
-- `create-or-join-room` handler verifies invite tokens and enforces server-side role assignment
-- `request-invite` handler: host/ops only, generates signed invite token
-- Client `SignalingClient` stores `roomToken` from server responses
+- `main.js:handleStartSession()` adds `body.broadcasting`
+- `main.js:handleEndSession()` removes `body.broadcasting`
+- All ON AIR visual effects defined in `studio.css` under `body.broadcasting` selectors
 
-### 2026-03-13: v0.2.1 — WebSocket Rate Limiting & Connection Limits
+### 2026-03-14: Signal Design System — Color Temperature as Meaning
 
-**Decision**: Add per-connection rate limiting and per-IP connection caps.
+**Decision**: Replace generic Tailwind-default colors with purpose-built "Signal and Noise" palette using two emotional temperatures.
 
-**Rationale**: Prevent DoS and resource exhaustion on signaling server.
+**Rationale**:
+- Warm signal (amber standby, red live) = active broadcast elements
+- Cold void (near-black with blue undertones) = background/inactive
+- Amber through range instead of green/yellow/red traffic light pattern
+- Warm white text (#e8e4df) instead of blue-white for incandescent feel
 
-**Implementation**:
-- Sliding window rate limiter: 100 signaling messages / 10s, 500 stream-chunk messages / 10s
-- Per-IP connection limit: max 10 concurrent WebSocket connections
-- `maxPayload: 256KB` on WebSocket server (prevents memory bombs)
-- Close code 4008 for connection limit exceeded
+### 2026-03-14: Segmented LED Meters + Waveform Oscilloscope
 
-### 2026-03-13: v0.2.1 — HTTP Security Headers & CORS Allowlist
+**Decision**: Replace flat bar meters with hardware-style segmented LEDs and add waveform oscilloscope display.
 
-**Decision**: Set security headers on every HTTP response and add configurable CORS origin allowlist.
+**Rationale**:
+- Segmented LEDs with ghost segments look like real studio hardware
+- Waveform provides visual feedback even at low levels
+- Speaking detection via VolumeMeter callback drives card glow animations
 
-**Implementation**:
-- `X-Content-Type-Options: nosniff` (all responses + static files)
-- `X-Frame-Options: DENY`
-- `Referrer-Policy: strict-origin-when-cross-origin`
-- `ALLOWED_ORIGINS` env var: comma-separated allowlist; empty = allow all (dev mode)
-- CORS applied to `/api/station` and Icecast listener proxy responses
+### 2026-03-14: Terminology Changes for Broadcast Feel
 
-### 2026-03-13: v0.2.1 — Icecast Proxy & Entrypoint Hardening
+**Decision**: Rename UI labels to pirate radio / broadcast engineering language.
 
-**Decision**: Sanitize Icecast listener proxy paths and validate credentials at container startup.
-
-**Implementation**:
-- Mount path sanitization: `path.posix.normalize()`, block `..` traversal, block `/admin`
-- 403 Forbidden for invalid paths
-- `icecast/entrypoint.sh`: fail-fast if `ICECAST_SOURCE_PASSWORD`, `ICECAST_ADMIN_PASSWORD`, or `ICECAST_RELAY_PASSWORD` unset
-- Production docker-compose binds Icecast to `127.0.0.1:6737` (not exposed to public)
-
-### 2026-03-13: v0.2.1 — Role-Based Access Control
-
-**Decision**: Enforce role-based permissions server-side for privileged operations.
-
-**Implementation**:
-- Streaming: only host/ops can `start-stream`
-- Invite generation: only host/ops can `request-invite`
-- Mute authority: producer mute on others requires host/ops role
-- Joining existing room without invite token forces `guest` role
-- Valid roles: `host`, `ops`, `guest` (validated server-side)
-
-### 2026-03-13: v0.2.1 — ICE Config Delivery via Signaling
-
-**Decision**: Deliver ICE configuration (including TURN credentials) via WebSocket `room-created`/`room-joined` messages instead of the public `/api/station` endpoint.
-
-**Rationale**: TURN credentials should not be publicly accessible; only authenticated room participants should receive them.
-
-**Implementation**:
-- `server/server.js`: `setIceConfig()` passes ICE config to WebSocket server
-- `server/lib/websocket-server.js`: includes `ice` field in `room-created`/`room-joined` responses
-- `/api/station` no longer includes `ice` field
-- Client `RTCManager.setIceServers()` applies ICE config from signaling; `initialize()` falls back to API fetch if needed
+**Changes**:
+- "Program Bus" → "SIGNAL OUTPUT"
+- "Streaming" → "TRANSMITTING" (when active)
+- "Guest" → "Caller"
+- "Ops" → "Engineer"
+- Empty state: "The frequency is clear."
+- "talk hard." tagline (Pump Up the Volume reference)
 
 ## Current Working Context
 
-### Architecture (v0.2.1)
+### Architecture (v0.3-dev — Signal UX)
 
 ```
 Client (browser) ──────────────── Node.js Server (port 6736)
@@ -108,48 +78,32 @@ Client (browser) ──────────────── Node.js Server
   ├─ WebRTC mesh (peer-to-peer)
   ├─ Web Audio (mix-minus + program bus)
   ├─ MediaRecorder (recording)
-  └─ Fetch/WS → Icecast (streaming, host/ops only)
+  ├─ Fetch/WS → Icecast (streaming, host/ops only)
+  └─ Signal UX Design System
+       ├─ Space Grotesk / Inter / JetBrains Mono (Google Fonts)
+       ├─ Void/Signal/Data color palette
+       ├─ Segmented LED meters + waveform oscilloscope
+       ├─ ON AIR animations (body.broadcasting CSS class)
+       ├─ Channel strip cards with speaking detection
+       └─ Collapsible deck panels (recording, streaming)
 ```
 
-### Key Files Modified in v0.2.1
+### Key Files Modified in Signal UX
 
 | File | Change |
 |------|--------|
-| `server/lib/auth.js` | NEW — JWT room tokens + invite tokens |
-| `server/server.js` | Security headers, CORS allowlist, ICE config passthrough |
-| `server/lib/websocket-server.js` | Rate limiting, connection limits, JWT integration, RBAC, invite flow |
-| `server/lib/message-validator.js` | UUID v4 validation for peerId |
-| `server/lib/static-server.js` | X-Content-Type-Options header |
-| `server/lib/icecast-listener-proxy.js` | Path sanitization, CORS, client disconnect cleanup |
-| `server/lib/icecast-proxy.js` | No functional change (already existed) |
-| `server/Dockerfile` | Non-root user, healthcheck |
-| `icecast/entrypoint.sh` | Credential validation (fail-fast) |
-| `docker-compose.yml` | No security-specific changes |
-| `deploy/docker-compose.prod.yml` | Icecast bound to 127.0.0.1 |
-| `deploy/station-manifest.production.json` | TURN creds marked CHANGE_ME |
-| `station-manifest.sample.json` | TURN creds marked CHANGE_ME |
-| `.env.example` | JWT_SECRET, ROOM_TTL_MS |
-| `web/js/signaling-client.js` | roomToken storage, invite token flow, requestInviteToken() |
-| `web/js/rtc-manager.js` | setIceServers() from signaling, fallback API fetch |
-| `web/js/icecast-streamer.js` | Dynamic host from location.hostname |
-| `web/js/main.js` | ICE from signaling, role-based UI, debug globals localhost-only |
-| `server/test-signaling.js` | UUID v4 peer IDs in tests |
-| `server/test-rooms.js` | UUID v4 peer IDs in tests |
+| `web/index.html` | Google Fonts, signal chain layout, wordmark+tagline, waveform canvas, deck panels |
+| `web/css/studio.css` | Complete rewrite — Signal design system tokens, atmosphere, components, animations |
+| `web/js/main.js` | body.broadcasting state, speaking detection, card animations, deck panels, role names |
+| `web/js/volume-meter.js` | Segmented LED mode, waveform oscilloscope mode, speaking callback, HiDPI |
 
 ## Blockers & Risks
 
-### Security Hardening
-- JWT_SECRET must be set in production (auto-generated secrets don't survive restarts)
-- ALLOWED_ORIGINS should be configured for production deployment
-- TURN credentials in station-manifest need real values before deploy
-- Invite token flow needs E2E testing with real browser sessions
+### Signal UX
+- Google Fonts CDN dependency (fonts load from external CDN — could self-host for zero-dependency)
+- `prefers-reduced-motion` disables all animations but visual design still works
 
-### Deployment
-- Need SSH access to production server for `deploy/setup.sh`
-- Caddy must be pre-installed on server
-- DNS for openstudio.zerologic.com must point to server
-
-### Recording
-- Browser memory limits for long recordings (~500MB estimated for 30min × 4 participants)
-- Safari WebM support varies — may need audio/mp4 fallback testing
-- WAV export memory-intensive (entire recording decoded at once)
+### Pending from Previous
+- PR #1 (v0.2.1 Security Hardening) still needs merge
+- JWT_SECRET must be set in production
+- TURN credentials in station-manifest need real values

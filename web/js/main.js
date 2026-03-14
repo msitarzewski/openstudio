@@ -67,6 +67,7 @@ class OpenStudioApp {
     this.recordingIndicator = document.getElementById('recording-indicator');
     this.recordingTimer = document.getElementById('recording-timer');
     this.recordingTracksDiv = document.getElementById('recording-tracks');
+    this.sessionInfoElement = document.getElementById('session-info');
 
     // Bind event handlers
     this.setupSignalingListeners();
@@ -74,6 +75,7 @@ class OpenStudioApp {
     this.setupStreamingListeners();
     this.setupRecordingListeners();
     this.setupUIListeners();
+    this.setupDeckPanels();
 
     // Check for room ID in URL hash
     this.checkUrlHash();
@@ -99,9 +101,6 @@ class OpenStudioApp {
   }
 
   /**
-   * Initialize app: connect signaling, fetch ICE config, setup audio
-   */
-  /**
    * Initialize app: connect signaling, fetch ICE config, setup audio.
    * @returns {Promise<void>}
    */
@@ -124,6 +123,12 @@ class OpenStudioApp {
       const analyser = programBus.getAnalyser();
       this.volumeMeter = new VolumeMeter(canvasElement, analyser);
       console.log('[App] Volume meter initialized');
+
+      // Initialize waveform display
+      const waveformCanvas = document.getElementById('waveform-display');
+      if (waveformCanvas) {
+        this.waveformMeter = new VolumeMeter(waveformCanvas, analyser, { mode: 'waveform' });
+      }
 
       // Expose volume meter and mute manager for debugging (localhost only)
       if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
@@ -149,6 +154,21 @@ class OpenStudioApp {
       console.error('[App] Initialization failed:', error);
       this.setStatus('disconnected', 'Initialization failed');
     }
+  }
+
+  /**
+   * Setup collapsible deck panel behavior
+   */
+  setupDeckPanels() {
+    document.querySelectorAll('.deck-header').forEach(header => {
+      // Start collapsed
+      header.closest('.deck-panel').classList.add('collapsed');
+
+      header.addEventListener('click', () => {
+        const panel = header.closest('.deck-panel');
+        panel.classList.toggle('collapsed');
+      });
+    });
   }
 
   /**
@@ -200,9 +220,11 @@ class OpenStudioApp {
       this.startRecordingButton.disabled = false;
 
       // Add self to participants with role from server
-      const displayName = this.currentRole === 'host' ? 'Host (You)' :
-                          this.currentRole === 'ops' ? 'Ops (You)' : 'You';
+      const displayName = this.getRoleDisplayName(this.currentRole, true);
       this.addParticipant(this.peerId, displayName, this.currentRole);
+
+      // Update session info
+      this.updateSessionInfo();
 
       // Get local media stream
       try {
@@ -243,16 +265,17 @@ class OpenStudioApp {
       // Add existing participants
       participants.forEach(p => {
         if (p.peerId !== this.peerId) {
-          const displayName = p.role === 'host' ? 'Host' :
-                              p.role === 'ops' ? 'Ops' : 'Guest';
+          const displayName = this.getRoleDisplayName(p.role, false);
           this.addParticipant(p.peerId, displayName, p.role);
         }
       });
 
       // Add self with role from server
-      const displayName = this.currentRole === 'host' ? 'Host (You)' :
-                          this.currentRole === 'ops' ? 'Ops (You)' : 'You';
+      const displayName = this.getRoleDisplayName(this.currentRole, true);
       this.addParticipant(this.peerId, displayName, this.currentRole);
+
+      // Update session info
+      this.updateSessionInfo();
 
       // Get local media stream
       try {
@@ -277,8 +300,7 @@ class OpenStudioApp {
       const { peerId, role } = event.detail;
       console.log(`[App] Peer joined: ${peerId} (${role})`);
 
-      const displayName = role === 'host' ? 'Host' :
-                          role === 'ops' ? 'Ops' : 'Guest';
+      const displayName = this.getRoleDisplayName(role, false);
       this.addParticipant(peerId, displayName, role);
       // ConnectionManager automatically handles connection initiation via peer-joined event
     });
@@ -338,6 +360,30 @@ class OpenStudioApp {
   }
 
   /**
+   * Get role display name for Signal design
+   * @param {string} role - 'host', 'ops', or 'guest'
+   * @param {boolean} isSelf - Whether this is the local user
+   * @returns {string}
+   */
+  getRoleDisplayName(role, isSelf) {
+    const suffix = isSelf ? ' (You)' : '';
+    switch (role) {
+      case 'host': return `Host${suffix}`;
+      case 'ops': return `Engineer${suffix}`;
+      default: return isSelf ? 'You' : 'Caller';
+    }
+  }
+
+  /**
+   * Update session info display
+   */
+  updateSessionInfo() {
+    if (this.sessionInfoElement && this.currentRoom) {
+      this.sessionInfoElement.textContent = this.currentRoom.substring(0, 8);
+    }
+  }
+
+  /**
    * Setup MuteManager event listeners
    */
   setupMuteManagerListeners() {
@@ -364,7 +410,7 @@ class OpenStudioApp {
       console.log(`[App] Streaming status: ${status} - ${message}`);
 
       // Update streaming status UI
-      this.streamingStatusElement.textContent = message;
+      this.streamingStatusElement.textContent = status === 'streaming' ? 'TRANSMITTING' : message;
       this.streamingStatusElement.className = `streaming-status ${status}`;
 
       // Update button states based on status
@@ -425,6 +471,13 @@ class OpenStudioApp {
       this.stopRecordingButton.disabled = false;
       this.downloadRecordingsButton.style.display = 'none';
       this.recordingTracksDiv.style.display = 'none';
+
+      // Add recording class to record button for dot indicator
+      this.startRecordingButton.classList.add('recording');
+
+      // Expand recording deck panel
+      const recPanel = document.getElementById('recording-section');
+      if (recPanel) recPanel.classList.remove('collapsed');
     });
 
     this.recordingManager.addEventListener('recording-stopped', () => {
@@ -432,6 +485,7 @@ class OpenStudioApp {
       this.recordingTimer.classList.remove('active');
       this.stopRecordingButton.style.display = 'none';
       this.startRecordingButton.style.display = 'inline-block';
+      this.startRecordingButton.classList.remove('recording');
       if (this.currentRoom) {
         this.startRecordingButton.disabled = false;
       }
@@ -576,9 +630,6 @@ class OpenStudioApp {
     });
   }
 
-  /**
-   * Try to send pending return feed for a peer if connection is ready
-   */
   /**
    * Send pending return feed for a peer if the RTCPeerConnection is connected.
    * @param {string} remotePeerId
@@ -727,6 +778,15 @@ class OpenStudioApp {
       console.log('[App] Volume meter started');
     }
 
+    // Start waveform display
+    if (this.waveformMeter) {
+      this.waveformMeter.start();
+      console.log('[App] Waveform display started');
+    }
+
+    // Add broadcasting class to body
+    document.body.classList.add('broadcasting');
+
     // Use create-or-join-room logic
     if (this.roomIdFromUrl) {
       // Room ID in URL - create or join it with role from URL (or invite token)
@@ -748,6 +808,9 @@ class OpenStudioApp {
         if (roomId) {
           console.log(`[App] Joining room: ${roomId} as guest`);
           this.signaling.createOrJoinRoom(roomId, 'guest');
+        } else {
+          // User cancelled — remove broadcasting class
+          document.body.classList.remove('broadcasting');
         }
       }
     }
@@ -758,6 +821,9 @@ class OpenStudioApp {
    */
   handleEndSession() {
     console.log('[App] Ending session...');
+
+    // Remove broadcasting class
+    document.body.classList.remove('broadcasting');
 
     // Stop recording if active
     if (this.recordingManager.isRecording) {
@@ -774,6 +840,21 @@ class OpenStudioApp {
     if (this.volumeMeter) {
       this.volumeMeter.stop();
       console.log('[App] Volume meter stopped');
+    }
+
+    // Stop waveform display
+    if (this.waveformMeter) {
+      this.waveformMeter.stop();
+    }
+
+    // Disconnect local mic from program bus
+    if (this._localAudioNodes) {
+      try {
+        this._localAudioNodes.compressor.disconnect();
+        this._localAudioNodes.analyser.disconnect();
+        this._localAudioNodes.source.disconnect();
+      } catch (e) { /* already disconnected */ }
+      this._localAudioNodes = null;
     }
 
     // Clear audio graph
@@ -810,6 +891,8 @@ class OpenStudioApp {
     this.startSessionButton.disabled = false;
     this.endSessionButton.disabled = true;
     this.toggleMuteButton.disabled = true;
+    this.toggleMuteButton.classList.remove('muted');
+    this.toggleMuteButton.textContent = 'Mute';
     this.startStreamingButton.disabled = true;
     this.stopStreamingButton.disabled = true;
     this.startStreamingButton.style.display = 'inline-block';
@@ -817,6 +900,7 @@ class OpenStudioApp {
     this.streamingStatusElement.textContent = 'Not Streaming';
     this.streamingStatusElement.className = 'streaming-status';
     this.startRecordingButton.disabled = true;
+    this.startRecordingButton.classList.remove('recording');
     this.stopRecordingButton.disabled = true;
     this.startRecordingButton.style.display = 'inline-block';
     this.stopRecordingButton.style.display = 'none';
@@ -826,6 +910,7 @@ class OpenStudioApp {
     this.recordingTimer.textContent = '00:00:00';
     this.recordingTracksDiv.style.display = 'none';
     this.lastRecordings = null;
+    if (this.sessionInfoElement) this.sessionInfoElement.textContent = '';
     window.location.hash = '';
     this.startSessionButton.textContent = 'Start Broadcast';
     this.endSessionButton.textContent = 'End Broadcast';
@@ -851,9 +936,11 @@ class OpenStudioApp {
 
     if (audioTrack.enabled) {
       this.toggleMuteButton.textContent = 'Mute';
+      this.toggleMuteButton.classList.remove('muted');
       console.log('[App] Unmuted microphone');
     } else {
       this.toggleMuteButton.textContent = 'Unmute';
+      this.toggleMuteButton.classList.add('muted');
       console.log('[App] Muted microphone');
     }
   }
@@ -1112,20 +1199,22 @@ class OpenStudioApp {
 
     // Update button text and class based on mute state
     muteButton.classList.remove('self-muted', 'producer-muted');
+    card.classList.remove('is-muted');
 
     if (muteState.muted) {
+      card.classList.add('is-muted');
       if (muteState.authority === 'producer') {
-        muteButton.textContent = '🔇 Muted (Host)';
+        muteButton.textContent = 'MUTED (HOST)';
         muteButton.classList.add('producer-muted');
       } else {
-        muteButton.textContent = '🔇 Muted';
+        muteButton.textContent = 'MUTED';
         muteButton.classList.add('self-muted');
       }
       if (gainSlider) {
         gainSlider.disabled = true;
       }
     } else {
-      muteButton.textContent = '🔊 Unmuted';
+      muteButton.textContent = 'UNMUTED';
       if (gainSlider) {
         gainSlider.disabled = false;
       }
@@ -1137,9 +1226,6 @@ class OpenStudioApp {
     }
   }
 
-  /**
-   * Handle gain slider change
-   */
   /**
    * Handle gain slider change with smooth AudioParam ramping.
    * @param {string} peerId - Participant whose gain to adjust
@@ -1199,9 +1285,6 @@ class OpenStudioApp {
   }
 
   /**
-   * Add participant to UI
-   */
-  /**
    * Add participant to UI with avatar, role badge, level meter, and controls.
    * @param {string} peerId - Unique peer identifier
    * @param {string} name - Display name
@@ -1233,13 +1316,14 @@ class OpenStudioApp {
 
     const roleEl = document.createElement('div');
     roleEl.className = `participant-role role-${role}`;
-    roleEl.textContent = role.charAt(0).toUpperCase() + role.slice(1);
+    roleEl.textContent = role === 'host' ? 'HOST' :
+                          role === 'ops' ? 'ENGINEER' : 'CALLER';
 
     // Per-participant level meter
     const levelMeterCanvas = document.createElement('canvas');
     levelMeterCanvas.className = 'participant-level-meter';
-    levelMeterCanvas.width = 150;
-    levelMeterCanvas.height = 20;
+    levelMeterCanvas.width = 200;
+    levelMeterCanvas.height = 4;
     levelMeterCanvas.dataset.peerId = peerId; // For debugging
 
     // Gain controls (only for remote participants, not self)
@@ -1251,7 +1335,7 @@ class OpenStudioApp {
       // Mute button
       const muteButton = document.createElement('button');
       muteButton.className = 'mute-button';
-      muteButton.textContent = '🔊 Unmuted';
+      muteButton.textContent = 'UNMUTED';
       muteButton.addEventListener('click', () => this.handleParticipantMute(peerId));
 
       // Gain control container
@@ -1289,7 +1373,7 @@ class OpenStudioApp {
       // Mute button for self-mute
       const muteButton = document.createElement('button');
       muteButton.className = 'mute-button';
-      muteButton.textContent = '🔊 Unmuted';
+      muteButton.textContent = 'UNMUTED';
       muteButton.addEventListener('click', () => this.handleParticipantMute(peerId));
 
       controlsEl.appendChild(muteButton);
@@ -1303,7 +1387,7 @@ class OpenStudioApp {
 
     const statusEl = document.createElement('div');
     statusEl.className = 'participant-status';
-    statusEl.innerHTML = '<span class="icon">🎙️</span><span>Ready</span>';
+    statusEl.innerHTML = '<span class="icon">&#9679;</span><span>Ready</span>';
 
     card.appendChild(statusEl);
 
@@ -1311,10 +1395,7 @@ class OpenStudioApp {
   }
 
   /**
-   * Remove participant from UI
-   */
-  /**
-   * Remove participant from UI and clean up level meter.
+   * Remove participant from UI with exit animation.
    * @param {string} peerId
    */
   removeParticipant(peerId) {
@@ -1330,13 +1411,12 @@ class OpenStudioApp {
 
     const card = this.participantsSection.querySelector(`[data-peer-id="${peerId}"]`);
     if (card) {
-      card.remove();
+      // Animate exit
+      card.classList.add('leaving');
+      setTimeout(() => card.remove(), 400);
     }
   }
 
-  /**
-   * Create per-participant level meter
-   */
   /**
    * Create per-participant level meter using AudioGraph's AnalyserNode.
    * @param {string} peerId - Remote participant to create meter for
@@ -1363,8 +1443,16 @@ class OpenStudioApp {
     }
 
     try {
-      // Create and start the volume meter
-      const volumeMeter = new VolumeMeter(canvas, analyser);
+      // Create and start the volume meter with speaking detection callback
+      const volumeMeter = new VolumeMeter(canvas, analyser, {
+        onSpeaking: (speaking) => {
+          if (speaking) {
+            card.classList.add('speaking');
+            clearTimeout(card._speakingTimeout);
+            card._speakingTimeout = setTimeout(() => card.classList.remove('speaking'), 300);
+          }
+        }
+      });
       volumeMeter.start();
       this.participantMeters.set(peerId, volumeMeter);
       console.log(`[App] Created level meter for ${peerId}`);
@@ -1409,20 +1497,38 @@ class OpenStudioApp {
       analyser.fftSize = 256;
       analyser.smoothingTimeConstant = 0.3;
 
-      // Create ultra-low-gain node for Safari compatibility
-      // Safari requires MediaStreamSources to be connected to destination
-      // AND suspends AudioContext when gain = 0, so use 0.001 instead
-      const ultraLowGain = audioContext.createGain();
-      ultraLowGain.gain.value = 0.001; // Nearly silent - prevents Safari suspension
-
-      // Connect: source → analyser → ultraLowGain → destination
-      // This keeps Safari's AudioContext active while being inaudible
+      // Connect source → analyser for level metering
       source.connect(analyser);
-      analyser.connect(ultraLowGain);
-      ultraLowGain.connect(audioContext.destination);
 
-      // Create and start the volume meter
-      const volumeMeter = new VolumeMeter(canvas, analyser);
+      // Route local mic into program bus so Signal Output shows the full broadcast mix.
+      // Use a compressor matching remote participant chain for consistent levels.
+      const compressor = audioContext.createDynamicsCompressor();
+      compressor.threshold.value = -24;
+      compressor.knee.value = 30;
+      compressor.ratio.value = 12;
+      compressor.attack.value = 0.003;
+      compressor.release.value = 0.25;
+      analyser.connect(compressor);
+
+      const programBus = this.audioGraph.getProgramBus();
+      if (programBus) {
+        programBus.connectParticipant(compressor, this.peerId);
+        console.log('[App] Local mic connected to program bus');
+      }
+
+      // Store compressor ref for cleanup
+      this._localAudioNodes = { source, analyser, compressor };
+
+      // Create and start the volume meter with speaking detection
+      const volumeMeter = new VolumeMeter(canvas, analyser, {
+        onSpeaking: (speaking) => {
+          if (speaking) {
+            card.classList.add('speaking');
+            clearTimeout(card._speakingTimeout);
+            card._speakingTimeout = setTimeout(() => card.classList.remove('speaking'), 300);
+          }
+        }
+      });
       volumeMeter.start();
       this.participantMeters.set(this.peerId, volumeMeter);
       console.log('[App] Created level meter for local participant (self)');

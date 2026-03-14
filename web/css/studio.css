@@ -1,186 +1,444 @@
 /**
- * OpenStudio - Web Studio Interface Styles
- * Minimalist, functional design for broadcast studio controls
+ * OpenStudio — "Signal" Design System
+ * A broadcast studio that feels like the future of underground broadcasting.
  */
 
-/* CSS Custom Properties */
+/* ==========================================
+   DESIGN TOKENS
+   ========================================== */
+
 :root {
-  /* Colors */
-  --color-bg: #1a1a1a;
-  --color-bg-secondary: #2a2a2a;
-  --color-text: #ffffff;
-  --color-text-secondary: #a0a0a0;
-  --color-border: #404040;
+  /* VOID — the silence before signal */
+  --void:            #0a0a0f;
+  --surface:         #12121a;
+  --surface-raised:  #1a1a24;
+  --surface-elevated:#232736;
+  --border:          #2a2a3a;
+  --border-strong:   #3a3f54;
 
-  /* Status colors */
-  --color-disconnected: #ef4444;
-  --color-connecting: #f59e0b;
-  --color-connected: #10b981;
+  /* SIGNAL — the broadcast */
+  --signal-red:      #e23636;
+  --signal-red-glow: rgba(226,54,54,0.15);
+  --signal-amber:    #d4a053;
+  --signal-amber-glow: rgba(212,160,83,0.12);
+  --signal-hot:      #ff4444;
 
-  /* Button colors */
-  --color-button-bg: #3b82f6;
-  --color-button-bg-hover: #2563eb;
-  --color-button-text: #ffffff;
-  --color-button-disabled-bg: #404040;
-  --color-button-disabled-text: #6b7280;
+  /* DATA — cold information */
+  --data-cyan:       #00e5ff;
+  --data-cyan-dim:   #00b8d4;
+  --data-cyan-glow:  rgba(0,229,255,0.12);
 
-  /* Spacing */
-  --spacing-xs: 0.5rem;
-  --spacing-sm: 1rem;
-  --spacing-md: 1.5rem;
-  --spacing-lg: 2rem;
-  --spacing-xl: 3rem;
+  /* TEXT — warm white, not blue-white */
+  --text-primary:    #e8e4df;
+  --text-secondary:  #8a8680;
+  --text-tertiary:   #5a5650;
+  --text-ghost:      #3a3630;
 
-  /* Layout */
-  --header-height: 4rem;
-  --max-width: 1400px;
+  /* STATUS */
+  --status-connected:  #4a8a6b;
+  --status-connecting: #d4a053;
+  --status-error:      #e23636;
 
-  /* Border radius */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 1rem;
+  /* METER */
+  --meter-safe:      #d4a053;
+  --meter-hot:       #e23636;
+  --meter-bg:        #0a0a0f;
+  --meter-ghost:     rgba(255,255,255,0.03);
+
+  /* TYPOGRAPHY */
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.25rem;
+
+  /* SPACING */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* LAYOUT */
+  --max-width: 1200px;
+  --header-height: 3.25rem;
 }
 
-/* Base styles */
+/* ==========================================
+   BASE / ATMOSPHERE
+   ========================================== */
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  background-color: var(--void);
+  background-image:
+    /* Scan lines */
+    repeating-linear-gradient(0deg, transparent, transparent 2px,
+      rgba(255,255,255,0.008) 2px, rgba(255,255,255,0.008) 4px),
+    /* Vignette */
+    radial-gradient(ellipse at 50% 50%, transparent 50%, rgba(0,0,0,0.4) 100%);
+  transition: background-image 1.5s ease;
 }
 
-/* Header */
+/* Noise texture overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ON AIR signal line at top of viewport */
+body.broadcasting::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--signal-red);
+  z-index: 1000;
+  animation: signal-bar-ignite 400ms ease-out forwards, signal-bar-breathe 3s ease-in-out 400ms infinite;
+}
+
+@keyframes signal-bar-ignite {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@keyframes signal-bar-breathe {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+/* Red wash flash on go-live */
+@keyframes go-live-flash {
+  0%   { box-shadow: inset 0 0 120px rgba(226,54,54,0.15); }
+  100% { box-shadow: inset 0 0 0 transparent; }
+}
+
+body.broadcasting {
+  animation: go-live-flash 1.5s ease-out forwards;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 2px,
+      rgba(255,255,255,0.008) 2px, rgba(255,255,255,0.008) 4px),
+    radial-gradient(ellipse at 50% 50%, transparent 50%, rgba(60,10,10,0.3) 100%);
+}
+
+/* ==========================================
+   ACCESSIBILITY
+   ========================================== */
+
+:focus-visible {
+  outline: 2px solid var(--signal-amber);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ==========================================
+   HEADER — SIGNAL STATUS BAR
+   ========================================== */
+
 header {
   height: var(--header-height);
-  background-color: var(--color-bg-secondary);
-  border-bottom: 1px solid var(--color-border);
-  padding: 0 var(--spacing-lg);
-  display: flex;
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 var(--space-6);
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--space-4);
   position: sticky;
   top: 0;
   z-index: 100;
+  transition: border-color 0.6s ease;
+}
+
+body.broadcasting header {
+  border-bottom-color: var(--signal-red);
 }
 
 header h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.025em;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1;
+}
+
+.wordmark-accent {
+  color: var(--signal-amber);
+  transition: color 0.6s ease, text-shadow 0.6s ease;
+}
+
+body.broadcasting .wordmark-accent {
+  color: var(--signal-red);
+  text-shadow: 0 0 20px var(--signal-red-glow);
+}
+
+.tagline {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-style: italic;
+  color: var(--text-ghost);
+  letter-spacing: 0.2em;
+  text-transform: lowercase;
+  align-self: center;
+}
+
+.header-center {
+  justify-self: center;
+}
+
+.header-right {
+  justify-self: end;
 }
 
 #status {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  font-size: 0.875rem;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   font-weight: 500;
-}
-
-#status::before {
-  content: '';
-  width: 0.75rem;
-  height: 0.75rem;
-  border-radius: 50%;
-  background-color: var(--color-disconnected);
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-#status.connecting::before {
-  background-color: var(--color-connecting);
-}
-
-#status.connected::before {
-  background-color: var(--color-connected);
-  animation: none;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-/* Main content area */
-main {
-  max-width: var(--max-width);
-  margin: 0 auto;
-  padding: var(--spacing-lg);
-  display: grid;
-  grid-template-rows: 1fr auto;
-  gap: var(--spacing-lg);
-  min-height: calc(100vh - var(--header-height));
-}
-
-/* Participants section */
-#participants {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: var(--spacing-md);
-  align-content: start;
-}
-
-.participant-card {
-  background-color: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-md);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-sm);
-  transition: border-color 0.2s ease;
-}
-
-.participant-card:hover {
-  border-color: var(--color-text-secondary);
-}
-
-.participant-avatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--color-text);
-  text-transform: uppercase;
-}
-
-.participant-name {
-  font-size: 1rem;
-  font-weight: 500;
-  text-align: center;
-}
-
-.participant-role {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
+#status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--status-error);
+  animation: pulse-status 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+#status.connecting::before {
+  background-color: var(--status-connecting);
+}
+
+#status.connected::before {
+  background-color: var(--status-connected);
+  animation: none;
+}
+
+@keyframes pulse-status {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+.session-info {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  letter-spacing: 0.03em;
+}
+
+/* ==========================================
+   MAIN LAYOUT — CONTROL SURFACE
+   ========================================== */
+
+main {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--space-6);
+  display: grid;
+  grid-template-rows: 1fr auto auto auto;
+  grid-template-areas: "stage" "bus" "transport" "deck";
+  gap: var(--space-6);
+  min-height: calc(100vh - var(--header-height));
+}
+
+/* ==========================================
+   STAGE — PARTICIPANT CARDS
+   ========================================== */
+
+.stage {
+  grid-area: stage;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+  align-content: start;
+}
+
+/* Empty state */
+#participants:empty::after {
+  content: 'The frequency is clear.';
+  grid-column: 1 / -1;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  color: var(--text-ghost);
+  padding: var(--space-12);
+  letter-spacing: 0.04em;
+}
+
+/* Channel strip cards */
+.participant-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: 3px;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Card entrance animation */
+.participant-card {
+  animation: tune-in 500ms ease-out both;
+}
+
+@keyframes tune-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* Card exit animation */
+.participant-card.leaving {
+  animation: tune-out 400ms ease-in forwards;
+}
+
+@keyframes tune-out {
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+    filter: blur(4px);
+  }
+}
+
+/* Broadcasting state — red left accent */
+body.broadcasting .participant-card {
+  border-left-color: var(--signal-red);
+}
+
+/* Speaking state */
+.participant-card.speaking {
+  border-color: var(--signal-amber);
+  box-shadow: 0 0 12px var(--signal-amber-glow);
+}
+
+.participant-card:hover {
+  border-color: var(--border-strong);
+}
+
+/* Avatar */
+.participant-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--surface-raised);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--signal-amber);
+  text-transform: uppercase;
+  border: 2px solid transparent;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.participant-card.speaking .participant-avatar {
+  border-color: var(--signal-amber);
+  box-shadow: 0 0 8px var(--signal-amber-glow);
+}
+
+/* Muted avatar dims */
+.participant-card.is-muted .participant-avatar {
+  opacity: 0.4;
+}
+
+.participant-name {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+/* Role badges */
+.participant-role {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 2px;
+  border: 1px solid var(--text-tertiary);
+  color: var(--text-secondary);
+}
+
+.participant-role.role-host {
+  color: var(--signal-red);
+  border-color: var(--signal-red);
+}
+
+.participant-role.role-ops {
+  color: var(--signal-amber);
+  border-color: var(--signal-amber);
+}
+
+.participant-role.role-guest {
+  color: var(--text-secondary);
+  border-color: var(--text-tertiary);
+}
+
 /* Per-participant level meter */
 .participant-level-meter {
-  width: 150px;
-  height: 20px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  margin-top: var(--spacing-xs);
+  width: 100%;
+  height: 4px;
+  border-radius: 1px;
   display: block;
+  margin-top: var(--space-1);
 }
 
 .participant-status {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
 }
 
 .participant-status .icon {
@@ -193,596 +451,422 @@ main {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-sm) 0;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
 }
 
 .mute-button {
   width: 100%;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: 2px;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
   font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   min-width: auto;
-  background-color: #10b981; /* Green for unmuted */
-  color: var(--color-button-text);
-  border: none;
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .mute-button:hover {
-  background-color: #059669; /* Darker green on hover */
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
-/* Self-muted state (participant muted themselves) */
+/* Self-muted state */
 .mute-button.self-muted {
-  background-color: #f59e0b; /* Yellow/orange */
-  color: var(--color-button-text);
+  background-color: transparent;
+  color: var(--signal-amber);
+  border-color: var(--signal-amber);
 }
 
 .mute-button.self-muted:hover {
-  background-color: #d97706; /* Darker orange on hover */
+  background-color: var(--signal-amber-glow);
 }
 
-/* Producer-muted state (host muted the participant) */
+/* Producer-muted state */
 .mute-button.producer-muted {
-  background-color: #ef4444; /* Red */
-  color: var(--color-button-text);
-  cursor: not-allowed; /* Participant cannot unmute themselves */
+  background-color: transparent;
+  color: var(--signal-red);
+  border-color: var(--signal-red);
+  cursor: not-allowed;
 }
 
 .mute-button.producer-muted:hover {
-  background-color: #dc2626; /* Darker red on hover */
+  background-color: var(--signal-red-glow);
 }
 
 .gain-control {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: var(--space-2);
   width: 100%;
 }
 
+/* Gain slider — fader style */
 .gain-slider {
   flex: 1;
-  height: 6px;
+  height: 4px;
   -webkit-appearance: none;
   appearance: none;
-  background: var(--color-border);
-  border-radius: 3px;
+  background: var(--border);
+  border-radius: 1px;
   outline: none;
   cursor: pointer;
 }
 
 .gain-slider:disabled {
-  opacity: 0.5;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
-/* Slider thumb - Webkit (Chrome, Safari) */
+/* Slider thumb — rectangular fader */
 .gain-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--color-button-bg);
+  width: 14px;
+  height: 22px;
+  border-radius: 2px;
+  background: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease;
 }
 
 .gain-slider::-webkit-slider-thumb:hover {
-  background: var(--color-button-bg-hover);
-  transform: scale(1.1);
+  background: var(--signal-amber);
 }
 
 .gain-slider:disabled::-webkit-slider-thumb {
-  background: var(--color-button-disabled-bg);
+  background: var(--text-ghost);
   cursor: not-allowed;
 }
 
-/* Slider thumb - Firefox */
+/* Firefox */
 .gain-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 22px;
   border: none;
-  border-radius: 50%;
-  background: var(--color-button-bg);
+  border-radius: 2px;
+  background: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease;
 }
 
 .gain-slider::-moz-range-thumb:hover {
-  background: var(--color-button-bg-hover);
-  transform: scale(1.1);
+  background: var(--signal-amber);
 }
 
 .gain-slider:disabled::-moz-range-thumb {
-  background: var(--color-button-disabled-bg);
+  background: var(--text-ghost);
   cursor: not-allowed;
 }
 
-/* Slider track - Firefox */
 .gain-slider::-moz-range-track {
-  background: var(--color-border);
-  border-radius: 3px;
+  background: var(--border);
+  border-radius: 1px;
 }
 
 .gain-value {
-  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   font-weight: 500;
-  color: var(--color-text-secondary);
-  min-width: 40px;
+  color: var(--text-tertiary);
+  min-width: 36px;
   text-align: right;
 }
 
-/* Empty state for participants */
-#participants:empty::after {
-  content: 'No participants yet. Start a session to begin.';
-  grid-column: 1 / -1;
-  text-align: center;
-  color: var(--color-text-secondary);
-  padding: var(--spacing-xl);
-  font-size: 1rem;
-}
+/* ==========================================
+   SIGNAL OUTPUT — PROGRAM BUS
+   ========================================== */
 
-/* Controls section */
-#controls {
-  background-color: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-md);
-  display: flex;
-  gap: var(--spacing-sm);
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-/* Buttons */
-button {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
-  font-weight: 500;
-  font-size: 0.875rem;
-  transition: all 0.2s ease;
-  min-width: 120px;
-}
-
-button:not(:disabled) {
-  background-color: var(--color-button-bg);
-  color: var(--color-button-text);
-}
-
-button:not(:disabled):hover {
-  background-color: var(--color-button-bg-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-button:not(:disabled):active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
-}
-
-button:disabled {
-  background-color: var(--color-button-disabled-bg);
-  color: var(--color-button-disabled-text);
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-/* Specific button styles */
-#start-session {
-  --color-button-bg: #10b981;
-  --color-button-bg-hover: #059669;
-}
-
-#end-session {
-  --color-button-bg: #ef4444;
-  --color-button-bg-hover: #dc2626;
-}
-
-#toggle-mute.muted {
-  --color-button-bg: #f59e0b;
-  --color-button-bg-hover: #d97706;
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-  header {
-    padding: 0 var(--spacing-md);
-  }
-
-  header h1 {
-    font-size: 1.25rem;
-  }
-
-  main {
-    padding: var(--spacing-md);
-  }
-
-  #participants {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: var(--spacing-sm);
-  }
-
-  #controls {
-    flex-direction: column;
-  }
-
-  button {
-    width: 100%;
-  }
-}
-
-@media (max-width: 480px) {
-  header {
-    padding: 0 var(--spacing-sm);
-  }
-
-  main {
-    padding: var(--spacing-sm);
-  }
-
-  #participants {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Program Bus Volume Meter */
-#program-bus-section {
-  max-width: var(--max-width);
-  margin: var(--spacing-md) auto;
-  padding: 0 var(--spacing-md);
+.signal-output {
+  grid-area: bus;
 }
 
 .meter-label {
-  font-size: 0.875rem;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
   font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: var(--spacing-xs);
+  color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
+  margin-bottom: var(--space-2);
 }
 
 .meter-container {
-  background-color: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-sm);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: var(--space-3);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.waveform-canvas {
+  width: 100%;
+  height: 48px;
+  display: block;
+  border-radius: 2px;
 }
 
 #volume-meter {
+  width: 100%;
+  height: 24px;
   display: block;
-  border-radius: var(--radius-sm);
-  background-color: var(--color-bg);
+  border-radius: 2px;
 }
 
-/* Responsive adjustments for meter */
-@media (max-width: 768px) {
-  #program-bus-section {
-    padding: 0 var(--spacing-sm);
-  }
+/* ==========================================
+   TRANSPORT — BROADCAST CONTROLS
+   ========================================== */
 
-  #volume-meter {
-    width: 100%;
-    max-width: 400px;
-  }
-}
-
-@media (max-width: 480px) {
-  .meter-container {
-    padding: var(--spacing-xs);
-  }
-
-  #volume-meter {
-    width: 100%;
-  }
-}
-
-/* =========================
-   Icecast Streaming Section
-   ========================= */
-
-#streaming-section {
-  max-width: var(--max-width);
-  margin: 0 auto var(--spacing-lg) auto;
-  padding: 0 var(--spacing-lg);
-}
-
-.streaming-header {
+.transport {
+  grid-area: transport;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: var(--space-3) var(--space-4);
   display: flex;
+  gap: var(--space-3);
+  justify-content: center;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-sm);
+  flex-wrap: wrap;
 }
 
-.streaming-label {
-  font-size: 0.875rem;
+/* Base button reset */
+button {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
   font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-secondary);
-}
-
-.streaming-status {
-  font-size: 0.875rem;
-  font-weight: 500;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  background-color: var(--color-bg-secondary);
-  color: var(--color-text-secondary);
-}
-
-.streaming-status.streaming {
-  background-color: #10b981;
-  color: #ffffff;
-}
-
-.streaming-status.connecting {
-  background-color: #f59e0b;
-  color: #ffffff;
-}
-
-.streaming-status.reconnecting {
-  background-color: #f59e0b;
-  color: #ffffff;
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.streaming-status.error {
-  background-color: #ef4444;
-  color: #ffffff;
-}
-
-.streaming-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background-color: var(--color-bg-secondary);
-  margin-bottom: var(--spacing-sm);
-}
-
-#start-streaming,
-#stop-streaming {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
+  border-radius: 2px;
+  padding: var(--space-2) var(--space-5);
   transition: all 0.2s ease;
-  background-color: #10b981;
-  color: #ffffff;
+  min-width: 0;
+  cursor: pointer;
 }
 
-#start-streaming:hover:not(:disabled) {
-  background-color: #059669;
-}
-
-#stop-streaming {
-  background-color: #ef4444;
-}
-
-#stop-streaming:hover:not(:disabled) {
-  background-color: #dc2626;
-}
-
-#start-streaming:disabled,
-#stop-streaming:disabled {
-  background-color: var(--color-button-disabled-bg);
-  color: var(--color-button-disabled-text);
+button:disabled {
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
-.streaming-config {
+/* Broadcast button — the primary control */
+.btn-broadcast {
+  background-color: transparent;
+  color: var(--signal-amber);
+  border: 2px solid var(--signal-amber);
+  padding: var(--space-3) var(--space-8);
+  font-size: var(--text-sm);
+  position: relative;
+}
+
+.btn-broadcast:not(:disabled):hover {
+  background-color: var(--signal-amber-glow);
+  box-shadow: 0 0 20px var(--signal-amber-glow);
+}
+
+.btn-broadcast:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+/* End broadcast — understated to prevent accidental stops */
+.btn-end {
+  background-color: transparent;
+  color: var(--text-tertiary);
+  border: 1px solid var(--border);
+}
+
+.btn-end:not(:disabled):hover {
+  color: var(--signal-red);
+  border-color: var(--signal-red);
+}
+
+/* Ghost buttons */
+.btn-ghost {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.btn-ghost:not(:disabled):hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+/* Mute button states in transport */
+#toggle-mute.muted {
+  color: var(--signal-amber);
+  border-color: var(--signal-amber);
+}
+
+/* Record button with dot indicator */
+.btn-record {
+  position: relative;
+  padding-left: calc(var(--space-5) + 10px);
+}
+
+.btn-record::before {
+  content: '';
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--text-tertiary);
+  transition: background-color 0.2s ease;
+}
+
+.btn-record.recording::before {
+  background-color: var(--signal-red);
+  animation: rec-blink 1s steps(1) infinite;
+}
+
+@keyframes rec-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* Stream button */
+.btn-stream.streaming {
+  color: var(--status-connected);
+  border-color: var(--status-connected);
+}
+
+/* ==========================================
+   DECK PANELS — Collapsible Sections
+   ========================================== */
+
+.deck-panel {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.deck-header {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  margin-left: auto;
-}
-
-.streaming-config label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-}
-
-#bitrate-select {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background-color: var(--color-bg);
-  color: var(--color-text);
-  font-size: 0.875rem;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-4);
   cursor: pointer;
-  transition: border-color 0.2s ease;
+  user-select: none;
 }
 
-#bitrate-select:hover {
-  border-color: var(--color-button-bg);
+.deck-header:hover {
+  background-color: var(--surface-raised);
 }
 
-#bitrate-select:focus {
-  outline: none;
-  border-color: var(--color-button-bg);
-}
-
-.streaming-info {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background-color: var(--color-bg-secondary);
-}
-
-.streaming-url {
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
-}
-
-.streaming-url a {
-  color: var(--color-button-bg);
-  text-decoration: none;
-  margin-left: var(--spacing-xs);
-  font-weight: 500;
-}
-
-.streaming-url a:hover {
-  text-decoration: underline;
-}
-
-/* Responsive adjustments for streaming section */
-@media (max-width: 768px) {
-  #streaming-section {
-    padding: 0 var(--spacing-sm);
-  }
-
-  .streaming-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .streaming-config {
-    margin-left: 0;
-    justify-content: space-between;
-  }
-
-  #start-streaming,
-  #stop-streaming {
-    width: 100%;
-  }
-}
-
-@media (max-width: 480px) {
-  .streaming-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-xs);
-  }
-
-  .streaming-controls {
-    padding: var(--spacing-sm);
-  }
-
-  .streaming-info {
-    padding: var(--spacing-sm);
-  }
-
-  .streaming-url {
-    word-break: break-all;
-  }
-}
-
-/* =========================
-   Recording Section
-   ========================= */
-
-#recording-section {
-  max-width: var(--max-width);
-  margin: 0 auto var(--spacing-lg) auto;
-  padding: 0 var(--spacing-lg);
-}
-
-.recording-header {
+.deck-summary {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-sm);
+  gap: var(--space-3);
 }
 
-.recording-label {
-  font-size: 0.875rem;
+.deck-label {
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-secondary);
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
 }
 
+.deck-toggle {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  padding: var(--space-1);
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  min-width: 0;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.deck-panel.collapsed .deck-toggle {
+  transform: rotate(-90deg);
+}
+
+.deck-body {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  max-height: 500px;
+  opacity: 1;
+}
+
+.deck-panel.collapsed .deck-body {
+  max-height: 0;
+  opacity: 0;
+  padding: 0 var(--space-4);
+  border-top: none;
+  overflow: hidden;
+}
+
+/* Recording indicator */
 .recording-indicator {
-  width: 12px;
-  height: 12px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background-color: var(--color-border);
-  transition: background-color 0.3s ease;
+  background-color: var(--text-ghost);
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
 }
 
 .recording-indicator.active {
-  background-color: #ef4444;
-  animation: pulse 1.5s ease-in-out infinite;
+  background-color: var(--signal-red);
+  animation: rec-blink 1s steps(1) infinite;
 }
 
 .recording-timer {
-  font-size: 1.25rem;
-  font-weight: 600;
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  color: var(--color-text-secondary);
-  min-width: 80px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  letter-spacing: 0.05em;
 }
 
 .recording-timer.active {
-  color: #ef4444;
+  color: var(--signal-red);
+  text-shadow: 0 0 8px var(--signal-red-glow);
 }
 
 .recording-controls {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background-color: var(--color-bg-secondary);
-  margin-bottom: var(--spacing-sm);
-}
-
-#start-recording {
-  background-color: #ef4444;
-  color: #ffffff;
-}
-
-#start-recording:hover:not(:disabled) {
-  background-color: #dc2626;
-}
-
-#stop-recording {
-  background-color: var(--color-button-bg);
-  color: #ffffff;
-}
-
-#download-recordings {
-  background-color: #10b981;
-  color: #ffffff;
-}
-
-#download-recordings:hover:not(:disabled) {
-  background-color: #059669;
+  gap: var(--space-3);
 }
 
 .recording-tracks {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background-color: var(--color-bg-secondary);
+  margin-top: var(--space-3);
 }
 
 .recording-tracks h4 {
-  font-size: 0.875rem;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
   font-weight: 600;
-  margin-bottom: var(--spacing-xs);
-  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: var(--space-2);
+  color: var(--text-tertiary);
 }
 
 .recording-track-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-xs) 0;
-  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
 }
 
 .recording-track-item:last-child {
@@ -790,36 +874,182 @@ button:disabled {
 }
 
 .recording-track-name {
-  font-size: 0.875rem;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
   font-weight: 500;
+  color: var(--text-primary);
 }
 
 .recording-track-size {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
 }
 
 .recording-track-download {
-  font-size: 0.75rem;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  background-color: var(--color-button-bg);
-  color: #ffffff;
-  border: none;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  padding: 3px 10px;
+  border-radius: 2px;
+  background-color: transparent;
+  color: var(--data-cyan-dim);
+  border: 1px solid var(--data-cyan-dim);
   cursor: pointer;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .recording-track-download:hover {
-  background-color: var(--color-button-bg-hover);
+  background-color: var(--data-cyan-glow);
+  color: var(--data-cyan);
 }
 
-/* Recording responsive */
+/* ==========================================
+   STREAMING
+   ========================================== */
+
+.streaming-status {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.streaming-status.streaming {
+  color: var(--status-connected);
+}
+
+.streaming-status.connecting,
+.streaming-status.reconnecting {
+  color: var(--status-connecting);
+}
+
+.streaming-status.reconnecting {
+  animation: pulse-status 2s ease-in-out infinite;
+}
+
+.streaming-status.error {
+  color: var(--status-error);
+}
+
+.streaming-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.streaming-config {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.streaming-config label {
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+#bitrate-select {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background-color: var(--surface-raised);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+#bitrate-select:hover {
+  border-color: var(--border-strong);
+}
+
+#bitrate-select:focus {
+  outline: none;
+  border-color: var(--signal-amber);
+}
+
+.streaming-info {
+  padding: var(--space-2) 0;
+}
+
+.streaming-url {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.streaming-url a {
+  color: var(--data-cyan-dim);
+  text-decoration: none;
+  margin-left: var(--space-2);
+  font-weight: 500;
+  padding: 2px 6px;
+  background-color: var(--surface-raised);
+  border-radius: 2px;
+}
+
+.streaming-url a:hover {
+  color: var(--data-cyan);
+  background-color: var(--surface-elevated);
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+
 @media (max-width: 768px) {
-  #recording-section {
-    padding: 0 var(--spacing-sm);
+  header {
+    padding: 0 var(--space-4);
+    grid-template-columns: auto 1fr auto;
+    gap: var(--space-2);
   }
 
-  .recording-controls {
+  .tagline {
+    display: none;
+  }
+
+  main {
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+
+  .stage {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--space-3);
+  }
+
+  .transport {
+    flex-direction: column;
+  }
+
+  .transport button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  header {
+    padding: 0 var(--space-3);
+  }
+
+  main {
+    padding: var(--space-3);
+  }
+
+  .stage {
+    grid-template-columns: 1fr;
+  }
+
+  .streaming-controls {
     flex-direction: column;
     align-items: stretch;
   }
