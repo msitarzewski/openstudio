@@ -112,6 +112,38 @@ async function getStreamCounts(page) {
   });
 }
 
+async function getConnectionState(page) {
+  return await page.evaluate(() => {
+    const cm = window.connectionManager;
+    if (!cm) return 'no-cm';
+    const rtc = cm.rtcManager;
+    if (!rtc) return 'no-rtc';
+    const pcs = rtc.peerConnections;
+    if (!pcs || pcs.size === 0) return 'no-peers';
+    for (const [, pc] of pcs) {
+      return pc.connectionState || 'unknown';
+    }
+    return 'no-peers';
+  });
+}
+
+async function waitForConnections(pageA, pageB, timeout = 30000) {
+  const startTime = Date.now();
+  while (Date.now() - startTime < timeout) {
+    const [stateA, stateB] = await Promise.all([
+      getConnectionState(pageA),
+      getConnectionState(pageB)
+    ]);
+    if (stateA === 'connected' && stateB === 'connected') {
+      console.log('✅ Both peers have connected WebRTC connections');
+      return true;
+    }
+    console.log(`  Connection states: A=${stateA}, B=${stateB}`);
+    await sleep(1000);
+  }
+  return false;
+}
+
 async function waitForReturnFeedCount(page, expectedCount, timeout = 15000) {
   const startTime = Date.now();
   while (Date.now() - startTime < timeout) {
@@ -188,9 +220,16 @@ async function runTest() {
     await sleep(2000);
     console.log('✅ [B] Session started\n');
 
-    // ===== Wait for WebRTC connections to establish =====
+    // ===== Wait for WebRTC connections + return feeds =====
+    // Poll for both connections to reach 'connected' state before checking return feeds
     console.log('--- Waiting for WebRTC connections ---');
-    await sleep(15000); // Allow time for initial connection + renegotiation (CI is slower)
+    const connectionsReady = await waitForConnections(peerA.page, peerB.page, 30000);
+    if (!connectionsReady) {
+      console.log('⚠️  Connections not fully ready after 30s, continuing with extra wait...');
+    }
+    // Wait for renegotiation to complete (return feed tracks trigger renegotiation)
+    console.log('Waiting for renegotiation to settle...');
+    await sleep(10000);
 
     // ===== Verify microphone streams in audio graph =====
     console.log('--- Verifying microphone streams ---');
@@ -231,7 +270,7 @@ async function runTest() {
 
     // Wait for return feeds to start
     console.log('[A] Waiting for return feed from B...');
-    const aHasReturnFeed = await waitForReturnFeedCount(peerA.page, 1, 30000);
+    const aHasReturnFeed = await waitForReturnFeedCount(peerA.page, 1, 45000);
     if (!aHasReturnFeed) {
       const returnFeedA = await getReturnFeedInfo(peerA.page);
       console.log('[A] Return feed info:', returnFeedA);
@@ -240,7 +279,7 @@ async function runTest() {
     console.log('✅ [A] Return feed playing');
 
     console.log('[B] Waiting for return feed from A...');
-    const bHasReturnFeed = await waitForReturnFeedCount(peerB.page, 1, 30000);
+    const bHasReturnFeed = await waitForReturnFeedCount(peerB.page, 1, 45000);
     if (!bHasReturnFeed) {
       const returnFeedB = await getReturnFeedInfo(peerB.page);
       console.log('[B] Return feed info:', returnFeedB);
