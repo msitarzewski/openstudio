@@ -78,6 +78,12 @@ class OpenStudioApp {
     // Check for room ID in URL hash
     this.checkUrlHash();
 
+    // Update CTA if joining an existing room
+    if (this.roomIdFromUrl) {
+      this.startSessionButton.textContent = 'Join Broadcast';
+      this.endSessionButton.textContent = 'Leave Broadcast';
+    }
+
     // Auto-connect to signaling server
     this.initializeApp();
 
@@ -821,6 +827,8 @@ class OpenStudioApp {
     this.recordingTracksDiv.style.display = 'none';
     this.lastRecordings = null;
     window.location.hash = '';
+    this.startSessionButton.textContent = 'Start Broadcast';
+    this.endSessionButton.textContent = 'End Broadcast';
 
     // Reconnect to signaling
     this.signaling.connect();
