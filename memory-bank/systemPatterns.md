@@ -282,6 +282,57 @@ Program Bus → MediaStreamDestination → MediaRecorder (mix)
 - Client `RTCManager.setIceServers()` applies config from signaling response
 - Fallback: `initialize()` fetches from API if signaling didn't provide ICE (STUN-only)
 
+### 14. Signal Design System — CSS-Driven Broadcast State (v0.3-dev)
+
+**Pattern**: Single `body.broadcasting` CSS class drives all ON AIR visual state changes.
+
+**Rationale**:
+- One class toggle cascades to header, wordmark, cards, vignette, signal bar
+- CSS handles transitions/animations — JS only adds/removes the class
+- Decouples visual state from application logic
+
+**Implementation**:
+- `main.js:handleStartSession()` → `document.body.classList.add('broadcasting')`
+- `main.js:handleEndSession()` → `document.body.classList.remove('broadcasting')`
+- `studio.css`: `body.broadcasting` selectors for all ON AIR effects
+- `body.broadcasting::before` → 2px red signal line at top of viewport
+
+### 15. Segmented LED Meters with Speaking Detection (v0.3-dev)
+
+**Pattern**: VolumeMeter class supports multiple visualization modes and callbacks.
+
+**Implementation**:
+```
+VolumeMeter(canvas, analyser, { mode: 'meter'|'waveform', onSpeaking: callback })
+```
+- `meter` mode: Segmented LED bar (32 or 16 segments based on width)
+- `waveform` mode: Real-time oscilloscope with glow effect
+- `onSpeaking` callback drives `.speaking` class on participant cards
+- Amber → red color ramp (not green/yellow/red traffic light)
+- Ghost segments at 3% opacity, peak hold with 1.5s decay
+- HiDPI setup deferred to `start()` (not constructor) — CSS layout must be stable before reading `getBoundingClientRect()`
+
+### 15a. Local Mic in Program Bus (v0.3-dev)
+
+**Pattern**: Host's local microphone is routed into the program bus so Signal Output reflects the complete broadcast mix.
+
+**Implementation**:
+- `createLocalMeter()` connects: `source → analyser → compressor → programBus`
+- Compressor settings match remote participant chain for consistent levels
+- Program bus already connects to `audioContext.destination`, so no separate Safari workaround needed
+- `_localAudioNodes` stored for cleanup on session end
+
+### 16. Collapsible Deck Panels (v0.3-dev)
+
+**Pattern**: Recording and streaming details in collapsible panels, primary controls in transport bar.
+
+**Implementation**:
+- `.deck-panel` with `.deck-header` (click to toggle) and `.deck-body`
+- `.collapsed` class hides body via `max-height: 0`
+- Primary actions (Record, Stream buttons) remain in transport bar
+- Deck panels show details: timer, download list, bitrate selector, stream URL
+- Start collapsed; auto-expand on recording start
+
 ## Error Handling Patterns
 
 ### Peer Disconnection

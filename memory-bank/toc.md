@@ -40,6 +40,12 @@
 - Branch: `release/0.2.1-security-hardening`
 - See activeContext.md and progress.md for details
 
+### Signal UX Redesign (2026-03-14)
+
+- Complete visual redesign — "Signal" design system
+- Branch: `feat/signal-ux-redesign`
+- See `tasks/2026-03/140326_signal_ux_redesign.md` for details
+
 ## Quick References
 
 - **quick-start.md** - Common patterns and session data

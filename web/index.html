@@ -7,6 +7,10 @@
   <meta name="author" content="OpenStudio Contributors">
   <title>OpenStudio - Web Studio</title>
 
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
   <!-- Styles -->
   <link rel="stylesheet" href="css/reset.css">
   <link rel="stylesheet" href="css/studio.css">
@@ -15,72 +19,89 @@
   <script type="module" src="js/main.js"></script>
 </head>
 <body>
-  <!-- Header -->
+  <!-- Signal Bar (Header) -->
   <header>
-    <h1>OpenStudio</h1>
-    <div id="status">Disconnected</div>
+    <h1>OPEN<span class="wordmark-accent">STUDIO</span></h1>
+    <small class="tagline">talk hard.</small>
+    <div class="header-center">
+      <div id="status">Disconnected</div>
+    </div>
+    <div class="header-right">
+      <span id="session-info" class="session-info"></span>
+    </div>
   </header>
 
   <!-- Main content area -->
   <main>
-    <!-- Participants section -->
-    <section id="participants">
+    <!-- Stage: Participants -->
+    <section id="participants" class="stage">
       <!-- Participant cards will be added dynamically when users join -->
     </section>
 
-    <!-- Controls section -->
-    <section id="controls">
-      <button id="start-session">Start Broadcast</button>
-      <button id="toggle-mute" disabled>Mute</button>
-      <button id="end-session" disabled>End Broadcast</button>
-    </section>
-
-    <!-- Recording Controls -->
-    <section id="recording-section">
-      <div class="recording-header">
-        <div class="recording-label">Recording</div>
-        <div id="recording-indicator" class="recording-indicator"></div>
-        <div id="recording-timer" class="recording-timer">00:00:00</div>
-      </div>
-      <div class="recording-controls">
-        <button id="start-recording" disabled>Record</button>
-        <button id="stop-recording" disabled style="display: none;">Stop Recording</button>
-        <button id="download-recordings" disabled style="display: none;">Download All</button>
-      </div>
-      <div id="recording-tracks" class="recording-tracks" style="display: none;">
-        <!-- Track download list appears here after recording stops -->
-      </div>
-    </section>
-
-    <!-- Program Bus Volume Meter -->
-    <section id="program-bus-section">
-      <div class="meter-label">Program Bus</div>
+    <!-- Program Bus / Signal Output -->
+    <section id="program-bus-section" class="signal-output">
+      <div class="meter-label">SIGNAL OUTPUT</div>
       <div class="meter-container">
-        <canvas id="volume-meter" width="400" height="30"></canvas>
+        <canvas id="waveform-display" class="waveform-canvas" height="48"></canvas>
+        <canvas id="volume-meter" width="600" height="24"></canvas>
       </div>
     </section>
 
-    <!-- Icecast Streaming Controls -->
-    <section id="streaming-section">
-      <div class="streaming-header">
-        <div class="streaming-label">Icecast Streaming</div>
-        <div id="streaming-status" class="streaming-status">Not Streaming</div>
+    <!-- Transport Controls -->
+    <section id="controls" class="transport">
+      <button id="start-session" class="btn-broadcast">Start Broadcast</button>
+      <button id="toggle-mute" class="btn-ghost" disabled>Mute</button>
+      <button id="start-recording" class="btn-ghost btn-record" disabled>Record</button>
+      <button id="stop-recording" class="btn-ghost" disabled style="display: none;">Stop Recording</button>
+      <button id="start-streaming" class="btn-ghost btn-stream" disabled>Stream</button>
+      <button id="stop-streaming" class="btn-ghost" disabled style="display: none;">Stop Streaming</button>
+      <button id="end-session" class="btn-end" disabled>End Broadcast</button>
+    </section>
+
+    <!-- Deck: Recording Panel -->
+    <section id="recording-section" class="deck-panel">
+      <div class="deck-header" data-deck="recording">
+        <div class="deck-summary">
+          <div class="recording-indicator" id="recording-indicator"></div>
+          <span class="deck-label">REC</span>
+          <span id="recording-timer" class="recording-timer">00:00:00</span>
+        </div>
+        <button class="deck-toggle" aria-label="Toggle recording panel">&#9660;</button>
       </div>
-      <div class="streaming-controls">
-        <button id="start-streaming" disabled>Start Streaming</button>
-        <button id="stop-streaming" disabled style="display: none;">Stop Streaming</button>
-        <div class="streaming-config">
-          <label for="bitrate-select">Bitrate:</label>
-          <select id="bitrate-select">
-            <option value="48000">48 kbps</option>
-            <option value="96000">96 kbps</option>
-            <option value="128000" selected>128 kbps</option>
-            <option value="192000">192 kbps</option>
-          </select>
+      <div class="deck-body" id="recording-deck-body">
+        <div class="recording-controls">
+          <button id="download-recordings" disabled style="display: none;">Download All</button>
+        </div>
+        <div id="recording-tracks" class="recording-tracks" style="display: none;">
+          <!-- Track download list appears here after recording stops -->
         </div>
       </div>
-      <div id="streaming-info" class="streaming-info">
-        <div class="streaming-url">Stream URL: <a href="/stream/live.opus" target="_blank" id="stream-url">/stream/live.opus</a></div>
+    </section>
+
+    <!-- Deck: Streaming Panel -->
+    <section id="streaming-section" class="deck-panel">
+      <div class="deck-header" data-deck="streaming">
+        <div class="deck-summary">
+          <span class="deck-label">TRANSMIT</span>
+          <span id="streaming-status" class="streaming-status">Not Streaming</span>
+        </div>
+        <button class="deck-toggle" aria-label="Toggle streaming panel">&#9660;</button>
+      </div>
+      <div class="deck-body" id="streaming-deck-body">
+        <div class="streaming-controls">
+          <div class="streaming-config">
+            <label for="bitrate-select">Bitrate:</label>
+            <select id="bitrate-select">
+              <option value="48000">48 kbps</option>
+              <option value="96000">96 kbps</option>
+              <option value="128000" selected>128 kbps</option>
+              <option value="192000">192 kbps</option>
+            </select>
+          </div>
+        </div>
+        <div id="streaming-info" class="streaming-info">
+          <div class="streaming-url">Stream URL: <a href="/stream/live.opus" target="_blank" id="stream-url">/stream/live.opus</a></div>
+        </div>
       </div>
     </section>
   </main>

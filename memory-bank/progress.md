@@ -1,6 +1,6 @@
 # Progress: OpenStudio
 
-**Last Updated**: 2026-03-13 (Release 0.2.0 Implementation Complete)
+**Last Updated**: 2026-03-14 (Signal UX Redesign Complete)
 
 ## What's Working
 
@@ -107,21 +107,36 @@
 ✅ Increased return-feed test timeouts (WebRTC renegotiation flaky in CI)
 ✅ Added retry for return-feed test, `fail-fast: false` on matrix
 
+### Signal UX Redesign (Branch: feat/signal-ux-redesign — 2026-03-14)
+
+✅ **Complete Visual Redesign — "Signal" Design System**
+- `web/index.html` — Google Fonts, signal chain layout, wordmark+tagline, waveform canvas, deck panels
+- `web/css/studio.css` — Complete rewrite: void/signal/data color palette, scan lines/vignette/noise atmosphere, ON AIR animations, channel strip cards, transport controls, deck panels, segmented LED meters
+- `web/js/main.js` — `body.broadcasting` state management, speaking detection, card enter/exit animations, deck panel toggle, empty state text, role display names (Caller/Engineer), waveform init
+- `web/js/volume-meter.js` — Segmented LED mode (32/16 segments), waveform oscilloscope mode, amber→red color ramp, ghost segments, peak hold, speaking callback, HiDPI support
+
+**Verification Results**:
+✅ All 3 E2E tests passing (WebRTC, Recording, Return Feed)
+✅ No console errors from CSS/JS changes
+✅ No new files created (4 existing files modified)
+
 ## What's Next
 
 ### Immediate
 
-1. **Merge PR #1** — https://github.com/msitarzewski/openstudio/pull/1 (CI green)
-2. **Deploy to umacbookpro** — `git pull` + `systemctl --user restart openstudio` on umacbookpro
-3. **Deploy to openstudio.zerologic.com** — Run `deploy/setup.sh` on production server with `JWT_SECRET` and `ALLOWED_ORIGINS` set
-4. **End-to-end recording test** — Manual test: record, stop, download, verify tracks
+1. **Merge Signal UX branch** — `feat/signal-ux-redesign` → main
+2. **Merge PR #1** — https://github.com/msitarzewski/openstudio/pull/1 (v0.2.1 Security, CI green)
+3. **Deploy to umacbookpro** — `git pull` + `systemctl --user restart openstudio` on umacbookpro
+4. **Manual visual QA** — Load in Chrome, Firefox, Safari; test responsive breakpoints; test prefers-reduced-motion
 
 ### Short Term (Next Sprint)
 
-1. **WAV export UI button** — Add "Export WAV" next to each track download
-2. **Recording size monitoring** — Show estimated size during recording, warn at 500MB
-3. **Room TTL UI feedback** — Show countdown timer for demo rooms
-4. **Invite URL UI** — Add "Copy Invite Link" button using invite tokens
+1. **Per-participant waveform** (stretch goal from Signal plan) — Replace static avatar with live waveform
+2. **Broadcast tone** (optional) — 1kHz sine wave, 150ms, marks ON AIR moment
+3. **Self-host fonts** — Remove Google Fonts CDN dependency for zero-external-dependency
+4. **WAV export UI button** — Add "Export WAV" next to each track download
+5. **Recording size monitoring** — Show estimated size during recording, warn at 500MB
+6. **Invite URL UI** — Add "Copy Invite Link" button using invite tokens
 
 ### Release 0.3 (Planned)
 
