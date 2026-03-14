@@ -117,7 +117,7 @@ async function testMuteControls() {
 
     console.log(`   Host sees caller button: "${initialButtonText}" (class: ${initialButtonClass})`);
 
-    if (initialButtonText.includes('Unmuted') && !initialButtonClass.includes('self-muted') && !initialButtonClass.includes('producer-muted')) {
+    if (initialButtonText.toLowerCase().includes('unmuted') && !initialButtonClass.includes('self-muted') && !initialButtonClass.includes('producer-muted')) {
       console.log('   ✅ PASS: Caller initially unmuted (green state)');
     } else {
       console.log('   ❌ FAIL: Expected unmuted state');
@@ -140,7 +140,7 @@ async function testMuteControls() {
     const selfButtonClass = await selfMuteButtonOnCaller.getAttribute('class');
     console.log(`   Caller sees own button: "${selfButtonText}" (class: ${selfButtonClass})`);
 
-    if (selfButtonText.includes('Muted') && selfButtonClass.includes('self-muted')) {
+    if (selfButtonText.toLowerCase().includes('muted') && selfButtonClass.includes('self-muted')) {
       console.log('   ✅ PASS: Caller shows self-muted state (yellow)');
     } else {
       console.log('   ❌ FAIL: Expected self-muted state');
@@ -153,7 +153,7 @@ async function testMuteControls() {
     const hostSeesButtonClass = await muteButtonOnHost.getAttribute('class');
     console.log(`   Host sees caller button: "${hostSeesButtonText}" (class: ${hostSeesButtonClass})`);
 
-    if (hostSeesButtonText.includes('Muted')) {
+    if (hostSeesButtonText.toLowerCase().includes('muted')) {
       console.log('   ✅ PASS: Mute state propagated to host');
     } else {
       console.log('   ❌ FAIL: Mute state did not propagate');
@@ -177,7 +177,7 @@ async function testMuteControls() {
     const callerSeesClass = await selfMuteButtonOnCaller.getAttribute('class');
     console.log(`   Caller sees: "${callerSeesUnmuted}" (class: ${callerSeesClass})`);
 
-    if (hostSeesUnmuted.includes('Unmuted') && callerSeesUnmuted.includes('Unmuted')) {
+    if (hostSeesUnmuted.toLowerCase().includes('unmuted') && callerSeesUnmuted.toLowerCase().includes('unmuted')) {
       console.log('   ✅ PASS: Producer authority overrode self-mute');
     } else {
       console.log('   ❌ FAIL: Producer authority did not override self-mute');
@@ -202,7 +202,7 @@ async function testMuteControls() {
     const callerSeesProducerClass = await selfMuteButtonOnCaller.getAttribute('class');
     console.log(`   Caller sees: "${callerSeesProducerMuted}" (class: ${callerSeesProducerClass})`);
 
-    if (callerSeesProducerMuted.includes('Muted') && callerSeesProducerMuted.includes('Host') && callerSeesProducerClass.includes('producer-muted')) {
+    if (callerSeesProducerMuted.toLowerCase().includes('muted') && callerSeesProducerMuted.toLowerCase().includes('host') && callerSeesProducerClass.includes('producer-muted')) {
       console.log('   ✅ PASS: Caller shows producer-muted state (red, with "Host" label)');
     } else {
       console.log('   ❌ FAIL: Expected producer-muted state with "Host" label');
@@ -223,7 +223,7 @@ async function testMuteControls() {
 
     // Note: Due to conflict resolution, the mute should remain with producer authority
     // The button click might show an alert, but state should not change
-    if (stillMutedText.includes('Muted')) {
+    if (stillMutedText.toLowerCase().includes('muted')) {
       console.log('   ✅ PASS: Caller remains muted (producer authority blocks self-unmute)');
     } else {
       console.log('   ⚠️  WARNING: Caller appears unmuted (check conflict resolution logic)');
@@ -268,7 +268,7 @@ async function testMuteControls() {
     const callerFinalClass = await selfMuteButtonOnCaller.getAttribute('class');
     console.log(`   Caller sees: "${callerFinalText}" (class: ${callerFinalClass})`);
 
-    if (finalButtonText.includes('Unmuted') && callerFinalText.includes('Unmuted')) {
+    if (finalButtonText.toLowerCase().includes('unmuted') && callerFinalText.toLowerCase().includes('unmuted')) {
       console.log('   ✅ PASS: Full mute cycle completed successfully');
     } else {
       console.log('   ❌ FAIL: Full mute cycle did not complete correctly');

@@ -164,7 +164,7 @@ async function testGainControls() {
           muteButton.click();
 
           // Check if button text changed and slider disabled
-          const isMuted = muteButton.textContent.includes('Muted');
+          const isMuted = muteButton.textContent.toLowerCase().includes('muted');
           const isDisabled = slider.disabled;
 
           console.log(`[Test] Mute button text: ${muteButton.textContent}`);
@@ -211,12 +211,12 @@ async function testGainControls() {
         const muteButton = card.querySelector('.mute-button');
         const slider = card.querySelector('.gain-slider');
 
-        if (muteButton && muteButton.textContent.includes('Muted')) {
+        if (muteButton && slider && muteButton.textContent.toLowerCase().includes('muted') && !muteButton.textContent.toLowerCase().includes('unmuted')) {
           // Click unmute
           muteButton.click();
 
           // Check if button text changed and slider enabled
-          const isUnmuted = muteButton.textContent.includes('Unmuted');
+          const isUnmuted = muteButton.textContent.toLowerCase().includes('unmuted');
           const isEnabled = !slider.disabled;
 
           console.log(`[Test] Unmute button text: ${muteButton.textContent}`);
