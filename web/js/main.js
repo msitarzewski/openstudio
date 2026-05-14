@@ -67,6 +67,15 @@ class OpenStudioApp {
     this.recordingIndicator = document.getElementById('recording-indicator');
     this.recordingTimer = document.getElementById('recording-timer');
     this.recordingTracksDiv = document.getElementById('recording-tracks');
+
+    // Export panel elements
+    this.exportPanel = document.getElementById('export-panel');
+    this.exportRawBtn = document.getElementById('export-raw');
+    this.exportCleanBtn = document.getElementById('export-clean');
+    this.cleanOptions = document.getElementById('clean-options');
+    this.exportBtn = document.getElementById('export-btn');
+    this.exportStatus = document.getElementById('export-status');
+    this.downloadCleanedBtn = document.getElementById('download-cleaned');
     this.sessionInfoElement = document.getElementById('session-info');
 
     // Bind event handlers
@@ -711,6 +720,33 @@ class OpenStudioApp {
         this.recordingManager.downloadAll(this.lastRecordings, this.getParticipantNames());
       }
     });
+
+    // Export mode toggle
+    this.exportRawBtn.addEventListener('click', () => {
+      this.exportRawBtn.classList.add('active');
+      this.exportCleanBtn.classList.remove('active');
+      this.cleanOptions.style.display = 'none';
+      this.exportBtn.disabled = false;
+      this.exportMode = 'raw';
+    });
+
+    this.exportCleanBtn.addEventListener('click', () => {
+      this.exportCleanBtn.classList.add('active');
+      this.exportRawBtn.classList.remove('active');
+      this.cleanOptions.style.display = 'block';
+      this.exportBtn.disabled = false;
+      this.exportMode = 'clean';
+    });
+
+    // Export button
+    this.exportBtn.addEventListener('click', () => {
+      this.handleExport();
+    });
+
+    // Download cleaned audio button
+    this.downloadCleanedBtn.addEventListener('click', () => {
+      this.downloadCleanedAudio();
+    });
   }
 
   /**
@@ -910,6 +946,11 @@ class OpenStudioApp {
     this.recordingTimer.textContent = '00:00:00';
     this.recordingTracksDiv.style.display = 'none';
     this.lastRecordings = null;
+    this._cleanedBlob = null;
+    this.exportPanel.style.display = 'none';
+    this.exportStatus.style.display = 'none';
+    this.downloadCleanedBtn.style.display = 'none';
+    this.exportBtn.disabled = true;
     if (this.sessionInfoElement) this.sessionInfoElement.textContent = '';
     window.location.hash = '';
     this.startSessionButton.textContent = 'Start Broadcast';
@@ -1082,6 +1123,19 @@ class OpenStudioApp {
       const name = participant ? participant.name : peerId.substring(0, 8);
       this.addTrackDownloadItem(name, blob, peerId);
     }
+
+    // Show export panel for the program mix
+    if (recordings.program) {
+      this.lastRecordings = recordings;
+      this.exportMode = 'raw';
+      this.exportRawBtn.classList.add('active');
+      this.exportCleanBtn.classList.remove('active');
+      this.cleanOptions.style.display = 'none';
+      this.exportBtn.disabled = false;
+      this.exportStatus.style.display = 'none';
+      this.downloadCleanedBtn.style.display = 'none';
+      this.exportPanel.style.display = 'block';
+    }
   }
 
   /**
@@ -1114,6 +1168,83 @@ class OpenStudioApp {
     item.appendChild(sizeEl);
     item.appendChild(downloadBtn);
     this.recordingTracksDiv.appendChild(item);
+  }
+
+  /**
+   * Export the program mix (raw or cleaned)
+   */
+  async handleExport() {
+    if (!this.lastRecordings?.program) {
+      return;
+    }
+
+    const mode = this.exportMode;
+    this.exportBtn.disabled = true;
+    this.downloadCleanedBtn.style.display = 'none';
+
+    if (mode === 'raw') {
+      // Download raw audio immediately
+      this.exportStatus.style.display = 'flex';
+      this.exportStatus.className = 'export-status success';
+      this.exportStatus.innerHTML = '✓ Ready';
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const ext = this.recordingManager.getFileExtension();
+      this.recordingManager.downloadTrack(this.lastRecordings.program, `openstudio-mix-${timestamp}.${ext}`);
+    } else {
+      // Send to /api/export/clean
+      this.exportStatus.style.display = 'flex';
+      this.exportStatus.className = 'export-status processing';
+      this.exportStatus.innerHTML = '<span class="export-spinner"></span> Cleaning audio...';
+
+      try {
+        const options = {
+          fillerSensitivity: document.getElementById('filler-sensitivity').value,
+          silenceThreshold: document.getElementById('silence-threshold').value,
+          outputFormat: document.getElementById('output-format').value
+        };
+
+        const cleanedBlob = await this.recordingManager.exportTrack(
+          this.lastRecordings.program,
+          'clean',
+          options
+        );
+
+        // Store cleaned blob for download
+        this._cleanedBlob = cleanedBlob;
+
+        // Show download button
+        this.exportStatus.style.display = 'none';
+        this.downloadCleanedBtn.style.display = 'inline-block';
+      } catch (error) {
+        console.error('[App] Export failed:', error);
+        this.exportStatus.className = 'export-status error';
+        this.exportStatus.innerHTML = `✗ ${error.message}`;
+        this.exportBtn.disabled = false;
+      }
+    }
+  }
+
+  /**
+   * Download the cleaned audio blob
+   */
+  downloadCleanedAudio() {
+    if (!this._cleanedBlob) {
+      return;
+    }
+
+    const format = document.getElementById('output-format').value;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `openstudio-mix-cleaned-${timestamp}.${format}`;
+
+    const url = URL.createObjectURL(this._cleanedBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   /**

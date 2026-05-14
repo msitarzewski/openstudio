@@ -290,4 +290,43 @@ export class RecordingManager extends EventTarget {
     }
     return total;
   }
+
+  /**
+   * Export a single track blob to the server for cleaning
+   * @param {Blob} blob - The audio blob to export
+   * @param {string} mode - 'raw' or 'clean'
+   * @param {object} [options] - Export options (only used for 'clean')
+   * @returns {Promise<Blob>} - The exported audio blob
+   */
+  async exportTrack(blob, mode, options = {}) {
+    if (mode === 'raw') {
+      return blob;
+    }
+
+    // Send to /api/export/clean endpoint
+    const formData = new FormData();
+    formData.append('audio', blob, 'recording.webm');
+
+    if (options.fillerSensitivity) {
+      formData.append('fillerSensitivity', options.fillerSensitivity);
+    }
+    if (options.silenceThreshold) {
+      formData.append('silenceThreshold', options.silenceThreshold);
+    }
+    if (options.outputFormat) {
+      formData.append('outputFormat', options.outputFormat);
+    }
+
+    const response = await fetch('/api/export/clean', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      throw new Error(`Export failed (${response.status}): ${errText}`);
+    }
+
+    return await response.blob();
+  }
 }

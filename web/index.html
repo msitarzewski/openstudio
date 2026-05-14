@@ -75,6 +75,49 @@
         <div id="recording-tracks" class="recording-tracks" style="display: none;">
           <!-- Track download list appears here after recording stops -->
         </div>
+
+        <!-- Export options (shown after recording stops) -->
+        <div id="export-panel" class="export-panel" style="display: none;">
+          <div class="export-title">Export As</div>
+          <div class="export-mode-toggle">
+            <button id="export-raw" class="export-mode-btn active" data-mode="raw">Raw</button>
+            <button id="export-clean" class="export-mode-btn" data-mode="clean">Clean</button>
+          </div>
+
+          <!-- Clean options (collapsible) -->
+          <div id="clean-options" class="clean-options-collapsible" style="display: none;">
+            <div class="clean-option-row">
+              <label for="filler-sensitivity">Filler Sensitivity</label>
+              <select id="filler-sensitivity">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div class="clean-option-row">
+              <label for="silence-threshold">Silence Threshold</label>
+              <select id="silence-threshold">
+                <option value="-40">-40 dB</option>
+                <option value="-50" selected>-50 dB</option>
+                <option value="-60">-60 dB</option>
+              </select>
+            </div>
+            <div class="clean-option-row">
+              <label for="output-format">Output Format</label>
+              <select id="output-format">
+                <option value="webm">WebM (Opus)</option>
+                <option value="wav">WAV</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Export action -->
+          <div class="export-actions">
+            <button id="export-btn" class="btn-export" disabled>Export</button>
+            <div id="export-status" class="export-status" style="display: none;"></div>
+            <button id="download-cleaned" class="btn-download-cleaned" style="display: none;">Download</button>
+          </div>
+        </div>
       </div>
     </section>
 
