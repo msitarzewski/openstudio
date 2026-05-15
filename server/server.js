@@ -14,6 +14,7 @@ import { serveStatic } from './lib/static-server.js';
 import { proxyIcecastListener } from './lib/icecast-listener-proxy.js';
 import { transcribeBuffer, transcribe } from './lib/whisper-transcriber.js';
 import { isSupportedAudio, getDuration } from './lib/audio-converter.js';
+import { cleanAudio } from './lib/audio-cleaner.js';
 
 // Load and validate station manifest (fail fast if invalid)
 let config;
@@ -393,20 +394,41 @@ function parseMultipart(body, contentType) {
   const match = contentType.match(/boundary=(.?[^;\s]+)/);
   if (!match) return null;
 
-  const boundary = '--' + match[1];
-  const parts = body.split(boundary);
+  const boundaryStr = '--' + match[1];
+  const boundary = Buffer.from(boundaryStr + '\r\n');
+  const boundaryEnd = Buffer.from(boundaryStr + '--\r\n');
+  const doubleCRLF = Buffer.from('\r\n\r\n');
 
-  for (let i = 1; i < parts.length - 1; i++) {
-    const part = parts[i];
-    if (!part.includes('Content-Disposition')) continue;
+  let offset = 0;
+  while (offset < body.length) {
+    const idx = body.indexOf(boundary, offset);
+    if (idx === -1) break;
 
-    const fnMatch = part.match(/filename="?([^"\r\n]+)"?/i);
+    let headerStart = idx + boundary.length;
+    const headerEnd = body.indexOf(doubleCRLF, headerStart);
+    if (headerEnd === -1) break;
+
+    const headerBlock = body.slice(headerStart, headerEnd).toString('utf8');
+    if (!headerBlock.includes('Content-Disposition')) {
+      offset = headerEnd + doubleCRLF.length;
+      continue;
+    }
+
+    const fnMatch = headerBlock.match(/filename="?([^"\r\n]+)"?/i);
     const filename = fnMatch ? fnMatch[1] : 'audio.wav';
 
-    const headerEnd = part.indexOf('\r\n\r\n');
-    if (headerEnd === -1) continue;
+    const contentStart = headerEnd + doubleCRLF.length;
+    const remaining = body.slice(contentStart);
+    const nextBoundary = remaining.indexOf(boundary);
+    let contentEnd;
+    if (nextBoundary === -1) {
+      contentEnd = remaining.indexOf(boundaryStr + "--\r\n");
+      if (contentEnd === -1) contentEnd = remaining.length;
+    } else {
+      contentEnd = nextBoundary;
+    }
 
-    const audioData = part.slice(headerEnd + 4);
+    const audioData = body.slice(contentStart, contentStart + contentEnd);
     return { audio: audioData, filename };
   }
 
