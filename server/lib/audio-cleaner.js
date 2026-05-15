@@ -252,7 +252,7 @@ export async function cleanAudio(inputFile, transcript, opts = {}) {
     const concatFile = join(tmp, 'concat.txt');
     const concatContent = segments.map(s => `file '${s.replace(/'/g, "'\\''")}'`).join('\n');
     filesToClean.push(concatFile);
-    import('fs').then(fs => fs.promises.writeFile(concatFile, concatContent));
+    await (await import('fs')).promises.writeFile(concatFile, concatContent);
 
     const mergedFile = join(tmp, 'merged.wav');
     const concatArgs = [
