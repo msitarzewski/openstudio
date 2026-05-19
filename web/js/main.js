@@ -76,6 +76,18 @@ class OpenStudioApp {
     this.exportBtn = document.getElementById('export-btn');
     this.exportStatus = document.getElementById('export-status');
     this.downloadCleanedBtn = document.getElementById('download-cleaned');
+
+    // Show notes elements
+    this.transcribeSection = document.getElementById('transcribe-section');
+    this.transcribeBtn = document.getElementById('transcribe-btn');
+    this.transcribeStatus = document.getElementById('transcribe-status');
+    this.showNotesPanel = document.getElementById('show-notes-panel');
+    this.episodeTitleInput = document.getElementById('episode-title-input');
+    this.episodeSummary = document.getElementById('episode-summary');
+    this.segmentList = document.getElementById('segment-list');
+    this.copyShowNotesBtn = document.getElementById('copy-show-notes');
+    this.downloadShowNotesBtn = document.getElementById('download-show-notes');
+    this.showNotesStatus = document.getElementById('show-notes-status');
     this.sessionInfoElement = document.getElementById('session-info');
 
     // Bind event handlers
@@ -747,6 +759,27 @@ class OpenStudioApp {
     this.downloadCleanedBtn.addEventListener('click', () => {
       this.downloadCleanedAudio();
     });
+
+    // Transcription & show notes
+    if (this.transcribeBtn) {
+      this.transcribeBtn.addEventListener('click', () => {
+        if (this.lastRecordings?.program) {
+          this.handleTranscribeProgram();
+        }
+      });
+    }
+
+    if (this.copyShowNotesBtn) {
+      this.copyShowNotesBtn.addEventListener('click', () => {
+        this.handleCopyShowNotes();
+      });
+    }
+
+    if (this.downloadShowNotesBtn) {
+      this.downloadShowNotesBtn.addEventListener('click', () => {
+        this.handleDownloadShowNotes();
+      });
+    }
   }
 
   /**
@@ -1238,6 +1271,153 @@ class OpenStudioApp {
     const filename = `openstudio-mix-cleaned-${timestamp}.${format}`;
 
     const url = URL.createObjectURL(this._cleanedBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Transcribe the program mix recording and generate show notes
+   */
+  async handleTranscribeProgram() {
+    if (!this.lastRecordings?.program) return;
+
+    this.transcribeBtn.disabled = true;
+    this.transcribeStatus.style.display = 'flex';
+    this.transcribeStatus.className = 'export-status processing';
+    this.transcribeStatus.innerHTML = '<span class="export-spinner"></span> Transcribing...';
+    this.showNotesPanel.style.display = 'none';
+
+    try {
+      // Step 1: Transcribe the audio via server
+      const transcription = await this.recordingManager.transcribeTrack(this.lastRecordings.program);
+      
+      // Step 2: Generate show notes from transcript
+      const segments = transcription.segments || [];
+      this.transcribeStatus.innerHTML = '<span class="export-spinner"></span> Generating show notes...';
+
+      const response = await fetch('/api/export/show-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ segments })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        throw new Error(`Show notes generation failed (${response.status}): ${errText}`);
+      }
+
+      const showNotes = await response.json();
+
+      // Step 3: Display show notes in UI
+      this.episodeTitleInput.value = showNotes.title || '';
+      this.episodeSummary.value = showNotes.summary || 'No summary generated.';
+
+      // Render segment markers
+      this.segmentList.innerHTML = '';
+      if (showNotes.segments) {
+        showNotes.segments.forEach(seg => {
+          const item = document.createElement('div');
+          item.className = 'segment-item';
+          item.innerHTML = `
+            <span class="segment-index">${seg.index}.</span>
+            <span class="segment-timestamp">${seg.timestamp}</span>
+            <span class="segment-text">${seg.text}</span>
+          `;
+          this.segmentList.appendChild(item);
+        });
+      }
+
+      // Show the panel
+      this.transcribeStatus.style.display = 'none';
+      this.showNotesPanel.style.display = 'block';
+      this.transcribeBtn.disabled = false;
+
+    } catch (error) {
+      console.error('[App] Transcription/show notes error:', error);
+      this.transcribeStatus.className = 'export-status error';
+      this.transcribeStatus.innerHTML = `✗ ${error.message}`;
+      this.transcribeBtn.disabled = false;
+    }
+  }
+
+  /**
+   * Copy show notes to clipboard as formatted text
+   */
+  handleCopyShowNotes() {
+    const title = this.episodeTitleInput.value || 'Untitled Episode';
+    const summary = this.episodeSummary.value;
+
+    // Build segments list
+    const segmentItems = this.segmentList.querySelectorAll('.segment-item');
+    let segmentsText = '';
+    segmentItems.forEach(item => {
+      const index = item.querySelector('.segment-index')?.textContent || '';
+      const timestamp = item.querySelector('.segment-timestamp')?.textContent || '';
+      const text = item.querySelector('.segment-text')?.textContent || '';
+      segmentsText += `${index} [${timestamp}] ${text}\n`;
+    });
+
+    const showNotes = `# ${title}
+
+${summary}
+
+## Segments
+
+${segmentsText}`;
+
+    navigator.clipboard.writeText(showNotes).then(() => {
+      if (this.showNotesStatus) {
+        this.showNotesStatus.style.display = 'flex';
+        this.showNotesStatus.className = 'export-status success';
+        this.showNotesStatus.innerHTML = '✓ Copied!';
+        setTimeout(() => {
+          this.showNotesStatus.style.display = 'none';
+        }, 2000);
+      }
+    }).catch(() => {
+      if (this.showNotesStatus) {
+        this.showNotesStatus.style.display = 'flex';
+        this.showNotesStatus.className = 'export-status error';
+        this.showNotesStatus.innerHTML = '✗ Copy failed';
+      }
+    });
+  }
+
+  /**
+   * Download show notes as a Markdown file
+   */
+  handleDownloadShowNotes() {
+    const title = this.episodeTitleInput.value || 'untitled-episode';
+    const summary = this.episodeSummary.value;
+
+    // Build segments list
+    const segmentItems = this.segmentList.querySelectorAll('.segment-item');
+    let segmentsText = '';
+    segmentItems.forEach(item => {
+      const index = item.querySelector('.segment-index')?.textContent || '';
+      const timestamp = item.querySelector('.segment-timestamp')?.textContent || '';
+      const text = item.querySelector('.segment-text')?.textContent || '';
+      segmentsText += `${index} [${timestamp}] ${text}\n`;
+    });
+
+    const showNotes = `# ${title}
+
+${summary}
+
+## Segments
+
+${segmentsText}`;
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `${title.replace(/[^a-zA-Z0-9-_]/g, '_').toLowerCase()}-${timestamp}.md`;
+
+    const blob = new Blob([showNotes], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;

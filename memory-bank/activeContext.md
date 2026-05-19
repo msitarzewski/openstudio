@@ -1,14 +1,23 @@
 # Active Context: OpenStudio
 
-**Last Updated**: 2026-03-14 (Signal UX Redesign — Branch Ready)
+**Last Updated**: 2026-05-18 (Task 3: Download All Tracks as Zip — In Progress)
 
 ## Current Phase
 
-**Release**: 0.3-dev (Signal UX Redesign)
-**Branch**: `feat/signal-ux-redesign`
-**Status**: Implementation complete, all E2E tests passing, ready for review/merge
-**Focus**: Merge Signal UX redesign, then merge v0.2.1 security PR
-**Next**: Merge both branches to main, deploy
+**Release**: 0.3-dev + Power Move (Podcast Production)
+**Branch**: `main` (power-move merged, all work on main)
+**Status**: Podcast production pipeline in progress — Tasks 1-2 done, Task 3 in progress
+**Focus**: Building podcast MVP features on top of existing audio pipeline
+
+## Recent Updates (2026-05-18)
+
+### Task 1: Show Notes from Transcript ✅ COMPLETE
+- **New file:** `server/lib/show-notes-generator.js` — LLM-powered episode title + summary generation via LM Studio (Qwen 35B), with graceful fallback if LLM unavailable
+- **Server endpoint:** `POST /api/export/show-notes` — accepts transcript segments JSON, returns `{title, summary, segments}`
+- **UI:** New "Post-Production" section below export panel — transcribe button → auto-generate show notes via whisper.cpp + LLM → display in editable panel with segment markers
+- **Actions:** Copy to clipboard (formatted markdown) or Download as `.md` file with episode title, summary, and timestamped segments
+- **Flow:** Stop recording → see Export panel → scroll to "— or —" divider → click "Transcribe Recording" → show notes appear in panel
+- **Fallback:** If LM Studio is unreachable, generates generic title from transcript words + uses raw transcript as summary
 
 ## Recent Decisions
 

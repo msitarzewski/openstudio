@@ -329,4 +329,27 @@ export class RecordingManager extends EventTarget {
 
     return await response.blob();
   }
+
+  /**
+   * Transcribe an audio track via the server.
+   * @param {Blob} blob - Audio to transcribe
+   * @returns {Promise<{text: string, segments: Array}>} - Transcript result
+   */
+  async transcribeTrack(blob) {
+    const formData = new FormData();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    formData.append('audio', blob, `recording-${timestamp}.webm`);
+
+    const response = await fetch('/api/export/transcribe', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      throw new Error(`Transcription failed (${response.status}): ${errText}`);
+    }
+
+    return await response.json();
+  }
 }

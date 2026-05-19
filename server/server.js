@@ -15,6 +15,10 @@ import { proxyIcecastListener } from './lib/icecast-listener-proxy.js';
 import { transcribeBuffer, transcribe } from './lib/whisper-transcriber.js';
 import { isSupportedAudio, getDuration } from './lib/audio-converter.js';
 import { cleanAudio } from './lib/audio-cleaner.js';
+import { generateShowNotes } from './lib/show-notes-generator.js';
+
+// Dynamic import for archiver (only used in zip endpoint)
+const { default: archiver } = await import('archiver');
 
 // Load and validate station manifest (fail fast if invalid)
 let config;
@@ -183,6 +187,18 @@ async function handleExportClean(req, res) {
       return;
     }
 
+    // Extract optional form fields (silenceThreshold, fillerSensitivity, outputFormat)
+    let formatParam = 'wav';
+    for (const p of parts) {
+      const key = Object.keys(p.headers).find(k => k.toLowerCase() === 'content-disposition');
+      if (key && p.headers[key]) {
+        const fnMatch = p.headers[key].match(/name="(\w+)"/);
+        if (fnMatch && fnMatch[1] === 'outputFormat') {
+          formatParam = p.content.toString('utf8').trim().toLowerCase();
+        }
+      }
+    }
+
     let transcript;
     try {
       transcript = JSON.parse(transcriptPart.content.toString('utf8'));
@@ -207,17 +223,40 @@ async function handleExportClean(req, res) {
         targetLoudness,
       });
 
-      const stat = await fs.promises.stat(result.outputPath);
+      // Optionally transcode to MP3 for podcast distribution
+      let mp3Path = null;
+
+      if (formatParam === 'mp3' && result.outputPath) {
+        logger.info('Converting cleaned audio to MP3...');
+        mp3Path = result.outputPath.replace('.wav', '.mp3');
+        await run('ffmpeg', [
+          '-y', '-i', result.outputPath,
+          '-codec:a', 'libmp3lame',
+          '-qscale:a', '2',
+          mp3Path,
+        ], { cwd: process.cwd() });
+      }
+
+      // Serve the final output (MP3 if requested, WAV otherwise)
+      const outputPath = mp3Path || result.outputPath;
+      const ext = formatParam === 'mp3' ? 'mp3' : 'wav';
+      const stat = await fs.promises.stat(outputPath);
+
       res.writeHead(200, {
-        'Content-Type': 'audio/wav',
-        'Content-Disposition': 'attachment; filename="cleaned.wav"',
+        'Content-Type': formatParam === 'mp3' ? 'audio/mpeg' : 'audio/wav',
+        'Content-Disposition': `attachment; filename="cleaned.${ext}"`,
         'Content-Length': stat.size,
       });
-      const stream = fs.createReadStream(result.outputPath);
+
+      const stream = fs.createReadStream(outputPath);
       stream.pipe(res);
       stream.on('end', () => {
-        logger.info('Cleaned audio sent successfully');
+        logger.info(`Cleaned audio sent successfully (${ext})`);
+        // Clean up BOTH files
         fs.promises.unlink(result.outputPath).catch(() => {});
+        if (mp3Path) {
+          fs.promises.unlink(mp3Path).catch(() => {});
+        }
       });
     } catch (err) {
       logger.error('Export clean failed:', err.message);
@@ -275,6 +314,12 @@ const httpServer = http.createServer((req, res) => {
   // POST /api/export/transcribe — transcribe uploaded audio
   if (req.method === 'POST' && req.url === '/api/export/transcribe') {
     handleTranscribe(req, res);
+    return;
+  }
+
+  // POST /api/export/show-notes — Generate show notes from transcript segments
+  if (req.method === 'POST' && req.url.split('?')[0] === '/api/export/show-notes') {
+    handleShowNotes(req, res);
     return;
   }
 
@@ -378,6 +423,81 @@ function handleTranscribe(req, res) {
       logger.error('Transcription error:', error.message);
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: `Transcription failed: ${error.message}` }));
+    }
+  });
+
+  req.on('error', (error) => {
+    logger.error('Request error:', error.message);
+    if (!res.headersSent) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: error.message }));
+    }
+  });
+}
+
+async function handleShowNotes(req, res) {
+  const chunks = [];
+  let contentLength = 0;
+
+  req.on('data', chunk => {
+    contentLength += chunk.length;
+    if (contentLength > 5 * 1024 * 1024) {
+      req.destroy(new Error('Payload too large (max 5MB)'));
+      res.writeHead(413, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Payload too large' }));
+    }
+    chunks.push(chunk);
+  });
+
+  req.on('end', async () => {
+    try {
+      const body = Buffer.concat(chunks);
+      const contentType = req.headers['content-type'] || '';
+
+      // Accept JSON body (segments as text/json) or multipart/form-data
+      let segments = [];
+      let episodeTitle = null;
+      let showName = null;
+
+      if (contentType.includes('application/json')) {
+        const jsonStr = body.toString('utf8');
+        const parsed = JSON.parse(jsonStr);
+        segments = parsed.segments || [];
+        episodeTitle = parsed.episodeTitle || null;
+        showName = parsed.showName || null;
+      } else if (contentType.includes('multipart/form-data')) {
+        const result = parseMultipart(body, contentType);
+        if (!result) throw new Error('Could not parse request');
+
+        try {
+          const segmentsParsed = JSON.parse(result.audio.toString('utf8'));
+          segments = segmentsParsed.segments || [];
+        } catch {
+          // Assume raw segment text
+          segments = [{ start: 0, end: body.length / 1000, text: body.toString('utf8') }];
+        }
+      } else {
+        // Try JSON directly
+        const jsonStr = body.toString('utf8');
+        const parsed = JSON.parse(jsonStr);
+        segments = parsed.segments || [];
+      }
+
+      if (!segments || segments.length === 0) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'No transcript segments provided' }));
+        return;
+      }
+
+      const showNotes = await generateShowNotes(segments, { episodeTitle, showName });
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, ...showNotes }));
+
+    } catch (error) {
+      logger.error('Show notes error:', error.message);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: `Show notes generation failed: ${error.message}` }));
     }
   });
 

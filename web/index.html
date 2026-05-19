@@ -106,7 +106,8 @@
               <label for="output-format">Output Format</label>
               <select id="output-format">
                 <option value="webm">WebM (Opus)</option>
-                <option value="wav">WAV</option>
+                <option value="wav" selected>WAV</option>
+                <option value="mp3">MP3 (Podcast)</option>
               </select>
             </div>
           </div>
@@ -116,6 +117,46 @@
             <button id="export-btn" class="btn-export" disabled>Export</button>
             <div id="export-status" class="export-status" style="display: none;"></div>
             <button id="download-cleaned" class="btn-download-cleaned" style="display: none;">Download</button>
+          </div>
+
+          <!-- Transcription & Show Notes -->
+          <div class="export-divider">— or —</div>
+
+          <!-- Transcribe button (per track) -->
+          <div id="transcribe-section" class="transcribe-section" style="display: none;">
+            <div class="transcribe-title">Post-Production</div>
+            <button id="transcribe-btn" class="btn-transcribe">Transcribe Recording</button>
+            <div id="transcribe-status" class="export-status" style="display: none;"></div>
+
+            <!-- Show Notes panel (shown after transcription) -->
+            <div id="show-notes-panel" class="show-notes-panel" style="display: none;">
+              <div class="show-notes-title">Generated Show Notes</div>
+
+              <!-- Episode title (editable) -->
+              <div class="show-notes-field">
+                <label>Episode Title</label>
+                <input type="text" id="episode-title-input" placeholder="Episode title..." />
+              </div>
+
+              <!-- Summary -->
+              <div class="show-notes-field">
+                <label>Summary</label>
+                <textarea id="episode-summary" class="show-notes-textarea" readonly></textarea>
+              </div>
+
+              <!-- Segment markers -->
+              <div class="show-notes-field">
+                <label>Segments</label>
+                <div id="segment-list" class="segment-list"></div>
+              </div>
+
+              <!-- Actions -->
+              <div class="show-notes-actions">
+                <button id="copy-show-notes" class="btn-secondary">Copy to Clipboard</button>
+                <button id="download-show-notes" class="btn-secondary">Download .md</button>
+                <span id="show-notes-status" class="export-status" style="display: none;"></span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
