@@ -75,6 +75,108 @@
         <div id="recording-tracks" class="recording-tracks" style="display: none;">
           <!-- Track download list appears here after recording stops -->
         </div>
+
+        <!-- Export options (shown after recording stops) -->
+        <div id="export-panel" class="export-panel" style="display: none;">
+          <div class="export-title">Export As</div>
+          <div class="export-mode-toggle">
+            <button id="export-raw" class="export-mode-btn active" data-mode="raw">Raw</button>
+            <button id="export-clean" class="export-mode-btn" data-mode="clean">Clean</button>
+          </div>
+
+          <!-- Clean options (collapsible) -->
+          <div id="clean-options" class="clean-options-collapsible" style="display: none;">
+            <div class="clean-option-row">
+              <label for="filler-sensitivity">Filler Sensitivity</label>
+              <select id="filler-sensitivity">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div class="clean-option-row">
+              <label for="silence-threshold">Silence Threshold</label>
+              <select id="silence-threshold">
+                <option value="-40">-40 dB</option>
+                <option value="-50" selected>-50 dB</option>
+                <option value="-60">-60 dB</option>
+              </select>
+            </div>
+            <div class="clean-option-row">
+              <label for="output-format">Output Format</label>
+              <select id="output-format">
+                <option value="webm">WebM (Opus)</option>
+                <option value="wav" selected>WAV</option>
+                <option value="mp3">MP3 (Podcast)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Export action -->
+          <div class="export-actions">
+            <button id="export-btn" class="btn-export" disabled>Export</button>
+            <div id="export-status" class="export-status" style="display: none;"></div>
+            <button id="download-cleaned" class="btn-download-cleaned" style="display: none;">Download</button>
+          </div>
+
+          <!-- Transcription & Show Notes -->
+          <div class="export-divider">— or —</div>
+
+          <!-- Transcribe button (per track) -->
+          <div id="transcribe-section" class="transcribe-section" style="display: none;">
+            <div class="transcribe-title">Post-Production</div>
+            <button id="transcribe-btn" class="btn-transcribe">Transcribe Recording</button>
+            <div id="transcribe-status" class="export-status" style="display: none;"></div>
+
+            <!-- Show Notes panel (shown after transcription) -->
+            <div id="show-notes-panel" class="show-notes-panel" style="display: none;">
+              <div class="show-notes-title">Generated Show Notes</div>
+
+              <!-- Episode title (editable) -->
+              <div class="show-notes-field">
+                <label>Episode Title</label>
+                <input type="text" id="episode-title-input" placeholder="Episode title..." />
+              </div>
+
+              <!-- Summary -->
+              <div class="show-notes-field">
+                <label>Summary</label>
+                <textarea id="episode-summary" class="show-notes-textarea" readonly></textarea>
+              </div>
+
+              <!-- Segment markers -->
+              <div class="show-notes-field">
+                <label>Segments</label>
+                <div id="segment-list" class="segment-list"></div>
+              </div>
+
+              <!-- Actions -->
+              <div class="show-notes-actions">
+                <button id="copy-show-notes" class="btn-secondary">Copy to Clipboard</button>
+                <button id="download-show-notes" class="btn-secondary">Download .md</button>
+                <span id="show-notes-status" class="export-status" style="display: none;"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Deck: Audio Input Selector -->
+    <section id="input-section" class="deck-panel">
+      <div class="deck-header" data-deck="input">
+        <div class="deck-summary">
+          <span class="deck-label">INPUT</span>
+        </div>
+        <button class="deck-toggle" aria-label="Toggle input panel">&#9654;</button>
+      </div>
+      <div class="deck-body" id="input-deck-body">
+        <div class="streaming-config">
+          <label for="mic-select">Microphone:</label>
+          <select id="mic-select">
+            <option value="" data-loading>Scanning devices...</option>
+          </select>
+        </div>
       </div>
     </section>
 

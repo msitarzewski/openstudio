@@ -53,6 +53,7 @@ class OpenStudioApp {
 
     // UI elements
     this.statusElement = document.getElementById('status');
+    this.micSelect = document.getElementById('mic-select');
     this.participantsSection = document.getElementById('participants');
     this.startSessionButton = document.getElementById('start-session');
     this.toggleMuteButton = document.getElementById('toggle-mute');
@@ -67,6 +68,27 @@ class OpenStudioApp {
     this.recordingIndicator = document.getElementById('recording-indicator');
     this.recordingTimer = document.getElementById('recording-timer');
     this.recordingTracksDiv = document.getElementById('recording-tracks');
+
+    // Export panel elements
+    this.exportPanel = document.getElementById('export-panel');
+    this.exportRawBtn = document.getElementById('export-raw');
+    this.exportCleanBtn = document.getElementById('export-clean');
+    this.cleanOptions = document.getElementById('clean-options');
+    this.exportBtn = document.getElementById('export-btn');
+    this.exportStatus = document.getElementById('export-status');
+    this.downloadCleanedBtn = document.getElementById('download-cleaned');
+
+    // Show notes elements
+    this.transcribeSection = document.getElementById('transcribe-section');
+    this.transcribeBtn = document.getElementById('transcribe-btn');
+    this.transcribeStatus = document.getElementById('transcribe-status');
+    this.showNotesPanel = document.getElementById('show-notes-panel');
+    this.episodeTitleInput = document.getElementById('episode-title-input');
+    this.episodeSummary = document.getElementById('episode-summary');
+    this.segmentList = document.getElementById('segment-list');
+    this.copyShowNotesBtn = document.getElementById('copy-show-notes');
+    this.downloadShowNotesBtn = document.getElementById('download-show-notes');
+    this.showNotesStatus = document.getElementById('show-notes-status');
     this.sessionInfoElement = document.getElementById('session-info');
 
     // Bind event handlers
@@ -77,6 +99,9 @@ class OpenStudioApp {
     this.setupUIListeners();
     this.setupDeckPanels();
 
+    // Enumerate audio input devices and populate selector (non-blocking)
+    this.populateMicSelector();
+
     // Check for room ID in URL hash
     this.checkUrlHash();
 
@@ -84,6 +109,11 @@ class OpenStudioApp {
     if (this.roomIdFromUrl) {
       this.startSessionButton.textContent = 'Join Broadcast';
       this.endSessionButton.textContent = 'Leave Broadcast';
+    }
+
+    // If device selector exists, listen for changes
+    if (this.micSelect) {
+      this.micSelect.addEventListener('change', () => this.handleMicChange());
     }
 
     // Auto-connect to signaling server
@@ -172,6 +202,102 @@ class OpenStudioApp {
   }
 
   /**
+   * Populate microphone selector dropdown with available audio input devices.
+   */
+  async populateMicSelector() {
+    if (!this.micSelect) return;
+
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputs = devices.filter(d => d.kind === 'audioinput');
+
+      // Clear existing options
+      this.micSelect.innerHTML = '';
+
+      if (audioInputs.length === 0) {
+        const opt = document.createElement('option');
+        opt.textContent = 'No microphones found';
+        this.micSelect.appendChild(opt);
+        return;
+      }
+
+      // Populate options
+      audioInputs.forEach((device, i) => {
+        const opt = document.createElement('option');
+        opt.value = device.deviceId;
+        // Use label if available, otherwise generate one
+        const label = device.label || `Microphone ${i + 1}`;
+        opt.textContent = label;
+
+        // If this is the first device and no preference stored, select it
+        if (i === 0 && !this.selectedDeviceId) {
+          opt.selected = true;
+        }
+
+        this.micSelect.appendChild(opt);
+      });
+
+      // Store first device as default if no preference set yet
+      this.selectedDeviceId = audioInputs[0]?.deviceId || null;
+
+      console.log(`[App] Microphone selector populated with ${audioInputs.length} devices`);
+      if (this.selectedDeviceId) {
+        console.log(`[App] Selected device: ${audioInputs.find(d => d.deviceId === this.selectedDeviceId)?.label || 'unknown'}`);
+      }
+    } catch (error) {
+      console.error('[App] Failed to enumerate devices:', error);
+      const opt = document.createElement('option');
+      opt.textContent = 'Unable to list microphones';
+      this.micSelect.appendChild(opt);
+    }
+  }
+
+  /**
+   * Handle microphone device selection change.
+   */
+  async handleMicChange() {
+    const newDeviceId = this.micSelect.value;
+
+    if (newDeviceId === this.selectedDeviceId) {
+      return; // No change
+    }
+
+    console.log(`[App] Microphone changed to: ${this.micSelect.options[this.micSelect.selectedIndex]?.text}`);
+    this.selectedDeviceId = newDeviceId;
+
+    // If we have an active stream, replace the audio track in-place (no permission dialog if same permission context)
+    // Otherwise switch is handled on next start-session
+    if (this.rtc.localStream) {
+      const currentTrack = this.rtc.localStream.getAudioTracks()[0];
+
+      try {
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          audio: { deviceId: { exact: newDeviceId }, echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        });
+
+        const newTrack = newStream.getAudioTracks()[0];
+
+        // Replace the track on the existing stream (this triggers renegotiation automatically)
+        this.rtc.localStream.removeTrack(currentTrack);
+        currentTrack.stop();
+
+        // Add new track to the same MediaStream (keeps stream ID stable for WebRTC connections)
+        this.rtc.localStream.addTrack(newTrack);
+
+        // Update mute state to match new track
+        if (this.toggleMuteButton.classList.contains('muted')) {
+          this.handleToggleMute();
+        }
+
+        console.log('[App] Microphone track replaced successfully');
+      } catch (error) {
+        console.error('[App] Failed to switch microphone:', error);
+        alert(`Failed to switch to ${this.micSelect.options[this.micSelect.selectedIndex]?.text}. Make sure the device is available.`);
+      }
+    }
+  }
+
+  /**
    * Setup signaling event listeners
    */
   setupSignalingListeners() {
@@ -228,7 +354,7 @@ class OpenStudioApp {
 
       // Get local media stream
       try {
-        await this.rtc.getLocalStream();
+        await this.rtc.getLocalStream(this.selectedDeviceId || null);
         console.log('[App] Local media stream ready, waiting for callers...');
 
         // Safari: Resume AudioContext after permission dialog
@@ -279,7 +405,7 @@ class OpenStudioApp {
 
       // Get local media stream
       try {
-        await this.rtc.getLocalStream();
+        await this.rtc.getLocalStream(this.selectedDeviceId || null);
         console.log('[App] Local stream ready, ConnectionManager will handle peer connections');
 
         // Safari: Resume AudioContext after permission dialog
@@ -711,6 +837,54 @@ class OpenStudioApp {
         this.recordingManager.downloadAll(this.lastRecordings, this.getParticipantNames());
       }
     });
+
+    // Export mode toggle
+    this.exportRawBtn.addEventListener('click', () => {
+      this.exportRawBtn.classList.add('active');
+      this.exportCleanBtn.classList.remove('active');
+      this.cleanOptions.style.display = 'none';
+      this.exportBtn.disabled = false;
+      this.exportMode = 'raw';
+    });
+
+    this.exportCleanBtn.addEventListener('click', () => {
+      this.exportCleanBtn.classList.add('active');
+      this.exportRawBtn.classList.remove('active');
+      this.cleanOptions.style.display = 'block';
+      this.exportBtn.disabled = false;
+      this.exportMode = 'clean';
+    });
+
+    // Export button
+    this.exportBtn.addEventListener('click', () => {
+      this.handleExport();
+    });
+
+    // Download cleaned audio button
+    this.downloadCleanedBtn.addEventListener('click', () => {
+      this.downloadCleanedAudio();
+    });
+
+    // Transcription & show notes
+    if (this.transcribeBtn) {
+      this.transcribeBtn.addEventListener('click', () => {
+        if (this.lastRecordings?.program) {
+          this.handleTranscribeProgram();
+        }
+      });
+    }
+
+    if (this.copyShowNotesBtn) {
+      this.copyShowNotesBtn.addEventListener('click', () => {
+        this.handleCopyShowNotes();
+      });
+    }
+
+    if (this.downloadShowNotesBtn) {
+      this.downloadShowNotesBtn.addEventListener('click', () => {
+        this.handleDownloadShowNotes();
+      });
+    }
   }
 
   /**
@@ -910,6 +1084,11 @@ class OpenStudioApp {
     this.recordingTimer.textContent = '00:00:00';
     this.recordingTracksDiv.style.display = 'none';
     this.lastRecordings = null;
+    this._cleanedBlob = null;
+    this.exportPanel.style.display = 'none';
+    this.exportStatus.style.display = 'none';
+    this.downloadCleanedBtn.style.display = 'none';
+    this.exportBtn.disabled = true;
     if (this.sessionInfoElement) this.sessionInfoElement.textContent = '';
     window.location.hash = '';
     this.startSessionButton.textContent = 'Start Broadcast';
@@ -1082,6 +1261,19 @@ class OpenStudioApp {
       const name = participant ? participant.name : peerId.substring(0, 8);
       this.addTrackDownloadItem(name, blob, peerId);
     }
+
+    // Show export panel for the program mix
+    if (recordings.program) {
+      this.lastRecordings = recordings;
+      this.exportMode = 'raw';
+      this.exportRawBtn.classList.add('active');
+      this.exportCleanBtn.classList.remove('active');
+      this.cleanOptions.style.display = 'none';
+      this.exportBtn.disabled = false;
+      this.exportStatus.style.display = 'none';
+      this.downloadCleanedBtn.style.display = 'none';
+      this.exportPanel.style.display = 'block';
+    }
   }
 
   /**
@@ -1114,6 +1306,230 @@ class OpenStudioApp {
     item.appendChild(sizeEl);
     item.appendChild(downloadBtn);
     this.recordingTracksDiv.appendChild(item);
+  }
+
+  /**
+   * Export the program mix (raw or cleaned)
+   */
+  async handleExport() {
+    if (!this.lastRecordings?.program) {
+      return;
+    }
+
+    const mode = this.exportMode;
+    this.exportBtn.disabled = true;
+    this.downloadCleanedBtn.style.display = 'none';
+
+    if (mode === 'raw') {
+      // Download raw audio immediately
+      this.exportStatus.style.display = 'flex';
+      this.exportStatus.className = 'export-status success';
+      this.exportStatus.innerHTML = '✓ Ready';
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const ext = this.recordingManager.getFileExtension();
+      this.recordingManager.downloadTrack(this.lastRecordings.program, `openstudio-mix-${timestamp}.${ext}`);
+    } else {
+      // Send to /api/export/clean
+      this.exportStatus.style.display = 'flex';
+      this.exportStatus.className = 'export-status processing';
+      this.exportStatus.innerHTML = '<span class="export-spinner"></span> Cleaning audio...';
+
+      try {
+        const options = {
+          fillerSensitivity: document.getElementById('filler-sensitivity').value,
+          silenceThreshold: document.getElementById('silence-threshold').value,
+          outputFormat: document.getElementById('output-format').value
+        };
+
+        const cleanedBlob = await this.recordingManager.exportTrack(
+          this.lastRecordings.program,
+          'clean',
+          options
+        );
+
+        // Store cleaned blob for download
+        this._cleanedBlob = cleanedBlob;
+
+        // Show download button
+        this.exportStatus.style.display = 'none';
+        this.downloadCleanedBtn.style.display = 'inline-block';
+      } catch (error) {
+        console.error('[App] Export failed:', error);
+        this.exportStatus.className = 'export-status error';
+        this.exportStatus.innerHTML = `✗ ${error.message}`;
+        this.exportBtn.disabled = false;
+      }
+    }
+  }
+
+  /**
+   * Download the cleaned audio blob
+   */
+  downloadCleanedAudio() {
+    if (!this._cleanedBlob) {
+      return;
+    }
+
+    const format = document.getElementById('output-format').value;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `openstudio-mix-cleaned-${timestamp}.${format}`;
+
+    const url = URL.createObjectURL(this._cleanedBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Transcribe the program mix recording and generate show notes
+   */
+  async handleTranscribeProgram() {
+    if (!this.lastRecordings?.program) return;
+
+    this.transcribeBtn.disabled = true;
+    this.transcribeStatus.style.display = 'flex';
+    this.transcribeStatus.className = 'export-status processing';
+    this.transcribeStatus.innerHTML = '<span class="export-spinner"></span> Transcribing...';
+    this.showNotesPanel.style.display = 'none';
+
+    try {
+      // Step 1: Transcribe the audio via server
+      const transcription = await this.recordingManager.transcribeTrack(this.lastRecordings.program);
+      
+      // Step 2: Generate show notes from transcript
+      const segments = transcription.segments || [];
+      this.transcribeStatus.innerHTML = '<span class="export-spinner"></span> Generating show notes...';
+
+      const response = await fetch('/api/export/show-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ segments })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        throw new Error(`Show notes generation failed (${response.status}): ${errText}`);
+      }
+
+      const showNotes = await response.json();
+
+      // Step 3: Display show notes in UI
+      this.episodeTitleInput.value = showNotes.title || '';
+      this.episodeSummary.value = showNotes.summary || 'No summary generated.';
+
+      // Render segment markers
+      this.segmentList.innerHTML = '';
+      if (showNotes.segments) {
+        showNotes.segments.forEach(seg => {
+          const item = document.createElement('div');
+          item.className = 'segment-item';
+          item.innerHTML = `
+            <span class="segment-index">${seg.index}.</span>
+            <span class="segment-timestamp">${seg.timestamp}</span>
+            <span class="segment-text">${seg.text}</span>
+          `;
+          this.segmentList.appendChild(item);
+        });
+      }
+
+      // Show the panel
+      this.transcribeStatus.style.display = 'none';
+      this.showNotesPanel.style.display = 'block';
+      this.transcribeBtn.disabled = false;
+
+    } catch (error) {
+      console.error('[App] Transcription/show notes error:', error);
+      this.transcribeStatus.className = 'export-status error';
+      this.transcribeStatus.innerHTML = `✗ ${error.message}`;
+      this.transcribeBtn.disabled = false;
+    }
+  }
+
+  /**
+   * Copy show notes to clipboard as formatted text
+   */
+  handleCopyShowNotes() {
+    const title = this.episodeTitleInput.value || 'Untitled Episode';
+    const summary = this.episodeSummary.value;
+
+    // Build segments list
+    const segmentItems = this.segmentList.querySelectorAll('.segment-item');
+    let segmentsText = '';
+    segmentItems.forEach(item => {
+      const index = item.querySelector('.segment-index')?.textContent || '';
+      const timestamp = item.querySelector('.segment-timestamp')?.textContent || '';
+      const text = item.querySelector('.segment-text')?.textContent || '';
+      segmentsText += `${index} [${timestamp}] ${text}\n`;
+    });
+
+    const showNotes = `# ${title}
+
+${summary}
+
+## Segments
+
+${segmentsText}`;
+
+    navigator.clipboard.writeText(showNotes).then(() => {
+      if (this.showNotesStatus) {
+        this.showNotesStatus.style.display = 'flex';
+        this.showNotesStatus.className = 'export-status success';
+        this.showNotesStatus.innerHTML = '✓ Copied!';
+        setTimeout(() => {
+          this.showNotesStatus.style.display = 'none';
+        }, 2000);
+      }
+    }).catch(() => {
+      if (this.showNotesStatus) {
+        this.showNotesStatus.style.display = 'flex';
+        this.showNotesStatus.className = 'export-status error';
+        this.showNotesStatus.innerHTML = '✗ Copy failed';
+      }
+    });
+  }
+
+  /**
+   * Download show notes as a Markdown file
+   */
+  handleDownloadShowNotes() {
+    const title = this.episodeTitleInput.value || 'untitled-episode';
+    const summary = this.episodeSummary.value;
+
+    // Build segments list
+    const segmentItems = this.segmentList.querySelectorAll('.segment-item');
+    let segmentsText = '';
+    segmentItems.forEach(item => {
+      const index = item.querySelector('.segment-index')?.textContent || '';
+      const timestamp = item.querySelector('.segment-timestamp')?.textContent || '';
+      const text = item.querySelector('.segment-text')?.textContent || '';
+      segmentsText += `${index} [${timestamp}] ${text}\n`;
+    });
+
+    const showNotes = `# ${title}
+
+${summary}
+
+## Segments
+
+${segmentsText}`;
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `${title.replace(/[^a-zA-Z0-9-_]/g, '_').toLowerCase()}-${timestamp}.md`;
+
+    const blob = new Blob([showNotes], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   /**

@@ -64,3 +64,4 @@ certs/
 # Memory Bank epoch (working directory for sessions)
 memory-bank/epoch/*
 !memory-bank/epoch/.gitkeep
+models/*.bin

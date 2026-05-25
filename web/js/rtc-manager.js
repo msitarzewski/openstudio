@@ -110,23 +110,32 @@ export class RTCManager extends EventTarget {
    */
   /**
    * Request microphone access and store the local MediaStream.
+   * @param {string} [deviceId] - Optional deviceId to select specific input device
    * @returns {Promise<MediaStream>} The local audio stream
    * @throws {Error} If microphone access is denied or unavailable
    */
-  async getLocalStream() {
+  async getLocalStream(deviceId = null) {
     if (this.localStream) {
-      console.log('[RTC] Local stream already exists');
-      return this.localStream;
+      console.log('[RTC] Local stream already exists, replacing with new device');
+      this.localStream.getTracks().forEach(track => track.stop());
+      this.localStream = null;
     }
 
     try {
-      console.log('[RTC] Requesting microphone access...');
+      const audioConstraints = {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      };
+      if (deviceId) {
+        audioConstraints.deviceId = { exact: deviceId };
+        console.log(`[RTC] Requesting microphone access (device: ${deviceId})...`);
+      } else {
+        console.log('[RTC] Requesting microphone access (default device)...');
+      }
+
       this.localStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        },
+        audio: audioConstraints,
         video: false
       });
 

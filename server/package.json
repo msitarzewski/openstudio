@@ -21,6 +21,7 @@
   "license": "MIT",
   "dependencies": {
     "ws": "^8.18.0",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "archiver": "^7"
   }
 }
