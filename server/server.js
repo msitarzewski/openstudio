@@ -16,6 +16,7 @@ import { transcribeBuffer, transcribe } from './lib/whisper-transcriber.js';
 import { isSupportedAudio, getDuration } from './lib/audio-converter.js';
 import { cleanAudio, run } from './lib/audio-cleaner.js';
 import { generateShowNotes } from './lib/show-notes-generator.js';
+import { getCapabilities } from './lib/capabilities.js';
 
 // Dynamic import for archiver (only used in zip endpoint)
 const { default: archiver } = await import('archiver');
@@ -293,6 +294,26 @@ const httpServer = http.createServer((req, res) => {
       signaling: config.signaling
       // ICE credentials are now delivered via WebSocket on room-created/room-joined
     }));
+    return;
+  }
+
+  // Capability detection endpoint
+  if (req.method === 'GET' && req.url === '/api/capabilities') {
+    const corsHeaders = { 'Content-Type': 'application/json', 'Access-Control-Allow-Methods': 'GET' };
+    const corsOrigin = getCorsOrigin(req);
+    if (corsOrigin) {
+      corsHeaders['Access-Control-Allow-Origin'] = corsOrigin;
+    }
+    getCapabilities()
+      .then((caps) => {
+        res.writeHead(200, corsHeaders);
+        res.end(JSON.stringify(caps));
+      })
+      .catch((err) => {
+        logger.error('Capabilities probe failed:', err.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      });
     return;
   }
 

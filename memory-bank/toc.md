@@ -5,10 +5,10 @@
 1. **projectbrief.md** - Core vision and requirements
 2. **productContext.md** - Why this exists and user goals
 3. **systemPatterns.md** - Architecture and design patterns (updated with Power Move)
-4. **techContext.md** - Tech stack and constraints (updated v0.3.1 — `archiver` dep, env-driven LLM, ffmpeg requirements)
-5. **activeContext.md** - Current focus and decisions (updated v0.3.1 — MP3 + zip + LLM fixes shipped)
-6. **progress.md** - What's working and what's next (updated v0.3.1 — Power Move Tasks 1-3 actually complete)
-7. **projectRules.md** - Project-specific patterns and preferences (updated v0.3.1 — multipart parser, env-driven integrations, frontend fallback patterns)
+4. **techContext.md** - Tech stack and constraints (updated v0.3.2 — `/api/capabilities` endpoint, `LLM_API_KEY` env var, capability-gating frontend module)
+5. **activeContext.md** - Current focus and decisions (updated v0.3.2 — capability gating + cloud LLM support shipped)
+6. **progress.md** - What's working and what's next (updated v0.3.2 — capability gating shipped, AI features now self-document)
+7. **projectRules.md** - Project-specific patterns and preferences (updated v0.3.2 — capability detection over feature flags, information-rich disabled state, OpenAI-compatible HTTP contract as integration boundary)
 
 ## Reference Documentation
 
@@ -31,6 +31,7 @@
 ### Power Move ✅ (Merged PR #8, ~2026-05) — Whisper.cpp + audio cleaning pipeline
 ### Release 0.3.0 ✅ (2026-05-25) — Version bump, self-hosted fonts, header status fix
 ### Release 0.3.1 ✅ (2026-05-25) — MP3 fix, zip bundle endpoint, configurable LLM, README rewrite
+### Release 0.3.2 ✅ (2026-05-25) — Capability gating + cloud LLM support
 
 ## Task Directories
 

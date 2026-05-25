@@ -5,6 +5,20 @@ All notable changes to OpenStudio will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-05-25
+
+### Added
+
+- **`GET /api/capabilities` endpoint** reports availability of `ffmpeg`, `ffprobe`, the `whisper.cpp` binary, the Whisper model file, and the configured LLM endpoint. Results are cached for 60 s so the endpoint is cheap to hit on every page load. The frontend uses this snapshot to gate AI features at render time instead of letting users click into errors.
+- **Capability-gating UI** in the studio. Transcribe, Show Notes, and the MP3 format option appear as disabled with an info icon when their prereqs are missing. Clicking opens a modal (`web/js/capability-modal.js`) that names the missing dependency and shows the exact install command (ffmpeg via brew/apt, whisper.cpp clone+make, Whisper model wget, LLM env var setup). New files: `server/lib/capabilities.js`, `web/js/capability-modal.js`. Modal DOM in `web/index.html`, styles in `web/css/studio.css`.
+- **`LLM_API_KEY` env var** for cloud OpenAI-compatible providers. When set, the show-notes generator sends `Authorization: Bearer <key>` with every chat completions call — works with OpenAI, Together, Groq, and any OpenAI-compatible shim (including litellm or anthropic-openai-compat for Anthropic). Local providers (LM Studio, Ollama, llama.cpp server) leave it blank and continue to work unchanged.
+
+### Changed
+
+- **README "Optional AI Tooling" section** documents the capability-gating UX and ships a copy-pastable `.env` snippet for each common LLM provider (LM Studio, Ollama, OpenAI, Together AI, Groq, plus a note on running an OpenAI-compatible shim in front of Anthropic). Replaces the previous single-block LLM setup paragraph.
+
+---
+
 ## [0.3.1] - 2026-05-25
 
 ### Fixed
@@ -210,6 +224,7 @@ None (initial release)
 
 ---
 
+[0.3.2]: https://github.com/msitarzewski/openstudio/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/msitarzewski/openstudio/compare/v0.1.0...v0.3.1
 [0.1.0]: https://github.com/msitarzewski/openstudio/releases/tag/v0.1.0
-[Unreleased]: https://github.com/msitarzewski/openstudio/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/msitarzewski/openstudio/compare/v0.3.2...HEAD

@@ -200,6 +200,23 @@
         </div>
       </div>
     </section>
+
+    <!-- Capability Modal: shown when an AI feature is gated by missing tooling -->
+    <dialog id="capability-modal" class="capability-modal" aria-labelledby="capability-modal-title">
+      <div class="capability-modal-content">
+        <header class="capability-modal-header">
+          <h2 id="capability-modal-title">Feature Requires Setup</h2>
+          <button class="capability-modal-close" aria-label="Close" data-close-modal>&times;</button>
+        </header>
+        <div class="capability-modal-body" id="capability-modal-body">
+          <!-- Populated by JS -->
+        </div>
+        <footer class="capability-modal-footer">
+          <a href="https://github.com/msitarzewski/openstudio#optional-ai-tooling" target="_blank" rel="noopener" class="capability-modal-docs">Full setup docs →</a>
+          <button class="capability-modal-ok" data-close-modal>Got it</button>
+        </footer>
+      </div>
+    </dialog>
   </main>
 </body>
 </html>

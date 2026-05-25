@@ -102,7 +102,7 @@ Mix-minus is a broadcast engineering standard — each participant hears everyon
 
 ## Optional AI Tooling
 
-OpenStudio includes a complete post-production pipeline that runs entirely on your hardware — no cloud API, no third-party calls, no data leaving your machine. It's **optional**: broadcasting, recording, and per-track downloads work without any of this.
+OpenStudio includes a complete post-production pipeline — transcription, show notes, MP3 export. It's **optional**: broadcasting, recording, per-track downloads, and zip bundles all work without any of this. AI features ship enabled by default but are **capability-gated** — when a prerequisite is missing, the button shows as disabled with an info icon. Click it and a modal explains exactly what to install. Nothing is removed from the UI, nothing fails with a cryptic stack trace.
 
 ### Prerequisites
 - `ffmpeg` and `ffprobe` on your `PATH` (most package managers ship both: `brew install ffmpeg`, `apt install ffmpeg`)
@@ -119,20 +119,52 @@ wget -O models/ggml-medium.bin https://huggingface.co/ggerganov/whisper.cpp/reso
 
 You can swap the model — `ggml-tiny.bin` (~75 MB) is faster but less accurate; `ggml-large.bin` is the other direction. The server looks for `models/ggml-medium.bin` by default.
 
-### LLM setup (for show notes)
+### LLM Provider Examples
 
-Show notes call any **OpenAI-compatible** chat completions API — LM Studio, Ollama with the OpenAI shim, vLLM, llama.cpp server, etc. Configure via env vars in `.env`:
+Show notes call any **OpenAI-compatible** chat completions API. Configure via `.env`. Local providers need no API key; cloud providers require `LLM_API_KEY`.
 
+**LM Studio** (default — nothing to configure):
 ```bash
-LLM_BASE_URL=http://localhost:1234/v1   # default — matches LM Studio
-LLM_MODEL=qwen3.5-35b                    # any chat model your server exposes
+# LM Studio runs at localhost:1234 by default; OpenStudio assumes this.
+# Just start LM Studio and load a chat model. No env vars required.
 ```
 
-If the LLM is unreachable, show notes still generate — they just fall back to a transcript-derived title and summary instead of an LLM-authored one. Transcription itself does not depend on the LLM.
+**Ollama** (with the OpenAI-compatible shim):
+```bash
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_MODEL=llama3.3
+```
+
+**OpenAI**:
+```bash
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4o-mini
+LLM_API_KEY=sk-...
+```
+
+**Together AI**:
+```bash
+LLM_BASE_URL=https://api.together.xyz/v1
+LLM_MODEL=meta-llama/Llama-3.3-70B-Instruct-Turbo
+LLM_API_KEY=...
+```
+
+**Groq**:
+```bash
+LLM_BASE_URL=https://api.groq.com/openai/v1
+LLM_MODEL=llama-3.3-70b-versatile
+LLM_API_KEY=gsk_...
+```
+
+**Anthropic** — the direct Messages API is not OpenAI-compatible. Run a shim like [`anthropic-openai-compat`](https://github.com/jaykchen/anthropic-openai-compat) or [`litellm`](https://github.com/BerriAI/litellm) in front of it, then point `LLM_BASE_URL` at the shim.
+
+### Feature Gating
+
+AI features are visible in the UI by default. The server publishes a `GET /api/capabilities` snapshot reporting which prerequisites are actually present — ffmpeg, ffprobe, whisper.cpp binary, Whisper model file, configured LLM endpoint. The frontend reads this on load and disables any button whose prereqs are missing. Clicking a gated button opens a modal with the exact install commands. No hidden flags, no "feature available in pro" dark patterns — capability is derived from what your runtime can actually do.
 
 ### What happens without AI setup
 
-The "Transcribe Recording" button surfaces a clear error if `whisper.cpp` isn't built. Every other feature — live broadcast, recording, per-track download, zip bundle, Icecast streaming — works without any AI setup.
+Transcribe, Show Notes, and MP3 export show as disabled until their prereqs are met — clicking them opens the install modal. Every other feature — live broadcast, recording, per-track download, zip bundle, Icecast streaming — works without any AI setup.
 
 ## Try It
 

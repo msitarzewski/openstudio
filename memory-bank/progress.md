@@ -1,6 +1,16 @@
 # OpenStudio — Progress Tracker
 
-**Updated**: 2026-05-25 (v0.3.1 cut — MP3 + zip + LLM config fixes, README rewrite)
+**Updated**: 2026-05-25 (v0.3.2 cut — capability gating + cloud LLM support)
+
+## v0.3.2 Release ✅ (2026-05-25)
+- ✅ `GET /api/capabilities` endpoint added — `server/lib/capabilities.js` probes ffmpeg, ffprobe, whisper.cpp binary, Whisper model file, and LLM endpoint configuration; in-memory 60 s cache
+- ✅ Frontend capability gating — `web/js/capability-modal.js` reads `/api/capabilities` on load, disables Transcribe / Show Notes / MP3 format option when prereqs are missing
+- ✅ Gated buttons open an info modal with the exact install commands for the missing dependency; modal DOM in `web/index.html`, styles in `web/css/studio.css`
+- ✅ Cloud LLM providers supported via `LLM_API_KEY` env var — show-notes generator sends `Authorization: Bearer <key>` when set; works with OpenAI, Together AI, Groq, and any OpenAI-compatible shim (litellm, anthropic-openai-compat). Local providers (LM Studio, Ollama, llama.cpp server) unchanged.
+- ✅ README "Optional AI Tooling" rewritten with per-provider `.env` snippets (LM Studio, Ollama, OpenAI, Together, Groq, Anthropic-via-shim) and a Feature Gating subsection
+- ✅ Behavior purely additive — when all prereqs are present, UI is visually identical to v0.3.1
+- ✅ Version 0.3.1 → 0.3.2
+- See `tasks/2026-05/260525_v032_capability_gating.md`
 
 ## v0.3.1 Release ✅ (2026-05-25)
 - ✅ MP3 export from the recording deck now produces a real MP3 (was throwing `ReferenceError`; also fixed pre-existing multipart parser bug where the last form field swallowed the trailing boundary, silently defaulting to WAV)
@@ -59,15 +69,15 @@
 ## What's Next
 
 ### Immediate
-1. **Deploy v0.3.1 to production** — `openstudio.zerologic.com` (Power Move + v0.3.0 + v0.3.1 not yet live)
-2. **Resume podcast Tasks 4-8** — click-to-cut on transcript, per-segment recording, ID3 tags, chapter markers, multi-track to final export
+1. **Deploy v0.3.2 to production** — `openstudio.zerologic.com` (Power Move + v0.3.0 + v0.3.1 + v0.3.2 not yet live)
+2. **AI setup script** (`setup-ai.sh`) — automate whisper.cpp clone, build, and model download; with capability gating now in place, a single script + a page refresh would light up Transcribe + Show Notes in one shot
+3. **Resume podcast Tasks 4-8** — click-to-cut on transcript, per-segment recording, ID3 tags, chapter markers, multi-track to final export
 
 ### Short Term
 1. **favicon.ico** — silence the lone 404 noted during v0.3.0 verification
 2. **Per-participant waveform** (stretch from Signal plan) — replace static avatar with live waveform
 3. **Broadcast tone** (optional) — 1kHz / 150ms cue at ON AIR transition
 4. **Invite-link UI** — server supports `request-invite` and the client knows how to consume invite tokens, but there's no host UI to mint one (deferred to 0.4)
-5. **AI setup script** (`setup-ai.sh`) — automate whisper.cpp clone, build, and model download; flagged in README's Known Gaps
 
 ### Release 0.4 (Planned — Discovery & Identity)
 - DHT station discovery (WebTorrent or libp2p)
@@ -81,7 +91,9 @@
 
 ## Technical Notes
 - All podcast features built on `main` branch (power-move already merged)
+- `GET /api/capabilities` (v0.3.2) is the single source of truth for AI feature availability; backend probes filesystem + env, 60 s cache, frontend renders gated state from the snapshot
 - LLM endpoint via `LLM_BASE_URL` / `LLM_MODEL` env vars; default `http://localhost:1234/v1` / `qwen3.5-35b` (matches LM Studio's standard port). Operators on non-default host/port override via `.env`. Graceful fallback when unreachable.
+- `LLM_API_KEY` env var (v0.3.2) enables cloud OpenAI-compatible providers (OpenAI, Together, Groq, plus Anthropic via litellm/anthropic-openai-compat shim). Local providers (LM Studio, Ollama, llama.cpp server) leave it blank.
 - whisper.cpp models stored in `models/` directory (auto-download from HuggingFace on first transcribe, ~1.5 GB for `ggml-medium.bin`)
 - whisper.cpp is a gitlink without `.gitmodules` config — clone setup is manual, not via `git submodule update`
 - ffmpeg pipeline: silence detect → filler splice → concat segments → two-pass loudnorm to -16 LUFS → optional MP3 transcode (`libmp3lame -qscale:a 2`)

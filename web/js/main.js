@@ -20,6 +20,7 @@ import { ReturnFeedManager } from './return-feed.js';
 import { MuteManager } from './mute-manager.js';
 import { IcecastStreamer } from './icecast-streamer.js';
 import { RecordingManager } from './recording-manager.js';
+import { openCapabilityModal, wireCloseHandlers } from './capability-modal.js';
 
 class OpenStudioApp {
   constructor() {
@@ -38,6 +39,7 @@ class OpenStudioApp {
     this.icecastStreamer = new IcecastStreamer(); // Icecast streaming
     this.recordingManager = new RecordingManager();
     this.lastRecordings = null; // Store last recording results for download
+    this.capabilities = null; // Host-side AI capability report from GET /api/capabilities
 
     // State
     this.currentRoom = null;
@@ -180,10 +182,134 @@ class OpenStudioApp {
 
       // Connect to signaling server
       this.signaling.connect();
+
+      // Bind capability-modal close handlers (× / Got it / ESC / backdrop).
+      wireCloseHandlers();
+
+      // Fetch host-side AI capabilities and gate the UI accordingly.
+      // Non-blocking — if it fails we leave UI in default state and let
+      // the server return an error on click (existing behavior).
+      this.loadCapabilities()
+        .then(() => this.applyCapabilityGates())
+        .catch((err) => console.warn('[App] Capability load failed:', err));
     } catch (error) {
       console.error('[App] Initialization failed:', error);
       this.setStatus('disconnected', 'Initialization failed');
     }
+  }
+
+  /**
+   * Fetch host-side AI capability report. On failure, leaves
+   * this.capabilities as null (treat as "unknown" — UI stays in default
+   * enabled state).
+   * @returns {Promise<void>}
+   */
+  async loadCapabilities() {
+    try {
+      const res = await fetch('/api/capabilities');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      this.capabilities = await res.json();
+      console.log('[App] Capabilities loaded:', this.capabilities);
+    } catch (err) {
+      console.warn('[App] /api/capabilities unavailable:', err.message);
+      this.capabilities = null;
+    }
+  }
+
+  /**
+   * Walk AI controls and visually mark unavailable ones. We deliberately
+   * do NOT set the `disabled` attribute on the transcribe button so the
+   * click event still fires — that's what opens the capability modal.
+   *
+   * The MP3 <option>, however, gets a real `disabled` attribute because
+   * the select element handles that natively (and we want users to fall
+   * through to WAV automatically).
+   */
+  applyCapabilityGates() {
+    if (!this.capabilities || !this.capabilities.features) return;
+    const features = this.capabilities.features;
+
+    // Transcribe button — gates both transcription and show notes.
+    if (this.transcribeBtn && features.transcribe && !features.transcribe.available) {
+      this.transcribeBtn.classList.add('disabled-by-capability');
+      this.transcribeBtn.setAttribute('aria-disabled', 'true');
+      this.transcribeBtn.setAttribute('title', 'Click for setup instructions');
+      // Append info icon (idempotent).
+      if (!this.transcribeBtn.querySelector('.capability-info-icon')) {
+        const icon = document.createElement('span');
+        icon.className = 'capability-info-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.textContent = 'ⓘ';
+        this.transcribeBtn.appendChild(icon);
+      }
+    }
+
+    // MP3 export option — natively disable.
+    const mp3Option = document.querySelector('#output-format option[value="mp3"]');
+    if (mp3Option && features.mp3Export && !features.mp3Export.available) {
+      mp3Option.disabled = true;
+      mp3Option.textContent = 'MP3 (requires ffmpeg)';
+    }
+  }
+
+  /**
+   * Build the requirements array for the capability modal from the
+   * current capabilities snapshot. Install commands are taken verbatim
+   * from README's "Optional AI Tooling" section.
+   *
+   * @param {'transcribe'|'showNotes'|'mp3Export'|'cleanAudio'} featureName
+   * @returns {Array<{ name: string, present: boolean, install?: string }>}
+   */
+  _buildRequirements(featureName) {
+    const caps = this.capabilities || {};
+    const out = [];
+
+    // ffmpeg — always relevant for the AI features we gate.
+    const ffmpegPresent = !!(caps.ffmpeg && caps.ffmpeg.available);
+    out.push({
+      name: 'ffmpeg',
+      present: ffmpegPresent,
+      install: 'brew install ffmpeg   # macOS\n# or:\napt install ffmpeg     # Debian / Ubuntu',
+    });
+
+    // whisper.cpp + model are required for any feature that touches transcription.
+    const needsTranscribe =
+      featureName === 'transcribe' ||
+      featureName === 'showNotes' ||
+      featureName === 'cleanAudio';
+
+    if (needsTranscribe) {
+      const whisperPresent = !!(caps.whisper && caps.whisper.available);
+      out.push({
+        name: 'whisper.cpp',
+        present: whisperPresent,
+        install:
+          'git clone https://github.com/ggerganov/whisper.cpp\ncd whisper.cpp && make -j$(nproc)',
+      });
+
+      const modelPresent = !!(caps.model && caps.model.available);
+      const sizeHint = caps.model && caps.model.sizeHint ? ` (${caps.model.sizeHint})` : '';
+      out.push({
+        name: `Whisper model${sizeHint}`,
+        present: modelPresent,
+        install:
+          'mkdir -p models\nwget -O models/ggml-medium.bin \\\n  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin',
+      });
+    }
+
+    // LLM is optional polish for show notes — surface its status but
+    // don't mark it required (show notes still generate without it).
+    if (featureName === 'showNotes' && caps.llm) {
+      const llmReady = !!(caps.llm.configured && caps.llm.authenticated !== false);
+      out.push({
+        name: `LLM polish (optional) — ${caps.llm.provider || 'OpenAI-compatible'}`,
+        present: llmReady,
+        install:
+          '# In .env:\nLLM_BASE_URL=http://localhost:1234/v1   # LM Studio default\nLLM_MODEL=qwen3.5-35b\n# Show notes still generate without an LLM — they just fall back\n# to a transcript-derived title and summary.',
+      });
+    }
+
+    return out;
   }
 
   /**
@@ -1389,6 +1515,17 @@ class OpenStudioApp {
    * Transcribe the program mix recording and generate show notes
    */
   async handleTranscribeProgram() {
+    // Capability gate: if the host is missing whisper/model/ffmpeg, show the
+    // setup modal instead of attempting and getting a server error.
+    if (this.capabilities && !this.capabilities.features?.transcribe?.available) {
+      openCapabilityModal({
+        feature: 'transcribe',
+        title: 'Transcription Requires Setup',
+        requirements: this._buildRequirements('transcribe'),
+      });
+      return;
+    }
+
     if (!this.lastRecordings?.program) return;
 
     this.transcribeBtn.disabled = true;

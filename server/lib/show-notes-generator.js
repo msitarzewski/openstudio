@@ -14,6 +14,7 @@ const exec = promisify(cbExec);
 
 const LLM_BASE_URL = (process.env.LLM_BASE_URL || 'http://localhost:1234/v1').replace(/\/$/, '');
 const LLM_MODEL = process.env.LLM_MODEL || 'qwen3.5-35b';
+const LLM_API_KEY = process.env.LLM_API_KEY || '';
 
 /**
  * Call local LM Studio (Qwen 35B) to generate title + summary from transcript.
@@ -35,9 +36,12 @@ Respond in this exact JSON format with no extra text:
 }`;
 
   try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (LLM_API_KEY) headers['Authorization'] = `Bearer ${LLM_API_KEY}`;
+
     const resp = await fetch(`${LLM_BASE_URL}/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         model: LLM_MODEL,
         messages: [{ role: 'user', content: prompt }],
@@ -135,9 +139,12 @@ ${fullText}
 Respond with ONLY the summary paragraph, no title or extra text.`;
 
   try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (LLM_API_KEY) headers['Authorization'] = `Bearer ${LLM_API_KEY}`;
+
     const resp = await fetch(`${LLM_BASE_URL}/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         model: LLM_MODEL,
         messages: [{ role: 'user', content: prompt }],

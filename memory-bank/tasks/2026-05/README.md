@@ -39,3 +39,13 @@
 - Files: `server/server.js`, `server/lib/audio-cleaner.js`, `server/lib/show-notes-generator.js`, `.env.example`, `web/js/recording-manager.js`, `web/js/main.js`, `package.json`, `README.md`
 - Smoke-tested on host node process: /health, /api/export/zip (1/2/0 tracks), /api/export/clean WAV default, /api/export/clean MP3 with full cleaning pipeline
 - See: [260525_v031_fixes.md](./260525_v031_fixes.md)
+
+### 2026-05-25: v0.3.2 — Capability Gating + Cloud LLM Support
+- Added `GET /api/capabilities` — detects ffmpeg, ffprobe, whisper.cpp binary, Whisper model file, and LLM endpoint configuration; in-memory 60 s cache so it's cheap to call on every page load
+- Studio UI now gates Transcribe, Show Notes, and the MP3 format option against their actual prereqs — disabled with an info icon when missing instead of failing on click
+- Clicking a gated control opens a modal with the exact install commands for the missing dependency (ffmpeg via brew/apt, whisper.cpp clone+make, Whisper model wget, LLM env var setup)
+- Cloud LLM providers supported via `LLM_API_KEY` env var — show-notes generator sends `Authorization: Bearer <key>` when set; works with OpenAI, Together, Groq, and any OpenAI-compatible shim (litellm, anthropic-openai-compat). Local providers (LM Studio, Ollama, llama.cpp server) leave it blank and behave unchanged.
+- README "Optional AI Tooling" section rewritten with per-provider `.env` snippets (LM Studio, Ollama, OpenAI, Together AI, Groq, plus Anthropic-via-shim note) and a Feature Gating explainer
+- Behavior purely additive — when all prereqs are present, the UI is visually identical to v0.3.1
+- Files: `server/lib/capabilities.js` (new), `server/server.js`, `server/lib/show-notes-generator.js`, `web/js/capability-modal.js` (new), `web/js/main.js`, `web/index.html`, `web/css/studio.css`, `.env.example`, `README.md`, `CHANGELOG.md`, `package.json`
+- See: [260525_v032_capability_gating.md](./260525_v032_capability_gating.md)

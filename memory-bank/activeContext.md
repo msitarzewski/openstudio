@@ -1,15 +1,24 @@
 # Active Context: OpenStudio
 
-**Last Updated**: 2026-05-25 (v0.3.1 cut — MP3 + zip fixes, configurable LLM, README rewrite)
+**Last Updated**: 2026-05-25 (v0.3.2 cut — capability gating + cloud LLM support)
 
 ## Current Phase
 
-**Release**: 0.3.1 (committed today) — closes the truth-claims gap from v0.3.0
+**Release**: 0.3.2 (committed today) — capability-gated AI UX + OpenAI-compatible cloud provider support
 **Branch**: `main`
-**Status**: v0.3.0 + v0.3.1 both shipped. Podcast Production Tasks 1, 2, and 3 are now actually complete end-to-end (Tasks 2 and 3 were claimed in the v0.3.0 release notes but were broken at runtime until today). README is now the canonical landing page and accurately reflects the implemented feature set. Optional AI tooling (whisper.cpp + LLM) is documented honestly with full setup requirements.
-**Focus**: Deploy v0.3.1 to openstudio.zerologic.com, then resume podcast Tasks 4-8 (click-to-cut on transcript, per-segment recording, ID3 tag export, chapter markers, multi-track to final export)
+**Status**: v0.3.0, v0.3.1, and v0.3.2 all shipped. AI features (Transcribe, Show Notes, MP3 export) now self-document — when prereqs are missing, the UI surfaces a modal with exact install commands instead of failing on click. Cloud LLM providers (OpenAI, Together, Groq, Anthropic-via-shim) work via `LLM_API_KEY`; local providers still work with no env change. README documents per-provider setup.
+**Focus**: Deploy v0.3.2 to openstudio.zerologic.com, then resume podcast Tasks 4-8 (click-to-cut on transcript, per-segment recording, ID3 tag export, chapter markers, multi-track to final export)
 
 ## Recent Updates (2026-05-25)
+
+### v0.3.2 Release ✅
+- **`GET /api/capabilities` endpoint** — new `server/lib/capabilities.js` probes ffmpeg, ffprobe, the whisper.cpp binary, the Whisper model file, and the configured LLM endpoint; in-memory 60 s cache so the endpoint is cheap to hit on every page load
+- **Frontend capability gating** — `web/js/capability-modal.js` reads `/api/capabilities` on load and disables Transcribe / Show Notes / MP3 format option when their prereqs are missing. Clicking a gated control opens a modal with the exact install commands. Modal DOM in `web/index.html`, styling in `web/css/studio.css`.
+- **Cloud LLM support via `LLM_API_KEY`** — `show-notes-generator.js` sends `Authorization: Bearer <key>` when the env var is set; works with OpenAI, Together AI, Groq, and any OpenAI-compatible shim (litellm, anthropic-openai-compat). Local providers (LM Studio, Ollama, llama.cpp server) leave it blank and continue to work unchanged.
+- **README "Optional AI Tooling" rewritten** — per-provider `.env` snippets for LM Studio, Ollama, OpenAI, Together AI, Groq, plus an Anthropic-via-shim note; new Feature Gating subsection explains the UX
+- **Behavior is purely additive** — when all prereqs are present, the UI is visually identical to v0.3.1
+- **Version**: 0.3.1 → 0.3.2
+- See `tasks/2026-05/260525_v032_capability_gating.md`
 
 ### v0.3.1 Release ✅
 - **MP3 export unbroken** — `run()` exported from `audio-cleaner.js` and imported into `server.js`; also fixed a pre-existing multipart parser bug where the last form field with no per-part `Content-Length` pulled in the trailing boundary marker, causing `outputFormat=mp3` to silently fall back to WAV
@@ -143,10 +152,15 @@ Client (browser) ──────────────── Node.js Server
 - ✅ "Download All" returns a single bundle (v0.3.1)
 - ✅ LLM endpoint is configurable via env vars, defaults to LM Studio's standard port (v0.3.1)
 - ✅ README reflects the actual shipped feature set, with honest AI-tooling setup docs (v0.3.1)
+- ✅ `GET /api/capabilities` reports availability of ffmpeg, ffprobe, whisper.cpp, Whisper model, and LLM endpoint; frontend uses it to gate AI buttons (v0.3.2)
+- ✅ Capability-gating UX — disabled buttons open an info modal with install commands instead of failing on click (v0.3.2)
+- ✅ Cloud LLM providers (OpenAI, Together, Groq, Anthropic-via-shim) supported via `LLM_API_KEY` env var; local providers unchanged (v0.3.2)
 
 ### Technical Notes
 - Self-hosted fonts are variable woff2 (latin subset); non-Latin glyphs fall back to system fonts
 - `prefers-reduced-motion` disables all animations but visual design still works
+- `GET /api/capabilities` is the single source of truth for AI feature availability; backend probes filesystem + env, caches result for 60 s, frontend renders gated state from the snapshot. No live LLM network probe — we report `configured`/`authenticated`, not `reachable`.
+- `LLM_API_KEY` env var (new in v0.3.2) is optional; when set, show-notes generator sends `Authorization: Bearer <key>`. Required for OpenAI/Together/Groq; leave blank for LM Studio/Ollama/llama.cpp server.
 - LLM endpoint via `LLM_BASE_URL` / `LLM_MODEL` env vars; default `http://localhost:1234/v1` (LM Studio's standard port). Operators running their LLM on a non-default host/port override via `.env`. If the LLM is unreachable, show-notes falls back to a transcript-derived title and summary.
 - whisper.cpp is a gitlink without `.gitmodules` config — submodule update commands will fail; clone of the whisper.cpp tree must be set up manually (instructions now in README's Optional AI Tooling section)
 - `archiver` is declared in `server/package.json` but a fresh clone needs `cd server && npm install` before the signaling server can boot (otherwise: `Cannot find package 'archiver'`)
