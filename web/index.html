@@ -162,6 +162,24 @@
       </div>
     </section>
 
+    <!-- Deck: Audio Input Selector -->
+    <section id="input-section" class="deck-panel">
+      <div class="deck-header" data-deck="input">
+        <div class="deck-summary">
+          <span class="deck-label">INPUT</span>
+        </div>
+        <button class="deck-toggle" aria-label="Toggle input panel">&#9654;</button>
+      </div>
+      <div class="deck-body" id="input-deck-body">
+        <div class="streaming-config">
+          <label for="mic-select">Microphone:</label>
+          <select id="mic-select">
+            <option value="" data-loading>Scanning devices...</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
     <!-- Deck: Streaming Panel -->
     <section id="streaming-section" class="deck-panel">
       <div class="deck-header" data-deck="streaming">

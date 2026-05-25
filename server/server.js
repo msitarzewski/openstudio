@@ -323,6 +323,12 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // POST /api/export/zip — Zip all tracks and stream back as archive
+  if (req.method === 'POST' && req.url.split('?')[0] === '/api/export/zip') {
+    handleExportZip(req, res);
+    return;
+  }
+
   // 404 for all other routes
   res.writeHead(404, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: 'Not found' }));

@@ -53,6 +53,7 @@ class OpenStudioApp {
 
     // UI elements
     this.statusElement = document.getElementById('status');
+    this.micSelect = document.getElementById('mic-select');
     this.participantsSection = document.getElementById('participants');
     this.startSessionButton = document.getElementById('start-session');
     this.toggleMuteButton = document.getElementById('toggle-mute');
@@ -98,6 +99,9 @@ class OpenStudioApp {
     this.setupUIListeners();
     this.setupDeckPanels();
 
+    // Enumerate audio input devices and populate selector (non-blocking)
+    this.populateMicSelector();
+
     // Check for room ID in URL hash
     this.checkUrlHash();
 
@@ -105,6 +109,11 @@ class OpenStudioApp {
     if (this.roomIdFromUrl) {
       this.startSessionButton.textContent = 'Join Broadcast';
       this.endSessionButton.textContent = 'Leave Broadcast';
+    }
+
+    // If device selector exists, listen for changes
+    if (this.micSelect) {
+      this.micSelect.addEventListener('change', () => this.handleMicChange());
     }
 
     // Auto-connect to signaling server
@@ -193,6 +202,102 @@ class OpenStudioApp {
   }
 
   /**
+   * Populate microphone selector dropdown with available audio input devices.
+   */
+  async populateMicSelector() {
+    if (!this.micSelect) return;
+
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputs = devices.filter(d => d.kind === 'audioinput');
+
+      // Clear existing options
+      this.micSelect.innerHTML = '';
+
+      if (audioInputs.length === 0) {
+        const opt = document.createElement('option');
+        opt.textContent = 'No microphones found';
+        this.micSelect.appendChild(opt);
+        return;
+      }
+
+      // Populate options
+      audioInputs.forEach((device, i) => {
+        const opt = document.createElement('option');
+        opt.value = device.deviceId;
+        // Use label if available, otherwise generate one
+        const label = device.label || `Microphone ${i + 1}`;
+        opt.textContent = label;
+
+        // If this is the first device and no preference stored, select it
+        if (i === 0 && !this.selectedDeviceId) {
+          opt.selected = true;
+        }
+
+        this.micSelect.appendChild(opt);
+      });
+
+      // Store first device as default if no preference set yet
+      this.selectedDeviceId = audioInputs[0]?.deviceId || null;
+
+      console.log(`[App] Microphone selector populated with ${audioInputs.length} devices`);
+      if (this.selectedDeviceId) {
+        console.log(`[App] Selected device: ${audioInputs.find(d => d.deviceId === this.selectedDeviceId)?.label || 'unknown'}`);
+      }
+    } catch (error) {
+      console.error('[App] Failed to enumerate devices:', error);
+      const opt = document.createElement('option');
+      opt.textContent = 'Unable to list microphones';
+      this.micSelect.appendChild(opt);
+    }
+  }
+
+  /**
+   * Handle microphone device selection change.
+   */
+  async handleMicChange() {
+    const newDeviceId = this.micSelect.value;
+
+    if (newDeviceId === this.selectedDeviceId) {
+      return; // No change
+    }
+
+    console.log(`[App] Microphone changed to: ${this.micSelect.options[this.micSelect.selectedIndex]?.text}`);
+    this.selectedDeviceId = newDeviceId;
+
+    // If we have an active stream, replace the audio track in-place (no permission dialog if same permission context)
+    // Otherwise switch is handled on next start-session
+    if (this.rtc.localStream) {
+      const currentTrack = this.rtc.localStream.getAudioTracks()[0];
+
+      try {
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          audio: { deviceId: { exact: newDeviceId }, echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        });
+
+        const newTrack = newStream.getAudioTracks()[0];
+
+        // Replace the track on the existing stream (this triggers renegotiation automatically)
+        this.rtc.localStream.removeTrack(currentTrack);
+        currentTrack.stop();
+
+        // Add new track to the same MediaStream (keeps stream ID stable for WebRTC connections)
+        this.rtc.localStream.addTrack(newTrack);
+
+        // Update mute state to match new track
+        if (this.toggleMuteButton.classList.contains('muted')) {
+          this.handleToggleMute();
+        }
+
+        console.log('[App] Microphone track replaced successfully');
+      } catch (error) {
+        console.error('[App] Failed to switch microphone:', error);
+        alert(`Failed to switch to ${this.micSelect.options[this.micSelect.selectedIndex]?.text}. Make sure the device is available.`);
+      }
+    }
+  }
+
+  /**
    * Setup signaling event listeners
    */
   setupSignalingListeners() {
@@ -249,7 +354,7 @@ class OpenStudioApp {
 
       // Get local media stream
       try {
-        await this.rtc.getLocalStream();
+        await this.rtc.getLocalStream(this.selectedDeviceId || null);
         console.log('[App] Local media stream ready, waiting for callers...');
 
         // Safari: Resume AudioContext after permission dialog
@@ -300,7 +405,7 @@ class OpenStudioApp {
 
       // Get local media stream
       try {
-        await this.rtc.getLocalStream();
+        await this.rtc.getLocalStream(this.selectedDeviceId || null);
         console.log('[App] Local stream ready, ConnectionManager will handle peer connections');
 
         // Safari: Resume AudioContext after permission dialog
