@@ -17,10 +17,13 @@ REQUIRED_DEV_VARS=(
   "ICECAST_RELAY_PASSWORD=changeme"
   "COTURN_PASSWORD=changeme"
   "ICECAST_PASS=changeme"
+  "ICECAST_HOST=localhost"
+  "ICECAST_PORT=6737"
   "JWT_SECRET="
   "ROOM_TTL_MS=0"
   "LLM_BASE_URL=http://localhost:1234/v1"
   "LLM_MODEL=qwen3.5-35b"
+  "LLM_API_KEY="
 )
 
 # Ensure .env exists and has every required key. Missing keys get dev defaults

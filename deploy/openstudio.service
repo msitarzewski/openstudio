@@ -12,6 +12,10 @@ RestartSec=5
 Environment=NODE_ENV=production
 Environment=PORT=6736
 Environment=ICECAST_HOST=127.0.0.1
+# ICECAST_PORT must match where Icecast actually listens:
+#   - 6737 when using deploy/docker-compose.prod.yml (containerized Icecast)
+#   - 8000 when using a system-installed Icecast (apt/brew default port)
+# Mismatch → signaling server returns 502 on /stream/* requests
 Environment=ICECAST_PORT=6737
 
 [Install]

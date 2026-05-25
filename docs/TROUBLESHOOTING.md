@@ -469,6 +469,54 @@ window.audioGraph.getGraphInfo().participants
 
 ## Streaming Problems
 
+### `/stream/*` Returns 502 Bad Gateway
+
+**Symptom**: Listeners (or your browser, or Cloudflare/your reverse proxy) get a 502 when hitting `/stream/live.opus`. The studio UI may still load fine.
+
+**Cause**: The signaling server's listener proxy is trying to reach Icecast on a port nothing is listening on. By default `ICECAST_HOST=localhost` and `ICECAST_PORT=6737` (matches the bundled docker-compose). If you're running a **system-installed Icecast** (`apt install icecast2` / `brew install icecast`), it defaults to port **8000**, and the proxy gets connection refused → 502.
+
+**Fix**: set `ICECAST_HOST` / `ICECAST_PORT` env vars on the signaling server to wherever Icecast actually listens.
+
+```bash
+# .env
+ICECAST_HOST=localhost
+ICECAST_PORT=8000     # system Icecast on Debian/Ubuntu/macOS default
+
+# Or for the bundled Docker stack:
+ICECAST_PORT=6737     # what docker-compose.yml maps the container's port 8000 to
+```
+
+For a systemd-managed deploy, add it to the unit file:
+
+```ini
+[Service]
+Environment=ICECAST_PORT=8000
+```
+
+Then `systemctl daemon-reload && systemctl restart openstudio` (or `systemctl --user ...` for a user-level unit).
+
+**Behind Caddy / nginx / Traefik**: same answer. The reverse proxy fronts the signaling server on 6736, the signaling server's `/stream/*` handler proxies to `ICECAST_HOST:ICECAST_PORT` internally. Don't proxy `/stream/*` directly to Icecast at the reverse-proxy layer — that would bypass the path sanitization the signaling server applies (which blocks `/admin` and traversal).
+
+**Verify**:
+```bash
+# 1. Confirm Icecast is actually up and on the expected port:
+curl http://localhost:8000/        # system Icecast
+curl http://localhost:6737/        # docker Icecast
+
+# 2. Confirm the signaling proxy now reaches it:
+curl -i http://localhost:6736/stream/live.opus
+# 200 = stream is live; 404 = Icecast is up but no source is broadcasting yet;
+# 502 = signaling can't reach Icecast (re-check the env var)
+```
+
+### `/stream/live.opus` Returns 404 (Not 502)
+
+**Symptom**: Endpoint is reachable but returns 404.
+
+**Cause**: This is **normal** when no one is currently broadcasting. Icecast mount points only exist while a source is actively pushing to them. The 404 means Icecast is up and responding — it just has nothing to serve at that mount.
+
+**Fix**: have a host open the studio, start a broadcast, and click the **Stream** button. Then `/stream/live.opus` will serve the live opus stream to listeners.
+
 ### Icecast Stream Not Starting
 
 **Symptom**: Click "Start Streaming" but stream doesn't start
