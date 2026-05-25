@@ -4,6 +4,37 @@
  */
 
 /* ==========================================
+   FONTS — self-hosted variable woff2, latin subset
+   ========================================== */
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('../fonts/inter.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('../fonts/jetbrains-mono.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url('../fonts/space-grotesk.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ==========================================
    DESIGN TOKENS
    ========================================== */
 
@@ -165,7 +196,7 @@ header {
   border-bottom: 1px solid var(--border);
   padding: 0 var(--space-6);
   display: grid;
-  grid-template-columns: auto auto 1fr auto;
+  grid-template-columns: auto auto 1fr;
   align-items: center;
   gap: var(--space-4);
   position: sticky;
@@ -209,12 +240,11 @@ body.broadcasting .wordmark-accent {
   align-self: center;
 }
 
-.header-center {
-  justify-self: center;
-}
-
 .header-right {
   justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
 }
 
 #status {
@@ -1370,7 +1400,7 @@ button:disabled {
 @media (max-width: 768px) {
   header {
     padding: 0 var(--space-4);
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: 1fr auto;
     gap: var(--space-2);
   }
 

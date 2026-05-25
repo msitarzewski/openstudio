@@ -75,9 +75,11 @@ Mix-minus is a broadcast engineering standard — each participant hears everyon
 - **Mix-minus monitoring** — broadcast-standard audio routing, in the browser
 - **Per-participant controls** — individual gain, mute, live level meters
 - **Multi-track recording** — per-voice WAV tracks + program mix for post-production
+- **On-device transcription** — Whisper.cpp speech-to-text, no cloud API
+- **Audio cleaning pipeline** — noise reduction, loudness normalization, filler/silence splice; Clean or Raw export
 - **Icecast streaming** — broadcast to unlimited listeners, no audience cap
 - **Role-based access** — host, engineer, caller with scoped permissions
-- **Zero dependencies** — vanilla JS, Web Audio API, no framework, no build step
+- **Zero dependencies** — vanilla JS, Web Audio API, self-hosted fonts, no framework, no build step
 - **Safari compatible** — WebSocket streaming fallback
 
 ## Try It
@@ -101,8 +103,10 @@ For detailed architecture documentation, see [docs/ARCHITECTURE-IMPLEMENTATION.m
 
 - [x] **0.1** — Core studio: WebRTC mesh, mix-minus, mute controls, Icecast streaming
 - [x] **0.2** — Single-server deploy, multi-track recording, live demo
-- [ ] **0.3** — DHT station discovery, Nostr NIP-53 integration
-- [ ] **0.4** — SFU for larger rooms (25+ participants)
+- [x] **0.2.1** — Security hardening: JWT room tokens, rate limiting, CORS, RBAC
+- [x] **0.3** — Power Move: Whisper.cpp transcription, audio cleaning pipeline, Clean/Raw export, self-hosted fonts
+- [ ] **0.4** — DHT station discovery, Nostr NIP-53 integration, Ed25519 station identities
+- [ ] **0.5** — SFU for larger rooms (25+ participants), soundboard, text chat
 
 ## Development
 

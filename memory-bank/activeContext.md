@@ -1,13 +1,23 @@
 # Active Context: OpenStudio
 
-**Last Updated**: 2026-05-18 (Task 3: Download All Tracks as Zip — In Progress)
+**Last Updated**: 2026-05-25 (v0.3.0 cut — fonts self-hosted, header status restored)
 
 ## Current Phase
 
-**Release**: 0.3-dev + Power Move (Podcast Production)
-**Branch**: `main` (power-move merged, all work on main)
-**Status**: Podcast production pipeline in progress — Tasks 1-2 done, Task 3 in progress
-**Focus**: Building podcast MVP features on top of existing audio pipeline
+**Release**: 0.3.0 (cut today) + Podcast Production pipeline in progress
+**Branch**: `main`
+**Status**: v0.3.0 release-blockers closed (version bump, font self-hosting, header status fix). Podcast production Tasks 1-2 complete, Task 3 (zip bundle) still in progress on the other machine.
+**Focus**: Commit + push v0.3.0, deploy to openstudio.zerologic.com, then resume Task 3
+
+## Recent Updates (2026-05-25)
+
+### v0.3.0 Release Cut ✅
+- `package.json` 0.2.0 → 0.3.0
+- Inter / JetBrains Mono / Space Grotesk self-hosted as variable woff2 (latin subset, ~100 KB total in `web/fonts/`); Google Fonts CDN dependency removed
+- `server/lib/static-server.js` learned `.woff2` / `.woff` MIME types
+- `#status` pill moved out of `.header-center` back into `.header-right` (regression from Signal redesign, commit `490fdc9`); header grid simplified; mobile responsive grid updated
+- Verified via Chrome DevTools MCP — zero external font requests; `document.fonts` reports all three families `loaded`; status pill 40px from right edge
+- See `tasks/2026-05/250526_v030_release.md`
 
 ## Recent Updates (2026-05-18)
 
@@ -89,7 +99,7 @@ Client (browser) ──────────────── Node.js Server
   ├─ MediaRecorder (recording)
   ├─ Fetch/WS → Icecast (streaming, host/ops only)
   └─ Signal UX Design System
-       ├─ Space Grotesk / Inter / JetBrains Mono (Google Fonts)
+       ├─ Space Grotesk / Inter / JetBrains Mono (self-hosted woff2, web/fonts/)
        ├─ Void/Signal/Data color palette
        ├─ Segmented LED meters + waveform oscilloscope
        ├─ ON AIR animations (body.broadcasting CSS class)
@@ -101,18 +111,26 @@ Client (browser) ──────────────── Node.js Server
 
 | File | Change |
 |------|--------|
-| `web/index.html` | Google Fonts, signal chain layout, wordmark+tagline, waveform canvas, deck panels |
-| `web/css/studio.css` | Complete rewrite — Signal design system tokens, atmosphere, components, animations |
+| `web/index.html` | Signal chain layout, wordmark+tagline, waveform canvas, deck panels (fonts now self-hosted via @font-face in studio.css, v0.3.0) |
+| `web/css/studio.css` | Complete rewrite — Signal design system tokens, atmosphere, components, animations (v0.3.0: @font-face blocks added at top; header layout simplified) |
 | `web/js/main.js` | body.broadcasting state, speaking detection, card animations, deck panels, role names |
 | `web/js/volume-meter.js` | Segmented LED mode, waveform oscilloscope mode, speaking callback, HiDPI |
 
 ## Blockers & Risks
 
-### Signal UX
-- Google Fonts CDN dependency (fonts load from external CDN — could self-host for zero-dependency)
-- `prefers-reduced-motion` disables all animations but visual design still works
+### Current
+- v0.3.0 changes uncommitted on `main` until this commit lands — then needs deploy
+- `openstudio.zerologic.com` deployment needs refresh (Power Move + v0.3.0 + podcast Tasks 1-2 not yet live)
+- TURN credentials in station-manifest need real values for production
+- Podcast Task 3 (zip bundle): archiver imported in server.js, endpoint + frontend wiring still pending
 
-### Pending from Previous
-- PR #1 (v0.2.1 Security Hardening) still needs merge
-- JWT_SECRET must be set in production
-- TURN credentials in station-manifest need real values
+### Resolved 2026-05-25
+- ✅ Google Fonts CDN dependency removed
+- ✅ Status pill back in header right corner
+- ✅ package.json bumped to 0.3.0
+
+### Technical Notes
+- Self-hosted fonts are variable woff2 (latin subset); non-Latin glyphs fall back to system fonts
+- `prefers-reduced-motion` disables all animations but visual design still works
+- LM Studio at `http://10.211.55.2:1234/v1` required for show-notes LLM generation (fallback exists)
+- whisper.cpp is a gitlink without `.gitmodules` config — submodule update commands will fail; clone of the whisper.cpp tree must be set up manually

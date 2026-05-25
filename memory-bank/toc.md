@@ -4,10 +4,10 @@
 
 1. **projectbrief.md** - Core vision and requirements
 2. **productContext.md** - Why this exists and user goals
-3. **systemPatterns.md** - Architecture and design patterns (updated v0.2)
-4. **techContext.md** - Tech stack and constraints (updated v0.2)
-5. **activeContext.md** - Current focus and decisions (updated v0.2)
-6. **progress.md** - What's working and what's next (updated v0.2)
+3. **systemPatterns.md** - Architecture and design patterns (updated with Power Move)
+4. **techContext.md** - Tech stack and constraints (updated v0.3.0 — fonts self-hosted)
+5. **activeContext.md** - Current focus and decisions (updated v0.3.0 — release cut)
+6. **progress.md** - What's working and what's next (updated v0.3.0 — release cut)
 7. **projectRules.md** - Project-specific patterns and preferences
 
 ## Reference Documentation
@@ -25,27 +25,19 @@
 ## Release Plans
 
 ### Release 0.1 ✅ (Shipped 2026-03-12)
-
-- **releases/0.1/README.md** - Workflow guide and progress tracking
-- **releases/0.1/tasks/** - 20 task files (001-020)
-
 ### Release 0.2 ✅ (Shipped 2026-03-13)
+### Release 0.2.1 ✅ (Merged PR #1, 2026-03-14) — Security hardening
+### Signal UX Redesign ✅ (Merged PR #7, 2026-03-14) — "Signal" design system
+### Power Move ✅ (Merged PR #8, ~2026-05) — Whisper.cpp + audio cleaning pipeline
+### Release 0.3.0 ✅ (2026-05-25, uncommitted) — Version bump, self-hosted fonts, header status fix
 
-- 5 phases: Single Server, README, Deployment, Recording, DX
-- See progress.md for detailed file list
+## Task Directories
 
-### Release 0.2.1 🔒 (In Progress 2026-03-13)
-
-- Security hardening: JWT auth, rate limiting, CORS, RBAC, input validation
-- Branch: `release/0.2.1-security-hardening`
-- See activeContext.md and progress.md for details
-
-### Signal UX Redesign (2026-03-14)
-
-- Complete visual redesign — "Signal" design system
-- Branch: `feat/signal-ux-redesign`
-- See `tasks/2026-03/140326_signal_ux_redesign.md` for details
+- **tasks/2025-10/** — Release 0.1 task breakdown (tasks 001–019)
+- **tasks/2026-03/** — Signal UX redesign
+- **tasks/2026-05/** — Power Move + v0.3.0 release cut
 
 ## Quick References
 
 - **quick-start.md** - Common patterns and session data
+- **activeContext.md** — Current branch status, recent decisions, architecture

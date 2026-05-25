@@ -19,7 +19,7 @@
 **Core**: Vanilla JavaScript (ES modules)
 **APIs**: Web Audio API, WebRTC API, MediaRecorder API
 **UI**: HTML/CSS with "Signal" design system (no framework dependencies)
-**Fonts**: Google Fonts CDN — Space Grotesk (display), Inter (body), JetBrains Mono (data)
+**Fonts**: Self-hosted variable woff2 in `web/fonts/` (latin subset) — Space Grotesk (display), Inter (body), JetBrains Mono (data); served by static-server with `font/woff2` MIME
 
 **Future Considerations**:
 - React/Vue/Svelte if UI complexity grows
@@ -30,6 +30,16 @@
 - Chrome/Edge (primary development target)
 - Firefox (secondary)
 - Safari (known WebRTC quirks, test carefully)
+
+### Post-Production Tools (Power Move — Added ~2026-05)
+
+**Whisper.cpp**: Git submodule for on-device speech transcription (no cloud API, privacy-preserving)
+**ffmpeg**: Audio processing — noise reduction, loudness normalization, silence/filler splice detection
+**Audio Pipeline**: Upload → Transcribe → Clean → Export (WAV)
+- `server/lib/whisper-transcriber.js` — Whisper.cpp integration
+- `server/lib/audio-cleaner.js` — Cleaning pipeline (noise reduction, loudness normalization)
+- `server/lib/filler-detector.js` — Silence/fill-word detection for splice points
+- `server/lib/audio-converter.js` — Format conversion (WebM/OGG → WAV via ffmpeg)
 
 ### Media Infrastructure
 
@@ -59,12 +69,6 @@
 - **Web Client**: Served by Node.js signaling server on port 6736 (static file serving built in)
 - **Legacy**: Port 8086 (Python http.server) no longer needed
 
-**Port Selection Rationale**:
-- 6736+ range unlikely to conflict with common development tools
-- Avoided 3000 (React/Express/Next.js), 8000 (Django/Jupyter/Python servers)
-- Protocol-standard ports (3478) preserved for WebRTC compatibility
-- Sequential numbering (6736, 6737) easy to remember
-
 ### Distributed Directory (Release 0.2+)
 
 **Options Under Consideration**:
@@ -81,7 +85,7 @@
 **Package Manager**: npm
 **Build Tools**: None initially (ES modules in browser)
 **Linting**: ESLint with standard config
-**Testing**: TBD (Jest or Mocha + Chai)
+**Testing**: Puppeteer/Playwright for E2E, custom Node.js test suite
 
 ## Technical Constraints
 
@@ -103,7 +107,7 @@
 **Rule**: Everything must run on user-controlled infrastructure
 
 **Implications**:
-- No CDN dependencies for critical paths
+- No CDN dependencies for critical paths (as of v0.3.0, fonts are self-hosted woff2 in `web/fonts/`)
 - No third-party analytics by default
 - Graceful degradation if external services unavailable
 
@@ -115,7 +119,6 @@
 - Single Node.js process serves everything (static files, API, WebSocket, Icecast proxy)
 - Auto-copies `station-manifest.sample.json` on first run
 - Docker only needed for Icecast + coturn (optional for basic testing)
-- Sensible defaults in sample config
 
 ### Browser Security Model
 
@@ -152,7 +155,7 @@
 
 - Bitrate: 128kbps Opus (high quality)
 - Latency: <5s glass-to-glass (host → listener)
-- Concurrent listeners: Limited by Icecast server capacity (not a client concern)
+- Concurrent listeners: Limited by Icecast server capacity
 
 ## Security Requirements
 
@@ -165,30 +168,21 @@
 ### Threat Model
 
 **In Scope**:
-- Unauthorized room access (mitigated by tokens)
-- Station impersonation (mitigated by signed manifests)
-- Man-in-the-middle on media (mitigated by DTLS-SRTP)
+- Unauthorized room access → JWT tokens (mitigated in v0.2.1)
+- Station impersonation → signed manifests
+- Man-in-the-middle on media → DTLS-SRTP
 
 **Mitigated in v0.2.1**:
-- DoS on signaling server → rate limiting (100 msg/10s) + per-IP connection cap (10) + maxPayload 256KB
-- Unauthorized room access → JWT room tokens (24h) + invite tokens (4h)
-- Privilege escalation → server-side role validation (host/ops/guest)
-- TURN credential exposure → ICE config via authenticated WebSocket only
+- DoS on signaling → rate limiting + per-IP connection cap (10)
+- TURN credential exposure → WebSocket-only delivery
 - Icecast admin access → proxy path sanitization, /admin blocked
 - Clickjacking → X-Frame-Options: DENY
 - MIME sniffing → X-Content-Type-Options: nosniff
-- Credential defaults → entrypoint.sh fail-fast validation
-
-**Out of Scope (Current)**:
-- DHT pollution (signing + reputation in 0.3+)
-- Social engineering (user education, not technical solution)
 
 ### Privacy
 
 - No user tracking or analytics by default
 - Optional self-hosted analytics (Plausible, Matomo)
-- No third-party cookies or beacons
-- No telemetry without explicit opt-in
 
 ## Development Environment
 
@@ -196,24 +190,20 @@
 
 - Node.js 18+ (LTS)
 - Docker + Docker Compose
-- Modern browser (Chrome/Firefox)
-- Git
-- Text editor / IDE
+- ffmpeg (audio processing for Power Move cleaning pipeline)
+- whisper.cpp submodule (`git submodule update --init`)
 
 ### Optional Tools
 
 - mkcert (for local HTTPS)
 - Wireshark (for debugging RTC media issues)
-- Chrome DevTools → about:webrtc (essential for WebRTC debugging)
 
-### Development Workflow (v0.2)
+### Development Workflow
 
-1. Clone repository
-2. `npm install` (installs server deps automatically)
-3. `npm start` → studio at http://localhost:6736
-4. `npm run dev` → same with `--watch` hot reload
-5. Optional: `docker compose up -d` for Icecast + coturn
-6. `npm test` → runs server test suite
+1. Clone repository (includes whisper.cpp submodule)
+2. `git submodule update --init` (fetches whisper.cpp)
+3. `npm install` (installs server deps + ffmpeg/whisper integrated into pipeline)
+4. `npm start` → studio at http://localhost:6736
 
 ### Testing Strategy
 
@@ -228,60 +218,34 @@
 
 - Safari: Requires user gesture for getUserMedia
 - Firefox: ICE handling quirks
-- Mobile browsers: Background tab suspension
 
-**Mitigation**: Progressive enhancement, test matrix, clear browser support policy
+**Mitigation**: Progressive enhancement, test matrix
 
 ### TURN Costs at Scale
 
-- TURN relays bandwidth (expensive if many users behind restrictive NATs)
-
-**Mitigation**: Encourage users to self-host coturn, document port forwarding, consider SFU for large events
-
-### Time Synchronization
-
-- Recording multi-track audio requires clock sync
-- Browser timestamps can drift
-
-**Mitigation**: Use NTP, accept small skew (<50ms), post-processing alignment in recording feature (0.4+)
+- TURN relays bandwidth (expensive)
+- Encourage users to self-host coturn, document port forwarding
 
 ### Mix-Minus Complexity
 
-- Computationally expensive to generate per-caller mixes
+- Computationally expensive per-caller mixes
 - Scales O(N²) with participants
-
-**Mitigation**: Limit participant count (10-15 practical), optimize Web Audio graph, consider SFU for large sessions
+- Limit participant count (10-15 practical), optimize Web Audio graph
 
 ## Future Technical Directions
 
 ### Release 0.2 ✅ (Single Server + Recording — Shipped 2026-03-13)
 
-- Single-server architecture (static serving, Icecast proxy, all on one port)
-- Multi-track client-side recording (per-participant + program mix)
-- WAV export via OfflineAudioContext
-- Deployment config (Caddy, systemd, Docker Compose)
-- Room TTL for demo servers
-- README repositioned for conversion
-- GitHub Codespaces, CI improvements, templates
+### Release 0.2.1 ✅ (Security Hardening — Merged PR #1, 2026-03-14)
 
-### Release 0.2.1 🔒 (Security Hardening — In Progress 2026-03-13)
+### Signal UX Redesign ✅ (Merged PR #7, 2026-03-14)
 
-- JWT room + invite token authentication
-- WebSocket rate limiting + per-IP connection caps
-- HTTP security headers + CORS allowlist
-- Role-based access control (host/ops/guest)
-- ICE credential protection (WebSocket-only delivery)
-- Icecast proxy path sanitization + credential validation
-- Docker non-root user, input validation (UUID v4)
+### Power Move ✅ (Merged PR #8, ~2026-05)
 
-### Signal UX Redesign (v0.3-dev — Implemented 2026-03-14)
-
-- "Signal" design system: void/signal/data color palette, atmospheric effects
-- Three-font typography: Space Grotesk, Inter, JetBrains Mono (Google Fonts CDN)
-- Segmented LED meters (canvas), waveform oscilloscope (canvas)
-- CSS-driven broadcast state (`body.broadcasting` class)
-- Collapsible deck panels, channel strip cards, speaking detection
-- All E2E tests passing
+- Whisper.cpp transcription pipeline (whisper.cpp submodule, on-device)
+- Audio cleaning engine: noise reduction + loudness normalization
+- Filler/silence detection for splice points (ffmpeg-based)
+- Clean/Raw export modes in recording deck
 
 ### Release 0.3 (Discovery — Planned)
 
@@ -294,23 +258,3 @@
 - SFU for larger rooms (25+ participants)
 - Soundboard/jingle playback
 - Text chat
-
-## Dependency Philosophy
-
-**Prefer**:
-- Audited, minimal libraries
-- Pure JavaScript (avoid native bindings if possible)
-- Standard APIs over polyfills
-- Direct usage over abstraction layers
-
-**Avoid**:
-- Large frameworks for small gains
-- Unmaintained packages
-- Dependencies with transitive dependency bloat
-- "Magic" libraries that obscure behavior
-
-**Review Process**:
-- Check npm audit
-- Review GitHub activity and issue tracker
-- Verify license compatibility
-- Consider maintenance burden

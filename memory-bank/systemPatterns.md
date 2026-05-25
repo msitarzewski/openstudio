@@ -28,310 +28,186 @@
 
 **Structure**:
 ```
-MediaStreamSource → GainNode → DynamicsCompressor → ChannelMerger → Destination
-                                                    ↓
-                                              ProgramBus / MixMinusBus
+[source1] → gain1 → compressor1 ──┐
+[source2] → gain2 → compressor2 ──┼→ programBus → destination
+[source3] → gain3 → compressor3 ──┘
+                                    ↑
+                              mixMinusCalculator
 ```
 
 ### 3. Mix-Minus per Caller
 
-**Pattern**: Create individualized audio mixes for each caller that exclude their own voice
+**Pattern**: Each caller receives a version of the program bus that excludes their own audio
 
 **Rationale**:
-- Prevents self-echo/feedback
-- Standard broadcast technique
-- Essential for caller experience quality
+- Prevents echo (hearing yourself) which is critical for call-in shows
+- Maintains natural conversation flow
+- Standard radio broadcast practice
 
 **Implementation**:
-- Program Bus = sum of all participants
-- MixMinus_i = Program - participant_i
-- Route MixMinus_i back to caller i via dedicated RTC track
+- `AudioGraph` tracks all active sources
+- For each caller, creates a custom bus excluding their input source
+- Calculated at connection time and maintained dynamically
 
 ### 4. Producer-Authoritative Control
 
-**Pattern**: Host/producer has final authority over mute states and routing
+**Pattern**: There is no "admin" — the first person to create a room owns it
 
 **Rationale**:
-- Prevents caller disruption
-- Standard broadcast control model
-- Simplified conflict resolution
+- Simplest access model: whoever shows up first is host
+- No permission negotiation needed
+- Clear ownership (temporal)
 
-**Rules**:
-- Producer can mute any participant
-- Self-mute is local but reported to producer
-- Producer state wins on conflicts (last-write-wins)
+**Implementation**:
+- `RoomManager` assigns "Producer" role to room creator
+- Creator can invite guests, manage participants
+- Producer drops → room dissolves (no fallback admin)
 
-### 5. Distributed Station Directory
+### 5. Distributed Station Directory (Planned — v0.3)
 
-**Pattern**: DHT/libp2p for station discovery, no central registry
+**Pattern**: Peer-to-peer discovery of available stations via DHT/gossip protocol
 
 **Rationale**:
-- Censorship resistance
-- No single point of failure
-- Scales without central infrastructure
-- Aligned with self-hosting philosophy
+- No central directory = no single point of failure
+- Resistant to takedown/censorship
+- True distributed network effect
 
-**Implementation** (planned for 0.2):
-- Ed25519 keypairs for station identity
-- Signed manifests published to DHT
-- Stations self-announce availability
-- Clients query DHT for discovery
+**Design**:
+```
+Station A ── DHT gossip ──→ Station B → C → D ...
+```
 
-## Component Structure
-
-### Signaling Server
-
-**Responsibilities**:
-- WebSocket connection management
-- SDP offer/answer coordination
-- ICE candidate relay
-- Room state management
-- Authentication token validation
-
-**Tech**: Node.js, WebSocket library, minimal dependencies
-
-### Web Studio Client
-
-**Responsibilities**:
-- User interface for hosts/producers
-- Web Audio graph construction
-- RTC peer management
-- Local audio mixing
-- Program output encoding
-
-**Tech**: Vanilla JS (initially), Web Audio API, WebRTC API
-
-### TURN/STUN Server
-
-**Responsibilities**:
-- NAT traversal assistance
-- Media relay fallback
-
-**Tech**: coturn (Docker container)
-
-### Streaming Output
-
-**Responsibilities**:
-- Receive encoded program audio
-- Distribute to listeners
-- Standard mount point access
-
-**Tech**: Icecast (Docker container)
-
-## Data Flow Patterns
-
-### Session Initialization
-
-1. Host connects to signaling server
-2. Creates room, receives room token
-3. Shares invite URL with participants
-4. Participants connect, exchange SDP via signaling
-5. ICE negotiation establishes peer connections
-6. Audio tracks flow, Web Audio graph routes signals
-
-### Audio Mixing Flow
-
-1. Remote tracks arrive via RTC
-2. Each track → MediaStreamAudioSourceNode
-3. Gain + compression applied per-participant
-4. All sources sum to Program Bus
-5. Program Bus → MediaRecorder → Icecast
-6. Mix-minus calculated per-caller
-7. Mix-minus sent back via dedicated RTC tracks
-
-### Control Messages
-
-- Mute/unmute: Signaling propagates to all peers
-- Gain adjustment: Local only (no signaling needed)
-- Room membership: Signaling broadcasts join/leave events
-
-## Security Patterns
-
-### Station Authentication
-
-- Ed25519 keypair per station
-- Station manifest signed by private key
-- Public key published to directory
-- Clients verify signatures before connecting
-
-### Room Access Control (Updated v0.2.1)
-
-- JWT room tokens prove peerId + roomId + role (24h expiry)
-- JWT invite tokens for link sharing (4h expiry, host/ops generate)
-- Server-side role validation (host, ops, guest)
-- No invite token + existing room → forced guest role
-- ICE credentials (TURN) only in authenticated WebSocket messages
-
-### Media Security
-
-- DTLS-SRTP on all RTC connections
-- No unencrypted media transport
-- Browser enforces secure contexts (HTTPS required)
-
-### Input Validation (v0.2.1)
-
-- UUID v4 regex validation for peerId on register
-- Message type validation before processing
-- From-field spoofing prevention (must match registered peerId)
-- Icecast proxy path sanitization (posix.normalize, block traversal, block /admin)
-- WebSocket maxPayload: 256KB
-
-### Rate Limiting (v0.2.1)
-
-- Per-connection sliding window: 100 signaling / 10s, 500 stream-chunk / 10s
-- Per-IP connection cap: 10 concurrent WebSockets
-- Icecast entrypoint: fail-fast credential validation
+**Implementation Plan**:
+- Use Redis-compatible DHT or simple gossip protocol
+- Announce availability on startup, listen for others
+- Discovery via Nostr relay or custom gossip mesh
+- Station manifest signed with Ed25519 for authenticity
 
 ### 6. Single-Server Architecture (v0.2)
 
-**Pattern**: One Node.js process serves static files, API, WebSocket signaling, and Icecast listener proxy — all on one port.
+**Pattern**: All services consolidated into a single Node.js process on one port (6736)
 
 **Rationale**:
-- `git clone && npm start` → working studio (zero DX friction)
-- One port simplifies reverse proxy deployment (Caddy just does `reverse_proxy localhost:6736`)
-- Dynamic client URLs (`location.host`, `location.origin`) work for any deployment
+- Simpler deployment: one process, one port to configure
+- No nginx/caddy reverse proxy needed for local use
+- Faster startup, fewer failure points
 
-**Request handler order**:
-```
-/health          → health check
-/api/station     → ICE config
-/stream/*        → Icecast listener proxy (localhost:6737)
-static files     → serve from web/ directory
-404              → fallback
-```
+**Implementation**:
+- `server/server.js` handles static file serving (from web/ directory)
+- WebSocket endpoint at `/ws` for signaling
+- API endpoints for health, station info
+- Icecast listener proxy at `/stream/*`
+- File upload and export endpoints for Power Move
 
 ### 7. Client-Side Multi-Track Recording (v0.2)
 
-**Pattern**: MediaRecorder on per-participant MediaStreamDestination tap points, all client-side.
-
-**Rationale**:
-- Zero server cost (recording happens in browser)
-- Per-participant isolation (tap at gain node, before compressor)
-- Same encoding as streaming (audio/webm;codecs=opus)
+**Pattern**: Each participant's audio is captured at the client side before mixing, allowing post-production multi-track editing
 
 **Implementation**:
-```
-Participant: Source → Gain → [recordingDestination] → Analyser → Compressor → Program Bus
-                              ↓
-                     MediaRecorder (per-track)
-
-Program Bus → MediaStreamDestination → MediaRecorder (mix)
-```
+- `MediaStreamDestination` per participant gain node
+- Separate MediaRecorder instances for each track + program mix
+- WAV encoding client-side via OfflineAudioContext
+- Downloadable per-participant tracks + program mix
 
 ### 8. Room TTL for Demo Servers (v0.2)
 
-**Pattern**: Configurable room expiry via environment variable, 60-second sweep interval.
+**Pattern**: Rooms auto-expire after configurable idle time to free resources on shared/demo instances
 
 **Implementation**:
-- `ROOM_TTL_MS` env var (default: 0 = no expiry)
-- `roomCreationTimes` map tracks when rooms were created
-- `setInterval` every 60s broadcasts `room-expired` and cleans up
+- `ROOM_TTL_MS` environment variable (default: not set = no expiry)
+- Server checks every 60s for idle rooms
+- Broadcasts room deletion before cleanup
 
 ### 9. JWT Authentication & Invite Tokens (v0.2.1)
 
-**Pattern**: JWT-based room tokens prove identity/role; invite tokens enable authenticated link sharing.
+**Pattern**: Room tokens validate hosts; invite tokens allow guests to join with controlled permissions
 
 **Implementation**:
-- `server/lib/auth.js`: `generateRoomToken(peerId, roomId, role)` → 24h JWT
-- `generateInviteToken(roomId, role)` → 4h JWT (host/ops only)
-- `verifyToken(token)` → `{ valid, payload?, error? }`
-- JWT_SECRET from env or auto-generated random (dev warning logged)
-- Room creation/join returns token + ICE config via WebSocket
-- Invite tokens embedded in URL, verified server-side on join
+- Hosts receive JWT room token (24h expiry) on create/enter
+- Guests use short-lived invite tokens (4h) to join
+- Tokens embedded in WebSocket connection and UI state
 
 ### 10. WebSocket Rate Limiting & Connection Caps (v0.2.1)
 
-**Pattern**: Sliding-window rate limiter per connection, per-IP connection cap.
+**Pattern**: Per-connection and per-path rate limiting to prevent DoS
 
 **Implementation**:
-- 100 signaling messages / 10s window, 500 stream-chunk / 10s
-- Max 10 connections per IP (`connectionsByIp` map)
-- `maxPayload: 256KB` on WebSocket server
-- Rate limit exceeded → error message; connection limit → close with 4008
+- 100 messages / 10 seconds per connection (signaling)
+- 500 messages / 10 seconds per IP (streaming path)
+- Maximum 10 connections per IP
+- Max payload size: 256KB
 
 ### 11. HTTP Security Headers (v0.2.1)
 
-**Pattern**: Defence-in-depth headers on every HTTP response.
+**Pattern**: Production-grade security headers on all HTTP responses from the Node.js server
 
-**Headers**:
-- `X-Content-Type-Options: nosniff` (all responses including static files)
-- `X-Frame-Options: DENY`
-- `Referrer-Policy: strict-origin-when-cross-origin`
-- CORS: `ALLOWED_ORIGINS` env var (comma-separated allowlist; empty = allow all)
+- X-Content-Type-Options: nosniff
+- X-Frame-Options: DENY (prevent clickjacking)
+- Referrer-Policy: strict-origin-when-cross-origin
 
 ### 12. Role-Based Access Control (v0.2.1)
 
-**Pattern**: Server-side enforcement of role permissions for privileged operations.
+**Pattern**: Server-enforced permissions based on JWT role claims
 
-**Roles**: `host`, `ops`, `guest` (validated server-side)
-
-**Permissions**:
-- `start-stream`: host/ops only
-- `request-invite`: host/ops only
-- Producer mute on others: host/ops only
-- Self-mute: any role
-- Joining without invite token: forced to `guest` role
+- **Host**: Full control — create rooms, manage participants
+- **Ops**: Limited admin — mute guests, view room state
+- **Guest**: Basic participation — send/receive audio
 
 ### 13. ICE Credential Protection (v0.2.1)
 
-**Pattern**: TURN credentials delivered via authenticated WebSocket, not public API.
+**Pattern**: STUN/TURN credentials delivered only through authenticated WebSocket, never exposed via public API
 
-**Implementation**:
-- `/api/station` returns station info without ICE credentials
-- ICE config (including TURN username/credential) included in `room-created`/`room-joined` WebSocket messages
-- Client `RTCManager.setIceServers()` applies config from signaling response
-- Fallback: `initialize()` fetches from API if signaling didn't provide ICE (STUN-only)
+**Before (v0.2)**: `/api/station` returned ICE config publicly
+**After (v0.2.1)**: WebSocket handshake with room token → ICE config in response
 
 ### 14. Signal Design System — CSS-Driven Broadcast State (v0.3-dev)
 
-**Pattern**: Single `body.broadcasting` CSS class drives all ON AIR visual state changes.
+**Pattern**: Use `body.broadcasting` CSS class as the single source of truth for all visual broadcast state changes
 
 **Rationale**:
-- One class toggle cascades to header, wordmark, cards, vignette, signal bar
+- One class toggle cascades to all elements (header border, wordmark color, card accents)
 - CSS handles transitions/animations — JS only adds/removes the class
-- Decouples visual state from application logic
-
-**Implementation**:
-- `main.js:handleStartSession()` → `document.body.classList.add('broadcasting')`
-- `main.js:handleEndSession()` → `document.body.classList.remove('broadcasting')`
-- `studio.css`: `body.broadcasting` selectors for all ON AIR effects
-- `body.broadcasting::before` → 2px red signal line at top of viewport
 
 ### 15. Segmented LED Meters with Speaking Detection (v0.3-dev)
 
-**Pattern**: VolumeMeter class supports multiple visualization modes and callbacks.
+**Pattern**: Hardware-style segmented LED meters that glow when audio is present, with ghost segments for visual realism
 
 **Implementation**:
-```
-VolumeMeter(canvas, analyser, { mode: 'meter'|'waveform', onSpeaking: callback })
-```
-- `meter` mode: Segmented LED bar (32 or 16 segments based on width)
-- `waveform` mode: Real-time oscilloscope with glow effect
-- `onSpeaking` callback drives `.speaking` class on participant cards
-- Amber → red color ramp (not green/yellow/red traffic light)
-- Ghost segments at 3% opacity, peak hold with 1.5s decay
-- HiDPI setup deferred to `start()` (not constructor) — CSS layout must be stable before reading `getBoundingClientRect()`
+- Canvas-based rendering at native resolution (HiDPI aware)
+- Ghost segments render at reduced opacity for "off" state feel
+- Speaking detection via `VolumeMeter` callback triggers card glow animations
 
 ### 15a. Local Mic in Program Bus (v0.3-dev)
 
-**Pattern**: Host's local microphone is routed into the program bus so Signal Output reflects the complete broadcast mix.
+**Pattern**: Host's local microphone is routed into the program bus so Signal Output reflects the complete broadcast mix
 
 **Implementation**:
 - `createLocalMeter()` connects: `source → analyser → compressor → programBus`
 - Compressor settings match remote participant chain for consistent levels
-- Program bus already connects to `audioContext.destination`, so no separate Safari workaround needed
-- `_localAudioNodes` stored for cleanup on session end
 
 ### 16. Collapsible Deck Panels (v0.3-dev)
 
 **Pattern**: Recording and streaming details in collapsible panels, primary controls in transport bar.
 
+### 17. File Upload + Audio Cleaning Pipeline (Power Move — ~2026-05)
+
+**Pattern**: Post-production audio pipeline for cleaning and transcribing recordings.
+
+**Flow**: Recording upload → Transcription + Cleaning → Export (Raw or Clean)
+
 **Implementation**:
-- `.deck-panel` with `.deck-header` (click to toggle) and `.deck-body`
-- `.collapsed` class hides body via `max-height: 0`
-- Primary actions (Record, Stream buttons) remain in transport bar
-- Deck panels show details: timer, download list, bitrate selector, stream URL
-- Start collapsed; auto-expand on recording start
+- `POST /api/upload` — Binary-safe multipart file upload (Buffer parsing)
+- `whisper.cpp` submodule — On-device speech-to-text, no cloud dependency
+- Audio cleaning pipeline (`audio-cleaner.js`):
+  - Noise reduction pass
+  - Loudness normalization (EBU R128-style)
+  - Filler/silence detection (`filler-detector.js`) for splice points
+- ffmpeg integration for audio processing and output encoding (WAV)
+- Clean/Raw export modes: raw = original upload, clean = processed audio
+- `GET/POST /api/export/clean` and `/api/export/raw` endpoints
+- Format conversion: WebM/OGG recording → WAV export via `audio-converter.js`
+
+**UI**: Upload section in HTML, transcript display area, Clean/Raw toggle buttons in deck
 
 ## Error Handling Patterns
 
@@ -389,10 +265,10 @@ VolumeMeter(canvas, analyser, { mode: 'meter'|'waveform', onSpeaking: callback }
 
 ### E2E Tests
 
-- Full session bring-up
-- Multi-peer scenarios
-- Mute/unmute propagation
-- Disconnection handling
+- Full session bring-up (Puppeteer/Playwright)
+- Multi-peer scenarios with room creation
+- Mute/unmute propagation across peers
+- Disconnection/reconnection handling
 
 ### Performance Tests
 
