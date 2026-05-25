@@ -1,5 +1,10 @@
 FROM node:18-alpine
 
+# ffmpeg + ffprobe are required for: audio cleaning pipeline, MP3 export,
+# transcription audio conversion. Without them the /api/export/clean,
+# /api/export/transcribe, and MP3 paths fail at runtime.
+RUN apk add --no-cache ffmpeg
+
 WORKDIR /app
 
 # Copy package files from server directory

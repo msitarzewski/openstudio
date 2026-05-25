@@ -42,6 +42,22 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=6736
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+      - LLM_MODEL=${LLM_MODEL:-}
+      - JWT_SECRET=${JWT_SECRET:-}
+      - ROOM_TTL_MS=${ROOM_TTL_MS:-0}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
+    volumes:
+      # Bind-mount source for hot-edit in dev (node --watch via npm run dev).
+      # Production deploys use the prod compose file which does not mount source.
+      - ./server:/app
+      - ./web:/web
+      - ./station-manifest.json:/station-manifest.json:ro
+      # Keep node_modules inside the container so host arch mismatches (macOS host,
+      # Linux container) don't cross-contaminate native modules.
+      - /app/node_modules
+    working_dir: /app
+    command: ["npm", "run", "dev"]
     depends_on:
       - icecast
       - coturn
