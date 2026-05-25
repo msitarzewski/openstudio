@@ -71,16 +71,68 @@ Mix-minus is a broadcast engineering standard — each participant hears everyon
 
 ## Features
 
-- **WebRTC mesh** — peer-to-peer audio, no media server
-- **Mix-minus monitoring** — broadcast-standard audio routing, in the browser
-- **Per-participant controls** — individual gain, mute, live level meters
-- **Multi-track recording** — per-voice WAV tracks + program mix for post-production
-- **On-device transcription** — Whisper.cpp speech-to-text, no cloud API
-- **Audio cleaning pipeline** — noise reduction, loudness normalization, filler/silence splice; Clean or Raw export
-- **Icecast streaming** — broadcast to unlimited listeners, no audience cap
-- **Role-based access** — host, engineer, caller with scoped permissions
-- **Zero dependencies** — vanilla JS, Web Audio API, self-hosted fonts, no framework, no build step
-- **Safari compatible** — WebSocket streaming fallback
+**Broadcast core**
+- WebRTC mesh — peer-to-peer audio, no media server, up to ~15 participants
+- Mix-minus per participant — O(N) phase-inversion, broadcast-standard monitoring with zero echo
+- Per-participant gain, mute, and segmented LED level meters with waveform oscilloscope
+- Microphone input selector — enumerates all OS audio devices
+- Icecast streaming — broadcast to unlimited listeners through your own domain
+- WebSocket streaming fallback for Safari (browsers without ReadableStream upload)
+- Listener proxy at `/stream/*` so the entire app runs on a single port
+
+**Recording & post-production**
+- Multi-track recording — per-voice WAV/WebM + program mix, all captured client-side
+- Single-zip bundle download for the whole session
+- Audio cleaning pipeline — silence detection, filler-word splice, two-pass loudness normalization to −16 LUFS
+- Raw or Clean export with WAV / WebM / MP3 (podcast-ready) output
+
+**Optional AI tooling** (runs entirely on your hardware — see setup below)
+- On-device transcription via whisper.cpp — no cloud API, no third party
+- LLM-generated show notes — episode title, summary, timestamped segment markers
+- Markdown export — copy to clipboard or download as `.md`
+
+**Security & ops**
+- JWT room tokens (24 h) and scoped invite tokens (4 h)
+- Role-based access — host, ops, guest (caller) with producer-authoritative mute
+- 256 KB WebSocket message cap, per-IP connection limit, sliding-window rate limits
+- CORS allowlist (open by default for dev), hardened security headers, sanitized listener proxy
+- Self-hosted variable fonts (Inter, JetBrains Mono, Space Grotesk) — no Google Fonts CDN dependency
+
+**Zero dependencies in the browser** — vanilla JavaScript, Web Audio API, no framework, no build step. The entire client is under 50 KB.
+
+## Optional AI Tooling
+
+OpenStudio includes a complete post-production pipeline that runs entirely on your hardware — no cloud API, no third-party calls, no data leaving your machine. It's **optional**: broadcasting, recording, and per-track downloads work without any of this.
+
+### Prerequisites
+- `ffmpeg` and `ffprobe` on your `PATH` (most package managers ship both: `brew install ffmpeg`, `apt install ffmpeg`)
+- ~1.5 GB free disk space for the default Whisper model
+
+### whisper.cpp setup (one-time)
+
+```bash
+git clone https://github.com/ggerganov/whisper.cpp
+cd whisper.cpp && make -j$(nproc)
+cd .. && mkdir -p models
+wget -O models/ggml-medium.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin
+```
+
+You can swap the model — `ggml-tiny.bin` (~75 MB) is faster but less accurate; `ggml-large.bin` is the other direction. The server looks for `models/ggml-medium.bin` by default.
+
+### LLM setup (for show notes)
+
+Show notes call any **OpenAI-compatible** chat completions API — LM Studio, Ollama with the OpenAI shim, vLLM, llama.cpp server, etc. Configure via env vars in `.env`:
+
+```bash
+LLM_BASE_URL=http://localhost:1234/v1   # default — matches LM Studio
+LLM_MODEL=qwen3.5-35b                    # any chat model your server exposes
+```
+
+If the LLM is unreachable, show notes still generate — they just fall back to a transcript-derived title and summary instead of an LLM-authored one. Transcription itself does not depend on the LLM.
+
+### What happens without AI setup
+
+The "Transcribe Recording" button surfaces a clear error if `whisper.cpp` isn't built. Every other feature — live broadcast, recording, per-track download, zip bundle, Icecast streaming — works without any AI setup.
 
 ## Try It
 
@@ -105,7 +157,8 @@ For detailed architecture documentation, see [docs/ARCHITECTURE-IMPLEMENTATION.m
 - [x] **0.2** — Single-server deploy, multi-track recording, live demo
 - [x] **0.2.1** — Security hardening: JWT room tokens, rate limiting, CORS, RBAC
 - [x] **0.3** — Power Move: Whisper.cpp transcription, audio cleaning pipeline, Clean/Raw export, self-hosted fonts
-- [ ] **0.4** — DHT station discovery, Nostr NIP-53 integration, Ed25519 station identities
+- [x] **0.3.1** — MP3 export fix, single-zip bundle download, configurable LLM endpoint
+- [ ] **0.4** — Invite-link UI, DHT station discovery, Nostr NIP-53 integration, Ed25519 station identities
 - [ ] **0.5** — SFU for larger rooms (25+ participants), soundboard, text chat
 
 ## Development
@@ -123,6 +176,15 @@ npm start
 ```
 
 See [docs/vision.md](docs/vision.md) for the full project vision and philosophy.
+
+## Known Gaps
+
+Honest about what's there and what isn't:
+
+- **Invite-link UI** — the server can mint scoped invite tokens (host / ops / guest, 4 h TTL), but the host UI doesn't expose a button yet. For now, hosts share the room URL manually. Coming in 0.4.
+- **AI pipeline setup is manual** — the whisper.cpp build, model download, and LLM configuration aren't scripted. A `setup-ai.sh` would be a great PR.
+- **whisper.cpp gitlink** — the repo references whisper.cpp as a gitlink without a `.gitmodules` entry. Use the manual `git clone` in the AI setup section above; `git submodule update` will fail.
+- **Mesh scale ceiling** — WebRTC mesh tops out around 15 participants. Larger rooms need an SFU (planned for 0.5).
 
 ## Contributing
 

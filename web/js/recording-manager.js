@@ -232,6 +232,46 @@ export class RecordingManager extends EventTarget {
   }
 
   /**
+   * Bundle all tracks server-side into a single zip and download it.
+   * Falls back to per-track download on any failure.
+   * @param {{ program: Blob|null, tracks: Map<string, Blob> }} recordings
+   * @param {Map<string, string>} peerNames - peerId -> display name
+   */
+  async bundleAndDownload(recordings, peerNames) {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const ext = this.getFileExtension();
+    const formData = new FormData();
+
+    try {
+      if (recordings.program) {
+        formData.append('audio', recordings.program, `openstudio-mix-${timestamp}.${ext}`);
+      }
+
+      for (const [peerId, blob] of recordings.tracks) {
+        const name = peerNames?.get(peerId) || peerId.substring(0, 8);
+        const safeName = name.replace(/[^a-zA-Z0-9-_]/g, '_');
+        formData.append('audio', blob, `openstudio-${safeName}-${timestamp}.${ext}`);
+      }
+
+      const response = await fetch('/api/export/zip', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        throw new Error(`Bundle failed (${response.status}): ${errText}`);
+      }
+
+      const zipBlob = await response.blob();
+      this.downloadTrack(zipBlob, `openstudio-bundle-${timestamp}.zip`);
+    } catch (err) {
+      console.warn('bundleAndDownload failed, falling back to per-track downloads:', err);
+      this.downloadAll(recordings, peerNames);
+    }
+  }
+
+  /**
    * Get the best supported MIME type for recording
    */
   getSupportedMimeType() {

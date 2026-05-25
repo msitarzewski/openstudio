@@ -24,7 +24,7 @@ import * as logger from './logger.js';
 /**
  * Run a command and return stdout as string.
  */
-function run(cmd, args = [], opts = {}) {
+export function run(cmd, args = [], opts = {}) {
   return new Promise((resolve, reject) => {
     const proc = spawn(cmd, args, {
       stdio: ['pipe', 'pipe', 'pipe'],

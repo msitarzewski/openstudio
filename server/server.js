@@ -14,7 +14,7 @@ import { serveStatic } from './lib/static-server.js';
 import { proxyIcecastListener } from './lib/icecast-listener-proxy.js';
 import { transcribeBuffer, transcribe } from './lib/whisper-transcriber.js';
 import { isSupportedAudio, getDuration } from './lib/audio-converter.js';
-import { cleanAudio } from './lib/audio-cleaner.js';
+import { cleanAudio, run } from './lib/audio-cleaner.js';
 import { generateShowNotes } from './lib/show-notes-generator.js';
 
 // Dynamic import for archiver (only used in zip endpoint)
@@ -149,15 +149,16 @@ async function handleExportClean(req, res) {
       if (!isNaN(contentLength) && contentLength > 0) {
         contentEnd = contentStart + contentLength;
       } else {
-        // Fallback: find next boundary marker
+        // Fallback: find the next part boundary OR the final end-of-message boundary,
+        // whichever comes first. Trim trailing CRLF that precedes the boundary marker.
         const nextBoundary = body.indexOf(boundaryPrefix, contentStart);
-        if (nextBoundary === -1) {
-          contentEnd = body.length;
-        } else {
-          contentEnd = nextBoundary;
+        const endBoundary = body.indexOf(boundaryEnd, contentStart);
+        const candidates = [nextBoundary, endBoundary].filter(i => i !== -1);
+        contentEnd = candidates.length > 0 ? Math.min(...candidates) : body.length;
+        if (contentEnd >= 2 && body[contentEnd - 2] === 0x0d && body[contentEnd - 1] === 0x0a) {
+          contentEnd -= 2;
         }
       }
-      logger.info(`  Part offset=${contentStart} contentEnd=${contentEnd} contentLen=${contentEnd - contentStart}`);
 
       const content = body.slice(contentStart, contentEnd);
       parts.push({ headers, content });
@@ -504,6 +505,166 @@ async function handleShowNotes(req, res) {
       logger.error('Show notes error:', error.message);
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: `Show notes generation failed: ${error.message}` }));
+    }
+  });
+
+  req.on('error', (error) => {
+    logger.error('Request error:', error.message);
+    if (!res.headersSent) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: error.message }));
+    }
+  });
+}
+
+async function handleExportZip(req, res) {
+  const ct = req.headers['content-type'] || '';
+  if (!ct.startsWith('multipart/form-data')) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Content-Type must be multipart/form-data' }));
+    return;
+  }
+
+  const boundaryMatch = ct.match(/boundary=(?:"([^"]+)"|'([^']+)'|([^;,\s]+))/i);
+  const boundary = boundaryMatch ? (boundaryMatch[1] || boundaryMatch[2] || boundaryMatch[3]) : null;
+  if (!boundary) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Could not parse multipart boundary' }));
+    return;
+  }
+
+  const boundaryPrefix = Buffer.from(`--${boundary}\r\n`);
+  const boundaryEnd = Buffer.from(`--${boundary}--\r\n`);
+
+  const chunks = [];
+  let contentLength = 0;
+  let aborted = false;
+
+  req.on('data', chunk => {
+    if (aborted) return;
+    contentLength += chunk.length;
+    if (contentLength > 500 * 1024 * 1024) {
+      aborted = true;
+      req.destroy(new Error('File too large (max 500MB)'));
+      res.writeHead(413, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'File too large' }));
+      return;
+    }
+    chunks.push(chunk);
+  });
+
+  req.on('end', async () => {
+    if (aborted) return;
+    try {
+      const body = Buffer.concat(chunks);
+      const parts = [];
+
+      let offset = 0;
+      while (offset < body.length) {
+        const idx = body.indexOf(boundaryPrefix, offset);
+        if (idx === -1) break;
+
+        let headerStart = idx + boundaryPrefix.length;
+
+        const doubleCRLF = Buffer.from('\r\n\r\n');
+        const headerEnd = body.indexOf(doubleCRLF, headerStart);
+        if (headerEnd === -1) break;
+        const headerBlock = body.slice(headerStart, headerEnd).toString('utf8');
+        const headers = {};
+        for (const line of headerBlock.split('\n')) {
+          const colonIdx = line.indexOf(':');
+          if (colonIdx > 0) {
+            const key = line.slice(0, colonIdx).trim().toLowerCase();
+            const val = line.slice(colonIdx + 1).trim();
+            headers[key] = val;
+          }
+        }
+
+        let contentStart = headerEnd + doubleCRLF.length;
+        let contentEnd;
+
+        const partContentLength = parseInt(headers['content-length'], 10);
+        if (!isNaN(partContentLength) && partContentLength > 0) {
+          contentEnd = contentStart + partContentLength;
+        } else {
+          const nextBoundary = body.indexOf(boundaryPrefix, contentStart);
+          if (nextBoundary === -1) {
+            const finalBoundary = body.indexOf(boundaryEnd, contentStart);
+            contentEnd = finalBoundary === -1 ? body.length : finalBoundary;
+            // Trim trailing CRLF before boundary marker
+            if (contentEnd >= 2 && body[contentEnd - 2] === 0x0d && body[contentEnd - 1] === 0x0a) {
+              contentEnd -= 2;
+            }
+          } else {
+            contentEnd = nextBoundary;
+            if (contentEnd >= 2 && body[contentEnd - 2] === 0x0d && body[contentEnd - 1] === 0x0a) {
+              contentEnd -= 2;
+            }
+          }
+        }
+
+        const content = body.slice(contentStart, contentEnd);
+        parts.push({ headers, content });
+
+        const remaining = body.slice(contentEnd);
+        if (remaining.length >= boundaryEnd.length &&
+            remaining.toString('utf8').startsWith('--' + boundary + '--')) {
+          break;
+        }
+
+        offset = contentEnd;
+      }
+
+      const audioParts = parts.filter(p => p.headers['content-type']?.startsWith('audio/'));
+
+      if (audioParts.length === 0) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'No audio files provided' }));
+        return;
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      res.writeHead(200, {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': `attachment; filename="openstudio-tracks-${timestamp}.zip"`,
+      });
+
+      const archive = archiver('zip', { zlib: { level: 6 } });
+
+      archive.on('error', (err) => {
+        logger.error('Archive error:', err.message);
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        } else {
+          res.destroy(err);
+        }
+      });
+
+      archive.pipe(res);
+
+      audioParts.forEach((part, i) => {
+        let name = null;
+        const disposition = part.headers['content-disposition'];
+        if (disposition) {
+          const fnMatch = disposition.match(/filename="([^"]+)"/i) || disposition.match(/filename=([^;]+)/i);
+          if (fnMatch) name = fnMatch[1].trim();
+        }
+        if (!name) {
+          const mime = part.headers['content-type'] || 'audio/wav';
+          const ext = mime.split('/')[1]?.split(';')[0]?.trim() || 'wav';
+          name = `track-${i + 1}.${ext}`;
+        }
+        archive.append(part.content, { name });
+      });
+
+      archive.finalize();
+    } catch (err) {
+      logger.error('Export zip failed:', err.message);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
     }
   });
 

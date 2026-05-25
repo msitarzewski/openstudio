@@ -28,3 +28,14 @@
 - Verified in Chrome via DevTools MCP: zero external font requests, all three families load locally
 - Files: `package.json`, `web/fonts/*.woff2` (new), `web/css/studio.css`, `web/index.html`, `server/lib/static-server.js`
 - See: [250526_v030_release.md](./250526_v030_release.md)
+
+### 2026-05-25: v0.3.1 — MP3 Fix, Zip Bundle, Configurable LLM, README Rewrite
+- Unbroke MP3 export: imported missing `run()` from `audio-cleaner.js` into `server.js`; also fixed a pre-existing multipart parser bug where the last form field (no per-part `Content-Length`) pulled in the trailing boundary marker and silently failed format detection — so MP3 selection had never actually produced an MP3 even before this work
+- Added `POST /api/export/zip`: streams all uploaded tracks back as a single archive via `archiver`; mirrors the `handleExportClean` parser pattern, 500 MB cap, preserves filenames
+- Wired the studio UI "Download All" button to the new zip endpoint with graceful fallback to per-track downloads on failure
+- LLM endpoint is now `LLM_BASE_URL` / `LLM_MODEL` env-driven (default `http://localhost:1234/v1`, `qwen3.5-35b`); removed hardcoded private dev IP from `show-notes-generator.js`
+- README features list, AI setup section, Roadmap, and Known Gaps rewritten to match what the code actually ships
+- Podcast Tasks 2 and 3 now actually complete end-to-end (previously claimed in v0.3.0 notes but broken at runtime)
+- Files: `server/server.js`, `server/lib/audio-cleaner.js`, `server/lib/show-notes-generator.js`, `.env.example`, `web/js/recording-manager.js`, `web/js/main.js`, `package.json`, `README.md`
+- Smoke-tested on host node process: /health, /api/export/zip (1/2/0 tracks), /api/export/clean WAV default, /api/export/clean MP3 with full cleaning pipeline
+- See: [260525_v031_fixes.md](./260525_v031_fixes.md)

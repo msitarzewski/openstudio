@@ -8,11 +8,14 @@
 **WebSocket Library**: `ws` (minimal, well-tested)
 **Authentication**: JWT tokens, `jsonwebtoken` library
 **Crypto**: `@noble/ed25519` for keypairs (zero-dependency, audited)
+**Archive**: `archiver` (zip bundle generation for `/api/export/zip`, added in v0.3.1)
 
 **Constraints**:
 - Keep dependencies minimal (security surface)
 - Avoid frameworks (Express, etc.) initially
 - Pure WebSocket, no Socket.io (too heavy)
+
+**Note**: a fresh clone requires `cd server && npm install` before the signaling server can boot. The `archiver` dep was added in v0.3.1 and is not satisfied by older `node_modules` snapshots.
 
 ### Web Studio Client
 
@@ -31,15 +34,17 @@
 - Firefox (secondary)
 - Safari (known WebRTC quirks, test carefully)
 
-### Post-Production Tools (Power Move — Added ~2026-05)
+### Post-Production Tools (Power Move — Added ~2026-05, hardened in v0.3.1)
 
-**Whisper.cpp**: Git submodule for on-device speech transcription (no cloud API, privacy-preserving)
-**ffmpeg**: Audio processing — noise reduction, loudness normalization, silence/filler splice detection
-**Audio Pipeline**: Upload → Transcribe → Clean → Export (WAV)
-- `server/lib/whisper-transcriber.js` — Whisper.cpp integration
-- `server/lib/audio-cleaner.js` — Cleaning pipeline (noise reduction, loudness normalization)
-- `server/lib/filler-detector.js` — Silence/fill-word detection for splice points
-- `server/lib/audio-converter.js` — Format conversion (WebM/OGG → WAV via ffmpeg)
+**Whisper.cpp**: Git gitlink for on-device speech transcription (no cloud API, privacy-preserving). Manual clone + build — the gitlink does not have a corresponding `.gitmodules` entry, so `git submodule update` will not work. See README's Optional AI Tooling section for setup.
+**ffmpeg + ffprobe**: Audio processing — silence detection, loudness normalization, silence/filler splice, optional MP3 transcode (`libmp3lame -qscale:a 2`). Required on `$PATH` for transcription, cleaning, and MP3 export.
+**LLM** (optional, for show notes): any OpenAI-compatible chat completions API — LM Studio, Ollama with the OpenAI shim, vLLM, llama.cpp server. Configured via `LLM_BASE_URL` and `LLM_MODEL` env vars (defaults: `http://localhost:1234/v1`, `qwen3.5-35b`). Graceful fallback to transcript-derived title/summary if unreachable.
+**Audio Pipeline**: Upload → Transcribe → Clean → Export (WAV / WebM / MP3)
+- `server/lib/whisper-transcriber.js` — Whisper.cpp integration (model auto-downloads on first transcribe, ~1.5 GB for `ggml-medium.bin`)
+- `server/lib/audio-cleaner.js` — Cleaning pipeline (silencedetect → silenceremove → filler splice → concat → two-pass loudnorm to -16 LUFS); `run()` is exported so other modules can share its spawn helper
+- `server/lib/filler-detector.js` — Silence/fill-word detection for splice points (~25 English fillers, word-boundary regex)
+- `server/lib/audio-converter.js` — Format detection + duration probe via ffprobe
+- `server/lib/show-notes-generator.js` — Episode title + summary generation via env-driven LLM; falls back to first-words / first-300-chars of transcript when LLM unavailable
 
 ### Media Infrastructure
 

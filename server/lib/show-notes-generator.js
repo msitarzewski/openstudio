@@ -12,6 +12,9 @@ import { promisify } from 'util';
 
 const exec = promisify(cbExec);
 
+const LLM_BASE_URL = (process.env.LLM_BASE_URL || 'http://localhost:1234/v1').replace(/\/$/, '');
+const LLM_MODEL = process.env.LLM_MODEL || 'qwen3.5-35b';
+
 /**
  * Call local LM Studio (Qwen 35B) to generate title + summary from transcript.
  * Returns { title, summary }.
@@ -32,11 +35,11 @@ Respond in this exact JSON format with no extra text:
 }`;
 
   try {
-    const resp = await fetch('http://10.211.55.2:1234/v1/chat/completions', {
+    const resp = await fetch(`${LLM_BASE_URL}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'qwen3.5-35b',
+        model: LLM_MODEL,
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 300,
         temperature: 0.7,
@@ -132,11 +135,11 @@ ${fullText}
 Respond with ONLY the summary paragraph, no title or extra text.`;
 
   try {
-    const resp = await fetch('http://10.211.55.2:1234/v1/chat/completions', {
+    const resp = await fetch(`${LLM_BASE_URL}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'qwen3.5-35b',
+        model: LLM_MODEL,
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 400,
         temperature: 0.7,

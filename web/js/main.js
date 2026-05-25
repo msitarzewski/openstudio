@@ -834,7 +834,7 @@ class OpenStudioApp {
 
     this.downloadRecordingsButton.addEventListener('click', () => {
       if (this.lastRecordings) {
-        this.recordingManager.downloadAll(this.lastRecordings, this.getParticipantNames());
+        this.recordingManager.bundleAndDownload(this.lastRecordings, this.getParticipantNames());
       }
     });
 

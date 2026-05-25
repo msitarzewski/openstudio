@@ -297,6 +297,79 @@ audioMixer.routeToReturnFeed(participantId, mixMinusBus);
 
 ---
 
+### Pattern: Binary-Aware Multipart Parser
+
+**Location**: `server/server.js:82-173` (`handleExportClean`), `server/server.js:519+` (`handleExportZip`)
+
+**Rule**: When parsing `multipart/form-data` parts that lack a per-part `Content-Length` header, **find the next regular boundary AND the end-of-message boundary, take the minimum, and trim the trailing CRLF** before the boundary marker.
+
+**Why**: Browser FormData and many HTTP clients don't emit per-part `Content-Length`. The original parser only searched for the next regular boundary (`--<boundary>`) and fell back to `body.length`. The end-of-message marker (`--<boundary>--`) is a *different* byte sequence, so the last part silently included the trailing boundary in its content. For text fields like `outputFormat=mp3`, the resulting `formatParam` was `"mp3\r\n--<boundary>--"` and never matched expected values — MP3 export silently degraded to WAV. Surfaced in the v0.3.1 audit.
+
+**Implementation**:
+```javascript
+} else {
+  const nextBoundary = body.indexOf(boundaryPrefix, contentStart);
+  const endBoundary = body.indexOf(boundaryEnd, contentStart);
+  const candidates = [nextBoundary, endBoundary].filter(i => i !== -1);
+  contentEnd = candidates.length > 0 ? Math.min(...candidates) : body.length;
+  if (contentEnd >= 2 && body[contentEnd - 2] === 0x0d && body[contentEnd - 1] === 0x0a) {
+    contentEnd -= 2;
+  }
+}
+```
+
+**Applies to**: every multipart endpoint where one or more parts may not carry per-part Content-Length, which is most of them in practice.
+
+---
+
+### Pattern: Env-Driven Optional Integration Endpoints
+
+**Location**: `server/lib/show-notes-generator.js:15-16`
+
+**Rule**: When an integration calls out to an external service whose **location is operator-specific** (LLM, transcription backend, third-party API), expose the base URL and any operator-tunable parameters (model name, API key, etc.) via env vars at the top of the module. Default to the most common OSS setup so it "just works" out of the box.
+
+**Why**: Hardcoding an integration URL (especially a private or NAT-routed IP) makes the feature broken-by-default for anyone else. Surfaced in the v0.3.1 audit — show-notes had a private dev-machine IP baked into the fetch URL, unreachable from any other host.
+
+**Implementation**:
+```javascript
+const LLM_BASE_URL = (process.env.LLM_BASE_URL || 'http://localhost:1234/v1').replace(/\/$/, '');
+const LLM_MODEL = process.env.LLM_MODEL || 'qwen3.5-35b';
+
+// then in call sites:
+const resp = await fetch(`${LLM_BASE_URL}/chat/completions`, {
+  body: JSON.stringify({ model: LLM_MODEL, ... }),
+});
+```
+
+**Companion rule**: Document every new env var in `.env.example` with a short comment explaining what it does and what the default does. Don't introduce env vars that can't be discovered from the env example file.
+
+---
+
+### Pattern: Frontend Fallback on Optional Server Endpoints
+
+**Location**: `web/js/recording-manager.js:240` (`bundleAndDownload`)
+
+**Rule**: When introducing a new server endpoint that enhances an existing client-side feature (single zip vs. N downloads, server-cleaned audio vs. raw blob), wrap the new flow in `try/catch` and call the existing fallback path on any failure — network error, non-2xx response, or server unreachable. The user never loses access to their data because of an optional enhancement.
+
+**Why**: New endpoints can have transient bugs, infrastructure can be misconfigured, the operator may not have rebuilt their image. The fallback keeps the feature usable while the operator diagnoses.
+
+**Implementation**:
+```javascript
+async bundleAndDownload(recordings, peerNames) {
+  try {
+    const response = await fetch('/api/export/zip', { method: 'POST', body: formData });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const zipBlob = await response.blob();
+    this.downloadTrack(zipBlob, `openstudio-bundle-${timestamp}.zip`);
+  } catch (err) {
+    console.warn('bundleAndDownload failed, falling back to per-track downloads:', err);
+    this.downloadAll(recordings, peerNames);
+  }
+}
+```
+
+---
+
 ## Anti-Patterns (Avoid These)
 
 ### ❌ Defensive Programming

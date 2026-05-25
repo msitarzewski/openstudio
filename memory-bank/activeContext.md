@@ -1,15 +1,25 @@
 # Active Context: OpenStudio
 
-**Last Updated**: 2026-05-25 (v0.3.0 cut — fonts self-hosted, header status restored)
+**Last Updated**: 2026-05-25 (v0.3.1 cut — MP3 + zip fixes, configurable LLM, README rewrite)
 
 ## Current Phase
 
-**Release**: 0.3.0 (cut today) + Podcast Production pipeline in progress
+**Release**: 0.3.1 (committed today) — closes the truth-claims gap from v0.3.0
 **Branch**: `main`
-**Status**: v0.3.0 release-blockers closed (version bump, font self-hosting, header status fix). Podcast production Tasks 1-2 complete, Task 3 (zip bundle) still in progress on the other machine.
-**Focus**: Commit + push v0.3.0, deploy to openstudio.zerologic.com, then resume Task 3
+**Status**: v0.3.0 + v0.3.1 both shipped. Podcast Production Tasks 1, 2, and 3 are now actually complete end-to-end (Tasks 2 and 3 were claimed in the v0.3.0 release notes but were broken at runtime until today). README is now the canonical landing page and accurately reflects the implemented feature set. Optional AI tooling (whisper.cpp + LLM) is documented honestly with full setup requirements.
+**Focus**: Deploy v0.3.1 to openstudio.zerologic.com, then resume podcast Tasks 4-8 (click-to-cut on transcript, per-segment recording, ID3 tag export, chapter markers, multi-track to final export)
 
 ## Recent Updates (2026-05-25)
+
+### v0.3.1 Release ✅
+- **MP3 export unbroken** — `run()` exported from `audio-cleaner.js` and imported into `server.js`; also fixed a pre-existing multipart parser bug where the last form field with no per-part `Content-Length` pulled in the trailing boundary marker, causing `outputFormat=mp3` to silently fall back to WAV
+- **`POST /api/export/zip` added** — streams all tracks back as a single archive via `archiver`; 500 MB cap, filename preservation, mirrors `handleExportClean` parser
+- **"Download All" wired to zip endpoint** — `bundleAndDownload()` in `recording-manager.js`; falls back to per-track downloads on any failure so users always get their files
+- **LLM endpoint env-driven** — `LLM_BASE_URL` / `LLM_MODEL` in `show-notes-generator.js`, default `http://localhost:1234/v1` / `qwen3.5-35b`; removed hardcoded private dev IP that was unreachable for anyone else
+- **README rewritten** — Features grouped (Broadcast core / Recording & post-production / Optional AI tooling / Security & ops); new "Optional AI Tooling" section with whisper.cpp + LLM setup; new "Known Gaps" section; Roadmap updated (0.3.1 done, 0.4 adds invite-link UI)
+- **Version**: 0.3.0 → 0.3.1
+- Smoke-tested on host node process; all paths verified
+- See `tasks/2026-05/260525_v031_fixes.md`
 
 ### v0.3.0 Release Cut ✅
 - `package.json` 0.2.0 → 0.3.0
@@ -119,18 +129,25 @@ Client (browser) ──────────────── Node.js Server
 ## Blockers & Risks
 
 ### Current
-- v0.3.0 changes uncommitted on `main` until this commit lands — then needs deploy
-- `openstudio.zerologic.com` deployment needs refresh (Power Move + v0.3.0 + podcast Tasks 1-2 not yet live)
+- `openstudio.zerologic.com` deployment needs refresh (Power Move + v0.3.0 + v0.3.1 not yet live)
 - TURN credentials in station-manifest need real values for production
-- Podcast Task 3 (zip bundle): archiver imported in server.js, endpoint + frontend wiring still pending
+- whisper.cpp clone + model download are still manual (not scripted); flagged in README's Known Gaps
+- Invite-link UI is still missing — server supports the flow, no button in the studio chrome (planned for 0.4)
 
 ### Resolved 2026-05-25
-- ✅ Google Fonts CDN dependency removed
-- ✅ Status pill back in header right corner
-- ✅ package.json bumped to 0.3.0
+- ✅ Google Fonts CDN dependency removed (v0.3.0)
+- ✅ Status pill back in header right corner (v0.3.0)
+- ✅ package.json bumped to 0.3.0 then 0.3.1
+- ✅ MP3 export actually produces an MP3 (v0.3.1)
+- ✅ `/api/export/zip` endpoint exists and works (v0.3.1)
+- ✅ "Download All" returns a single bundle (v0.3.1)
+- ✅ LLM endpoint is configurable via env vars, defaults to LM Studio's standard port (v0.3.1)
+- ✅ README reflects the actual shipped feature set, with honest AI-tooling setup docs (v0.3.1)
 
 ### Technical Notes
 - Self-hosted fonts are variable woff2 (latin subset); non-Latin glyphs fall back to system fonts
 - `prefers-reduced-motion` disables all animations but visual design still works
-- LM Studio at `http://10.211.55.2:1234/v1` required for show-notes LLM generation (fallback exists)
-- whisper.cpp is a gitlink without `.gitmodules` config — submodule update commands will fail; clone of the whisper.cpp tree must be set up manually
+- LLM endpoint via `LLM_BASE_URL` / `LLM_MODEL` env vars; default `http://localhost:1234/v1` (LM Studio's standard port). Operators running their LLM on a non-default host/port override via `.env`. If the LLM is unreachable, show-notes falls back to a transcript-derived title and summary.
+- whisper.cpp is a gitlink without `.gitmodules` config — submodule update commands will fail; clone of the whisper.cpp tree must be set up manually (instructions now in README's Optional AI Tooling section)
+- `archiver` is declared in `server/package.json` but a fresh clone needs `cd server && npm install` before the signaling server can boot (otherwise: `Cannot find package 'archiver'`)
+- Multipart parser pattern: when no per-part `Content-Length` is present, take `Math.min(nextRegularBoundary, endBoundary)` and trim trailing CRLF; the original `handleExportClean` lacked the end-boundary check, which silently broke MP3 export detection
