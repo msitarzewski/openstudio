@@ -46,28 +46,53 @@ One command. One process. One port.
 
 ## How It Works
 
-```
-┌─────────┐    WebRTC Mesh    ┌─────────┐
-│  Host   │◄────────────────►│ Caller  │
-└────┬────┘                   └────┬────┘
-     │          ┌─────────┐        │
-     └──────────│Signaling│────────┘
-                │ Server  │
-                └────┬────┘
-                     │
-              ┌──────┴──────┐
-              │ Web Audio   │
-              │ Mix-Minus   │
-              │ + Program   │
-              └──────┬──────┘
-                     │
-              ┌──────┴──────┐
-              │  Icecast    │
-              │  Streaming  │
-              └─────────────┘
+```mermaid
+flowchart TB
+    subgraph Browsers["Browsers — peer-to-peer over WebRTC mesh"]
+        direction LR
+        B1["🎙️ Host"]
+        B2["🎙️ Caller"]
+        B3["🎙️ Caller"]
+        B1 <--> B2
+        B2 <--> B3
+        B1 <--> B3
+    end
+
+    subgraph Studio["Inside each browser"]
+        WebAudio["Web Audio Graph<br/>Mix-Minus + Program Bus"]
+        Rec["MediaRecorder<br/>per-track + program mix"]
+        UI["Capability-gated UI<br/>modal explains missing prereqs"]
+    end
+
+    subgraph Signaling["Signaling Server (Node, ~6736)"]
+        WS["WebSocket<br/>JWT rooms · RBAC · rate limits"]
+        Static["Static files + listener proxy"]
+        Caps["/api/capabilities"]
+        Export["/api/export/<br/>clean · zip · transcribe · show-notes"]
+    end
+
+    subgraph AI["Optional AI Tooling — capability-gated"]
+        FF["ffmpeg<br/>silencedetect · loudnorm · MP3"]
+        Whisper["whisper.cpp<br/>on-device transcription"]
+        LLM["OpenAI-compatible LLM<br/>LM Studio · Ollama · OpenAI · Groq"]
+    end
+
+    Icecast[("Icecast<br/>broadcast to listeners")]
+
+    Browsers <-->|signaling| WS
+    Browsers --> WebAudio
+    WebAudio --> Rec
+    UI -.reads.-> Caps
+    Rec -->|upload| Export
+    Export --> FF
+    Export --> Whisper
+    Export --> LLM
+    WebAudio -->|live source| Icecast
+    Static -->|/stream/*| Icecast
+    Icecast --> Listeners[["📻 Listeners<br/>(unlimited, anywhere)"]]
 ```
 
-Mix-minus is a broadcast engineering standard — each participant hears everyone except themselves. No echo, no feedback. Professional studios have done this with hardware for decades. OpenStudio does it in the browser with the Web Audio API.
+Mix-minus is a broadcast engineering standard — each participant hears everyone except themselves. No echo, no feedback. Professional studios have done this with hardware for decades. OpenStudio does it in the browser with the Web Audio API. Everything outside the green AI box is required; the AI tooling is optional and the UI tells you exactly what's missing if you click a gated feature.
 
 ## Features
 
@@ -83,13 +108,14 @@ Mix-minus is a broadcast engineering standard — each participant hears everyon
 **Recording & post-production**
 - Multi-track recording — per-voice WAV/WebM + program mix, all captured client-side
 - Single-zip bundle download for the whole session
-- Audio cleaning pipeline — silence detection, filler-word splice, two-pass loudness normalization to −16 LUFS
-- Raw or Clean export with WAV / WebM / MP3 (podcast-ready) output
+- Audio cleaning pipeline — silence detection, filler-word splice, two-pass loudness normalization to −16 LUFS *(requires ffmpeg + whisper.cpp for the splice transcript)*
+- Raw or Clean export with WAV / WebM / MP3 (podcast-ready) output *(MP3 requires ffmpeg)*
 
-**Optional AI tooling** (runs entirely on your hardware — see setup below)
-- On-device transcription via whisper.cpp — no cloud API, no third party
-- LLM-generated show notes — episode title, summary, timestamped segment markers
+**Optional AI tooling** — capability-gated, runs on your hardware, see setup below
+- On-device transcription via whisper.cpp — no cloud API, no third party *(requires whisper.cpp + Whisper model + ffmpeg)*
+- LLM-generated show notes — episode title, summary, timestamped segment markers *(requires transcription + any OpenAI-compatible LLM endpoint)*
 - Markdown export — copy to clipboard or download as `.md`
+- Gated features show as disabled with an info icon and a setup modal — never a cryptic error
 
 **Security & ops**
 - JWT room tokens (24 h) and scoped invite tokens (4 h)
