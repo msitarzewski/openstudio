@@ -18,6 +18,7 @@ echo "  3. test-gain-controls.mjs   - Per-participant gain controls"
 echo "  4. test-program-bus.mjs     - Program bus mixing"
 echo "  5. test-mix-minus.mjs       - Mix-minus calculation (3 peers)"
 echo "  6. test-return-feed.mjs     - Return feed routing (2 peers)"
+echo "  7. test-setup-ai.sh         - AI bootstrap script smoke test"
 echo ""
 echo "================================================================================"
 echo ""
@@ -32,13 +33,18 @@ run_test() {
     local test_name=$1
     local test_file=$2
     local timeout_seconds=${3:-60}
+    local runner="node"
+
+    case "$test_file" in
+        *.sh) runner="bash" ;;
+    esac
 
     echo "--- Running: $test_name ---"
     echo "File: $test_file"
     echo "Timeout: ${timeout_seconds}s"
     echo ""
 
-    if timeout ${timeout_seconds} node "$test_file"; then
+    if timeout ${timeout_seconds} "$runner" "$test_file"; then
         echo ""
         echo "✅ PASSED: $test_name"
         echo ""
@@ -64,6 +70,7 @@ run_test "Gain Controls" "tests/test-gain-controls.mjs" 60
 run_test "Program Bus Mixing" "tests/test-program-bus.mjs" 60
 run_test "Mix-Minus Calculation" "tests/test-mix-minus.mjs" 60
 run_test "Return Feed Routing" "tests/test-return-feed.mjs" 60
+run_test "AI Bootstrap Script" "tests/test-setup-ai.sh" 120
 
 # Summary
 echo "================================================================================"
@@ -76,7 +83,7 @@ for test in "${TESTS[@]}"; do
 done
 
 echo ""
-echo "Results: $PASSED passed, $FAILED failed (out of 6 total)"
+echo "Results: $PASSED passed, $FAILED failed (out of 7 total)"
 echo ""
 
 # Decision

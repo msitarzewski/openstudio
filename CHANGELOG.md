@@ -5,6 +5,12 @@ All notable changes to OpenStudio will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`setup-ai.sh`** one-shot bootstrap script for the AI pipeline. It clones and builds `whisper.cpp`, downloads the default Whisper model into `models/`, and prompts for LLM provider settings in `.env`.
+
 ## [0.3.2] - 2026-05-25
 
 ### Added

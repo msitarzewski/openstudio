@@ -7,6 +7,7 @@
     "start": "node server/server.js",
     "dev": "node --watch server/server.js",
     "test": "node server/test-signaling.js && node server/test-rooms.js",
+    "test:setup-ai": "bash tests/test-setup-ai.sh",
     "install": "cd server && npm install"
   },
   "engines": {
