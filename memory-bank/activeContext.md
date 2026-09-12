@@ -15,14 +15,21 @@ live topology and `tasks/2026-09/README.md` for the full arc.
 ## Open Issues (2026-09-12)
 
 ### Return feed can be permanently lost — OPEN, user-facing
-A renegotiation offer carrying a peer's return-feed track sometimes never
-arrives at the other peer, which then hears silence for the rest of the
-session. Two contributing bugs were fixed in PR #15 (a one-shot mix-minus
-check that gave up permanently, and a retry that waited on an edge event which
-had already fired), but the offer loss itself is unexplained. CI logs show the
-sender logging a successful offer and the receiver logging nothing at all.
-Next step: `web/js/connection-manager.js` / `rtc-manager.js` perfect
-negotiation. Details in `tasks/2026-09/260912_ci_flakiness.md`.
+One peer can end up never hearing another for the whole session. Two
+contributing bugs are fixed in PR #15 (a one-shot mix-minus check that gave up
+permanently, and a retry waiting on an edge event that had already fired).
+
+The earlier theory that the renegotiation offer was **lost in transit is
+disproven** — a Chrome DevTools session confirmed the receiver both dispatches
+the offer and enters `handleOffer`. Signalling is not the problem.
+
+Two real defects remain as suspects, neither confirmed: the polite peer's glare
+branch only *logs* a rollback it never performs (`connection-manager.js:303`),
+and `trySendPendingReturnFeed()` gates on `pc.connectionState === 'connected'`,
+which was observed stuck at `"new"` while the session was otherwise healthy.
+
+A local repro needs real microphone permission — see the task doc before
+spending time on it.
 
 ### CI is honestly red
 `ci.yml` used to run the return-feed test three times and accept any pass,

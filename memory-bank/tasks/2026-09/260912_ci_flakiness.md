@@ -44,21 +44,62 @@ connection routinely reaches `connected` *before* the mix-minus bus is ready,
 so the edge had already passed and nothing fired again — the feed stayed
 pending forever and that peer heard silence. Now polls for up to 15 s.
 
-**STILL OPEN — a renegotiation offer never arrives.** With both fixes in
-place, CI logs show both peers successfully *send* their return feed track,
-but one peer never *receives* the other's:
+**STILL OPEN — return feed never reaches one peer.** With both fixes in place,
+CI shows both peers successfully *send* their return feed track, but one peer
+never plays the other's.
+
+### Chrome DevTools session, 2026-09-12 — what was ruled OUT
+
+Reproduced two live peers against a local server via the automation browser.
+
+**DISPROVEN: "the renegotiation offer is lost in transit."** This was the
+earlier hypothesis, written up from CI logs showing the sender logging a sent
+offer and the receiver logging nothing. It is wrong. Sending a
+renegotiation-shaped offer straight down the signalling path showed the
+receiver dispatching it to the app AND entering `ConnectionManager.handleOffer`:
 
 ```
-17:23:14.18  B: return feed track added, negotiation offer sent to A
-17:23:14.18–17:23:16.69   A logs NOTHING — the offer never arrives
-17:23:16.69  A: sends its own offer; B receives it fine
-17:24:10     A: return feed count still 0 -> FAIL
+offersDispatchedToApp: [{ from: '4608cc60' }]
+handleOfferCalls:      [{ from: '4608cc60' }]
 ```
 
-Not glare — A was not making an offer when B's was sent. The offer is simply
-lost or silently dropped. **User-facing**: a participant can permanently hear
-silence. Needs a focused session on the perfect-negotiation implementation in
-`web/js/connection-manager.js` / `rtc-manager.js`.
+The signalling relay delivers renegotiation offers correctly. Whatever the CI
+logs showed, it is not a lost message. Do not spend time there again.
+
+**Also ruled out:** `createPeerConnection()` reuses an existing connection
+(`rtc-manager.js:169`), so handling a renegotiation offer does not tear down
+peer state.
+
+### Two real defects found, neither yet proven to be the cause
+
+1. **The polite peer never actually rolls back.** `connection-manager.js:303`
+   logs "We are polite, rolling back our offer" and then does nothing — there
+   is no `setLocalDescription({type: 'rollback'})`. It falls through to
+   `setRemoteDescription(offer)` and relies on the browser's *implicit*
+   rollback. Chrome and Firefox implement that, so it works today, but the log
+   claims behaviour the code does not have. Left unchanged: changing untested
+   negotiation code was judged riskier than the misleading log.
+
+2. **Gating return feeds on `pc.connectionState === 'connected'` is fragile.**
+   `trySendPendingReturnFeed()` requires it. Observed live: a peer sat at
+   `connectionState: "new"` / `iceConnectionState: "new"` while
+   `signalingState` was `"stable"`, the transceiver was `sendrecv`, and the
+   remote mic had been received. Adding a track and renegotiating needs the
+   *signalling* path, not a fully connected ICE transport, so this gate is
+   stricter than it needs to be.
+
+### Environment limitation — read before trying again
+
+A full two-peer WebRTC session could NOT be completed locally. The automation
+browser has no OS-level microphone access, so `getUserMedia` hangs. Stubbing it
+with an AudioContext stream avoids the prompt but Chrome then withholds host
+ICE candidates, so ICE never leaves `new` and no return feed is ever sent. That
+local failure is a sandbox artifact, NOT the CI bug — do not chase it.
+
+To get a real local reproduction, the browser needs genuine mic permission at
+the macOS level (System Settings → Privacy → Microphone), or a Chrome launched
+with `--use-fake-device-for-media-capture --use-fake-ui-for-media-stream`,
+which is what Playwright does in CI.
 
 ## 3. CI was masking it (FIXED)
 
