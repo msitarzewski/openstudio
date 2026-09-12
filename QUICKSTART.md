@@ -9,6 +9,8 @@ cp .env.example .env
 cd server && npm install && cd ..
 cd web && npm install && cd ..
 cp station-manifest.sample.json station-manifest.json
+# Optional: bootstrap the AI pipeline (whisper.cpp, model, LLM config)
+./setup-ai.sh
 ```
 
 ## Daily Development Workflow

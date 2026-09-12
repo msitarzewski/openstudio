@@ -132,18 +132,18 @@ OpenStudio includes a complete post-production pipeline — transcription, show 
 
 ### Prerequisites
 - `ffmpeg` and `ffprobe` on your `PATH` (most package managers ship both: `brew install ffmpeg`, `apt install ffmpeg`)
+- `cmake` on your `PATH` for the `whisper.cpp` build
 - ~1.5 GB free disk space for the default Whisper model
 
-### whisper.cpp setup (one-time)
+### One-shot AI setup
 
 ```bash
-git clone https://github.com/ggerganov/whisper.cpp
-cd whisper.cpp && make -j$(nproc)
-cd .. && mkdir -p models
-wget -O models/ggml-medium.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin
+./setup-ai.sh
 ```
 
-You can swap the model — `ggml-tiny.bin` (~75 MB) is faster but less accurate; `ggml-large.bin` is the other direction. The server looks for `models/ggml-medium.bin` by default.
+The script clones and builds `whisper.cpp`, downloads `models/ggml-medium.bin`, and prompts for your LLM provider so `.env` is ready for show notes.
+
+You can swap the model manually if you want — `ggml-tiny.bin` (~75 MB) is faster but less accurate; `ggml-large.bin` is the other direction. The server looks for `models/ggml-medium.bin` by default.
 
 ### LLM Provider Examples
 
@@ -240,8 +240,6 @@ See [docs/vision.md](docs/vision.md) for the full project vision and philosophy.
 Honest about what's there and what isn't:
 
 - **Invite-link UI** — the server can mint scoped invite tokens (host / ops / guest, 4 h TTL), but the host UI doesn't expose a button yet. For now, hosts share the room URL manually. Coming in 0.4.
-- **AI pipeline setup is manual** — the whisper.cpp build, model download, and LLM configuration aren't scripted. A `setup-ai.sh` would be a great PR.
-- **whisper.cpp gitlink** — the repo references whisper.cpp as a gitlink without a `.gitmodules` entry. Use the manual `git clone` in the AI setup section above; `git submodule update` will fail.
 - **Mesh scale ceiling** — WebRTC mesh tops out around 15 participants. Larger rooms need an SFU (planned for 0.5).
 
 ## Contributing

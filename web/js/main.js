@@ -283,8 +283,7 @@ class OpenStudioApp {
       out.push({
         name: 'whisper.cpp',
         present: whisperPresent,
-        install:
-          'git clone https://github.com/ggerganov/whisper.cpp\ncd whisper.cpp && make -j$(nproc)',
+        install: './setup-ai.sh   # clones whisper.cpp and builds whisper-cli',
       });
 
       const modelPresent = !!(caps.model && caps.model.available);
@@ -292,8 +291,7 @@ class OpenStudioApp {
       out.push({
         name: `Whisper model${sizeHint}`,
         present: modelPresent,
-        install:
-          'mkdir -p models\nwget -O models/ggml-medium.bin \\\n  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin',
+        install: './setup-ai.sh   # downloads the medium Whisper model into models/',
       });
     }
 
@@ -304,8 +302,7 @@ class OpenStudioApp {
       out.push({
         name: `LLM polish (optional) — ${caps.llm.provider || 'OpenAI-compatible'}`,
         present: llmReady,
-        install:
-          '# In .env:\nLLM_BASE_URL=http://localhost:1234/v1   # LM Studio default\nLLM_MODEL=qwen3.5-35b\n# Show notes still generate without an LLM — they just fall back\n# to a transcript-derived title and summary.',
+        install: './setup-ai.sh   # choose an LLM provider and write it into .env',
       });
     }
 

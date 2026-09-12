@@ -175,12 +175,41 @@ async function downloadModel(model = 'medium') {
  */
 async function buildWhisperCpp() {
   const whisperDir = path.join(process.cwd(), 'whisper.cpp');
+  const whisperBin = WHISPER_BIN;
+  const cmakeLists = path.join(whisperDir, 'CMakeLists.txt');
+  const makefile = path.join(whisperDir, 'Makefile');
 
-  logger.info('Cloning whisper.cpp...');
-  await execAsync(`git clone --depth 1 https://github.com/ggerganov/whisper.cpp.git ${whisperDir}`);
+  if (!fs.existsSync(whisperDir)) {
+    logger.info('Cloning whisper.cpp...');
+    await execAsync(`git clone --depth 1 --recursive https://github.com/ggerganov/whisper.cpp.git ${whisperDir}`);
+  } else if (!fs.existsSync(cmakeLists) && !fs.existsSync(makefile)) {
+    const entries = fs.readdirSync(whisperDir);
+    if (entries.length === 0) {
+      logger.warn('Found empty whisper.cpp directory, re-cloning...');
+      fs.rmSync(whisperDir, { recursive: true, force: true });
+      await execAsync(`git clone --depth 1 --recursive https://github.com/ggerganov/whisper.cpp.git ${whisperDir}`);
+    } else {
+      throw new Error('whisper.cpp checkout exists but has no supported build files');
+    }
+  }
 
-  logger.info('Building whisper.cpp...');
-  await execAsync(`cd ${whisperDir} && make -j$(nproc) 2>&1 | tail -5`);
+  if (fs.existsSync(whisperBin)) {
+    logger.info('whisper.cpp already built');
+    return;
+  }
+
+  if (fs.existsSync(cmakeLists)) {
+    logger.info('Configuring whisper.cpp with CMake...');
+    await execAsync(`cmake -S ${whisperDir} -B ${whisperDir}/build -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON -DWHISPER_BUILD_SERVER=OFF`);
+
+    logger.info('Building whisper.cpp...');
+    await execAsync(`cmake --build ${whisperDir}/build --config Release --target whisper-cli -j$(nproc)`);
+  } else if (fs.existsSync(makefile)) {
+    logger.info('Building whisper.cpp...');
+    await execAsync(`cd ${whisperDir} && make -j$(nproc) 2>&1 | tail -5`);
+  } else {
+    throw new Error('whisper.cpp checkout does not contain a supported build system');
+  }
 
   logger.info('whisper.cpp built successfully');
 }

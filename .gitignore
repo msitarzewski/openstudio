@@ -65,3 +65,4 @@ certs/
 memory-bank/epoch/*
 !memory-bank/epoch/.gitkeep
 models/*.bin
+whisper.cpp/
