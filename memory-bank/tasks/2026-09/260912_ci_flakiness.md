@@ -44,62 +44,67 @@ connection routinely reaches `connected` *before* the mix-minus bus is ready,
 so the edge had already passed and nothing fired again — the feed stayed
 pending forever and that peer heard silence. Now polls for up to 15 s.
 
-**STILL OPEN — return feed never reaches one peer.** With both fixes in place,
-CI shows both peers successfully *send* their return feed track, but one peer
-never plays the other's.
+**ROOT CAUSE FOUND AND FIXED — `addTrack` collapsed both return feeds onto one
+m-line.** Reproduced live with two real peers in Chrome DevTools.
 
-### Chrome DevTools session, 2026-09-12 — what was ruled OUT
+`addReturnFeedTrack()` used `pc.addTrack()`. Per spec `addTrack` REUSES any
+existing compatible transceiver whose sender has no track — including the
+`recvonly` transceiver created when the *other* peer added THEIR return feed.
+Both feeds then share one m-line, and renegotiating it leaves only one
+direction alive. Whoever answers last silently loses their sender.
 
-Reproduced two live peers against a local server via the automation browser.
-
-**DISPROVEN: "the renegotiation offer is lost in transit."** This was the
-earlier hypothesis, written up from CI logs showing the sender logging a sent
-offer and the receiver logging nothing. It is wrong. Sending a
-renegotiation-shaped offer straight down the signalling path showed the
-receiver dispatching it to the app AND entering `ConnectionManager.handleOffer`:
+Captured mid-failure (A never receiving B's feed):
 
 ```
-offersDispatchedToApp: [{ from: '4608cc60' }]
-handleOfferCalls:      [{ from: '4608cc60' }]
+A: mid0 sendrecv (mics, fine)
+   mid1 dir=sendrecv cur=sendonly  receiver muted   <- collapsed
+B: mid0 sendrecv (mics, fine)
+   mid1 dir=recvonly cur=recvonly  sender NULL      <- B's feed dropped
+A returnFeedCount: 0    B returnFeedCount: 1
 ```
 
-The signalling relay delivers renegotiation offers correctly. Whatever the CI
-logs showed, it is not a lost message. Do not spend time there again.
+Fix: `addTransceiver(track, {direction: 'sendonly'})` forces a dedicated
+m-line. Same scenario after:
 
-**Also ruled out:** `createPeerConnection()` reuses an existing connection
-(`rtc-manager.js:169`), so handling a renegotiation offer does not tear down
-peer state.
+```
+A: mid1 sendonly (A->B), mid2 recvonly (B->A)   returnFeedCount: 1
+B: mid1 recvonly (A->B), mid2 sendonly (B->A)   returnFeedCount: 1
+```
 
-### Two real defects found, neither yet proven to be the cause
+This is why it looked random: only the peer whose sender lost the race was
+affected, so one side always worked.
 
-1. **The polite peer never actually rolls back.** `connection-manager.js:303`
-   logs "We are polite, rolling back our offer" and then does nothing — there
-   is no `setLocalDescription({type: 'rollback'})`. It falls through to
-   `setRemoteDescription(offer)` and relies on the browser's *implicit*
-   rollback. Chrome and Firefox implement that, so it works today, but the log
-   claims behaviour the code does not have. Left unchanged: changing untested
-   negotiation code was judged riskier than the misleading log.
+### Ruled out along the way
+- **The offer is NOT lost in transit.** Earlier hypothesis from CI logs, now
+  disproven: the receiver both dispatches the offer and enters
+  `ConnectionManager.handleOffer`. Do not re-investigate signalling.
+- `createPeerConnection()` reuses an existing connection (`rtc-manager.js:169`),
+  so renegotiation does not tear down peer state.
 
-2. **Gating return feeds on `pc.connectionState === 'connected'` is fragile.**
-   `trySendPendingReturnFeed()` requires it. Observed live: a peer sat at
-   `connectionState: "new"` / `iceConnectionState: "new"` while
-   `signalingState` was `"stable"`, the transceiver was `sendrecv`, and the
-   remote mic had been received. Adding a track and renegotiating needs the
-   *signalling* path, not a fully connected ICE transport, so this gate is
-   stricter than it needs to be.
+### STILL FAILING IN CI — likely a second, distinct issue
+With the transceiver fix in place and verified locally, `test-return-feed.mjs`
+still fails on some CI jobs with the same `count: 0`. In those runs the sender
+logs a sent offer and the receiver logs **nothing at all** — not even the
+"Offer collision detected" line it would print if it were ignoring the offer.
+Since local testing proves offers are delivered, this looks like a separate
+race at connection setup: B's renegotiation fires ~0.6 s after connect, while A
+is still wiring up its side.
 
-### Environment limitation — read before trying again
+**Unverified suspicion worth checking first:** perfect negotiation has the
+impolite peer *ignore* a colliding offer. That is correct for an initial offer,
+but for a **renegotiation** it means the polite peer's track is dropped
+permanently with no retry — exactly the "silent forever" symptom. An impolite
+peer that ignores an offer should trigger its own renegotiation afterwards so
+the dropped tracks get re-offered. Not changed, because it could not be
+verified.
 
-A full two-peer WebRTC session could NOT be completed locally. The automation
-browser has no OS-level microphone access, so `getUserMedia` hangs. Stubbing it
-with an AudioContext stream avoids the prompt but Chrome then withholds host
-ICE candidates, so ICE never leaves `new` and no return feed is ever sent. That
-local failure is a sandbox artifact, NOT the CI bug — do not chase it.
-
-To get a real local reproduction, the browser needs genuine mic permission at
-the macOS level (System Settings → Privacy → Microphone), or a Chrome launched
-with `--use-fake-device-for-media-capture --use-fake-ui-for-media-stream`,
-which is what Playwright does in CI.
+### Environment note — read before trying again
+A local repro needs REAL microphone permission. CDP `Browser.grantPermissions`
+is not enough; the prompt only resolved after `select_page` with
+`bringToFront: true`, which surfaces an `edge://permission-request-dialog/`
+page. Stubbing `getUserMedia` with an AudioContext stream avoids the prompt but
+Chrome then withholds host ICE candidates, ICE never leaves `new`, and nothing
+is ever sent — a sandbox artifact, not the bug.
 
 ## 3. CI was masking it (FIXED)
 
