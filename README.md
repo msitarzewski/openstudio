@@ -143,6 +143,8 @@ OpenStudio includes a complete post-production pipeline — transcription, show 
 
 The script clones and builds `whisper.cpp`, downloads `models/ggml-medium.bin`, and prompts for your LLM provider so `.env` is ready for show notes.
 
+It's safe to re-run. Each step is skipped if it's already done, and a download interrupted partway through is discarded rather than left half-written, so a second run picks up cleanly. The `whisper.cpp/` checkout and the model file are local build artifacts — both are gitignored and neither is tracked by this repo.
+
 You can swap the model manually if you want — `ggml-tiny.bin` (~75 MB) is faster but less accurate; `ggml-large.bin` is the other direction. The server looks for `models/ggml-medium.bin` by default.
 
 ### LLM Provider Examples

@@ -9,7 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`setup-ai.sh`** one-shot bootstrap script for the AI pipeline. It clones and builds `whisper.cpp`, downloads the default Whisper model into `models/`, and prompts for LLM provider settings in `.env`.
+- **`setup-ai.sh`** one-shot bootstrap script for the AI pipeline. It clones and builds `whisper.cpp`, downloads the default Whisper model into `models/`, and prompts for LLM provider settings in `.env`. Thanks to @avezou (#12).
+- **Regression tests for the AI bootstrap** in `tests/test-setup-ai.sh`, covering interrupted model downloads and `.env` files holding shell-hostile secrets, alongside the original happy path.
+
+### Fixed
+
+- **Interrupted model downloads are no longer cached as success.** `setup-ai.sh` wrote the 1.5 GB model straight to its final path, so a dropped transfer left a truncated file that every later run accepted as valid — and because `capabilities.js` detects the model with a bare `existsSync`, the UI would un-gate Transcribe over a corrupt model. Downloads now land in `models/ggml-medium.bin.part`, are size-checked, and only then renamed into place.
+- **`setup-ai.sh` no longer sources `.env` as shell.** Sourcing executed the file, so a `JWT_SECRET` containing `$` aborted the script under `set -u` and a value with spaces ran as a command. Only the three `LLM_*` keys are read now, and unrelated secrets are left untouched.
+- **`setup-ai.sh` no longer aborts when ffmpeg is missing.** Neither ffmpeg nor ffprobe is needed to clone whisper.cpp, build it, or fetch the model, so their absence now warns instead of blocking the entire bootstrap.
+- **The 1.5 GB model download shows progress** instead of running silent, which read as a hung script.
+- **`whisper.cpp` is no longer a tracked gitlink.** It was pinned as a `160000` entry with no `.gitmodules` backing, so `.gitignore` could never apply to it and every checkout that ran `setup-ai.sh` showed a permanently dirty `modified: whisper.cpp (new commits)`. It is now untracked and ignored, which is what the setup script already assumed.
 
 ## [0.3.2] - 2026-05-25
 
