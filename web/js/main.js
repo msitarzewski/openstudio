@@ -22,6 +22,11 @@ import { IcecastStreamer } from './icecast-streamer.js';
 import { RecordingManager } from './recording-manager.js';
 import { openCapabilityModal, wireCloseHandlers } from './capability-modal.js';
 
+// How long to keep waiting for a peer's mix-minus bus after the stagger delay
+// before giving up on sending them a return feed (20 x 500ms = 10s of grace).
+const MIX_MINUS_POLL_MS = 500;
+const MIX_MINUS_MAX_ATTEMPTS = 20;
+
 class OpenStudioApp {
   constructor() {
     // Generate unique peer ID
@@ -795,19 +800,37 @@ class OpenStudioApp {
 
           console.log(`[App] Will create return feed for ${remotePeerId} (${isPolite ? 'polite' : 'impolite'}) in ${delay}ms`);
 
-          setTimeout(() => {
-            const mixMinusStream = this.audioGraph.getMixMinusStream(remotePeerId);
-            if (mixMinusStream) {
-              console.log(`[App] Mix-minus stream created for ${remotePeerId}, marking return feed as pending`);
-              this.pendingReturnFeeds.set(remotePeerId, true);
-
-              // Check if connection is already in "connected" state
-              // If so, send the return feed immediately
-              this.trySendPendingReturnFeed(remotePeerId);
-            } else {
-              console.warn(`[App] No mix-minus stream available for ${remotePeerId}`);
+          // The mix-minus bus is built asynchronously, so it may not exist yet when
+          // the stagger delay expires. This used to be a single check that logged a
+          // warning and gave up, which meant the return feed was never created at
+          // all -- the peer silently heard nothing for the rest of the session.
+          // Poll instead, bounded, and fail loudly if it genuinely never appears.
+          const awaitMixMinus = (peerId, attemptsLeft) => {
+            // Peer left while we were waiting -- stop quietly.
+            if (!this.connectionManager.getConnectionState(peerId)) {
+              return;
             }
-          }, delay); // Staggered delay to avoid renegotiation collisions
+
+            if (this.audioGraph.getMixMinusStream(peerId)) {
+              console.log(`[App] Mix-minus stream ready for ${peerId}, marking return feed as pending`);
+              this.pendingReturnFeeds.set(peerId, true);
+
+              // If the connection is already "connected", this sends immediately;
+              // otherwise the connection-state-changed handler retries it later.
+              this.trySendPendingReturnFeed(peerId);
+              return;
+            }
+
+            if (attemptsLeft <= 0) {
+              console.error(`[App] Mix-minus stream for ${peerId} never appeared; no return feed will be sent`);
+              return;
+            }
+
+            setTimeout(() => awaitMixMinus(peerId, attemptsLeft - 1), MIX_MINUS_POLL_MS);
+          };
+
+          // Staggered delay to avoid renegotiation collisions, then poll.
+          setTimeout(() => awaitMixMinus(remotePeerId, MIX_MINUS_MAX_ATTEMPTS), delay);
         } catch (error) {
           console.error(`[App] Failed to add ${remotePeerId} to audio graph:`, error);
         }

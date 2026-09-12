@@ -64,4 +64,4 @@ jobs:
           node tests/test-program-bus.mjs
           node tests/test-mix-minus.mjs
           node tests/test-recording.mjs
-          node tests/test-return-feed.mjs || node tests/test-return-feed.mjs || node tests/test-return-feed.mjs
+          node tests/test-return-feed.mjs
