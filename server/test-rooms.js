@@ -307,13 +307,17 @@ async function testParticipantDisconnect() {
     type: 'create-room'
   }, 'room-created');
 
+  // Arm the host's listener BEFORE the caller joins. The server sends
+  // peer-joined to the host concurrently with room-joined to the caller, so
+  // attaching afterwards can miss it entirely and time out.
+  const peerJoinedPromise = waitForMessage(host, 'peer-joined');
+
   await sendAndWaitFor(caller, {
     type: 'join-room',
     roomId: createResponse.roomId
   }, 'room-joined');
 
-  // Wait for host's peer-joined notification
-  await waitForMessage(host, 'peer-joined');
+  await peerJoinedPromise;
 
   // Set up listener for peer-left
   const peerLeftPromise = waitForMessage(host, 'peer-left');
@@ -426,14 +430,16 @@ async function testCannotJoinMultipleRooms() {
     sendAndWaitFor(host2, { type: 'create-room' }, 'room-created')
   ]);
 
+  // Arm before joining -- peer-joined races room-joined (see above).
+  const host1PeerJoined = waitForMessage(host1, 'peer-joined');
+
   // Caller joins room 1
   await sendAndWaitFor(caller, {
     type: 'join-room',
     roomId: room1.roomId
   }, 'room-joined');
 
-  // Wait for peer-joined notification
-  await waitForMessage(host1, 'peer-joined');
+  await host1PeerJoined;
 
   // Try to join room 2 (should fail)
   const errorResponse = await sendAndWaitFor(caller, {
