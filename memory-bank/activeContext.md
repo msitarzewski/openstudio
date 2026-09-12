@@ -1,16 +1,40 @@
 # Active Context: OpenStudio
 
-**Last Updated**: 2026-05-25 (v0.3.2 cut — capability gating + cloud LLM support)
+**Last Updated**: 2026-09-12
 
 ## Current Phase
 
-**Release**: 0.3.2 (committed today) — capability-gated AI UX + OpenAI-compatible cloud provider support
+**Release**: 0.3.2 shipped; `main` carries unreleased work (PRs #12–#14)
 **Branch**: `main`
-**Status**: v0.3.0, v0.3.1, and v0.3.2 all shipped. AI features (Transcribe, Show Notes, MP3 export) now self-document — when prereqs are missing, the UI surfaces a modal with exact install commands instead of failing on click. Cloud LLM providers (OpenAI, Together, Groq, Anthropic-via-shim) work via `LLM_API_KEY`; local providers still work with no env change. README documents per-provider setup.
-**Focus**: Deploy v0.3.2 to openstudio.zerologic.com, then resume podcast Tasks 4-8 (click-to-cut on transcript, per-segment recording, ID3 tag export, chapter markers, multi-track to final export)
+**Status**: Production is **current** as of 2026-09-12 — it had been 8 commits
+behind, with Power Move and v0.3.0–v0.3.2 never deployed. Prod also **moved
+hosts**; the old deployment notes were wrong. See the reference memory for the
+live topology and `tasks/2026-09/README.md` for the full arc.
+**Focus**: One open product bug (below), then podcast Tasks 4–8.
+
+## Open Issues (2026-09-12)
+
+### Return feed can be permanently lost — OPEN, user-facing
+A renegotiation offer carrying a peer's return-feed track sometimes never
+arrives at the other peer, which then hears silence for the rest of the
+session. Two contributing bugs were fixed in PR #15 (a one-shot mix-minus
+check that gave up permanently, and a retry that waited on an edge event which
+had already fired), but the offer loss itself is unexplained. CI logs show the
+sender logging a successful offer and the receiver logging nothing at all.
+Next step: `web/js/connection-manager.js` / `rtc-manager.js` perfect
+negotiation. Details in `tasks/2026-09/260912_ci_flakiness.md`.
+
+### CI is honestly red
+`ci.yml` used to run the return-feed test three times and accept any pass,
+which hid the bug above and made every red X ambiguous. That mask is removed
+in PR #15, so CI now reports the truth: roughly 2 of 3 jobs fail on the
+outstanding bug. PR #15 is deliberately unmerged pending a decision.
+
+### JWT_SECRET not set in production
+The server generates a random secret per boot, so room tokens do not survive a
+restart. One line in the production `.env`.
 
 ## Recent Updates (2026-05-25)
-
 ### v0.3.2 Release ✅
 - **`GET /api/capabilities` endpoint** — new `server/lib/capabilities.js` probes ffmpeg, ffprobe, the whisper.cpp binary, the Whisper model file, and the configured LLM endpoint; in-memory 60 s cache so the endpoint is cheap to hit on every page load
 - **Frontend capability gating** — `web/js/capability-modal.js` reads `/api/capabilities` on load and disables Transcribe / Show Notes / MP3 format option when their prereqs are missing. Clicking a gated control opens a modal with the exact install commands. Modal DOM in `web/index.html`, styling in `web/css/studio.css`.

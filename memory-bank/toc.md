@@ -32,12 +32,14 @@
 ### Release 0.3.0 ✅ (2026-05-25) — Version bump, self-hosted fonts, header status fix
 ### Release 0.3.1 ✅ (2026-05-25) — MP3 fix, zip bundle endpoint, configurable LLM, README rewrite
 ### Release 0.3.2 ✅ (2026-05-25) — Capability gating + cloud LLM support
+### Unreleased (2026-09-12) — setup-ai.sh (#12/#13), repo hygiene (#14), CI flakiness (#15, open)
 
 ## Task Directories
 
 - **tasks/2025-10/** — Release 0.1 task breakdown (tasks 001–019)
 - **tasks/2026-03/** — Signal UX redesign
 - **tasks/2026-05/** — Power Move, v0.3.0 release cut, v0.3.1 fixes
+- **tasks/2026-09/** — setup-ai contribution + hardening, production deploy, repo hygiene, CI flakiness
 
 ## Quick References
 
