@@ -14,7 +14,7 @@ live topology and `tasks/2026-09/README.md` for the full arc.
 
 ## Open Issues (2026-09-12)
 
-### Return feed can be permanently lost — OPEN, user-facing
+### Return feed can be permanently lost — OPEN, user-facing (issue #16)
 One peer can end up never hearing another for the whole session. Two
 contributing bugs are fixed in PR #15 (a one-shot mix-minus check that gave up
 permanently, and a retry waiting on an edge event that had already fired).

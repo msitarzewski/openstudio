@@ -69,15 +69,18 @@
 ## What's Next
 
 ### Immediate
-1. **Return feed can be permanently lost** — a renegotiation offer sometimes
-   never reaches the peer, who then hears silence for the whole session.
-   User-facing. Two contributing bugs already fixed in PR #15; the offer loss
-   itself is open. See `tasks/2026-09/260912_ci_flakiness.md`.
-2. **Decide on PR #15** — it removes the CI mask that hid the bug above, so CI
-   is now honestly red. Merge requires fixing the bug or deliberately
-   restoring the mask.
-3. **`JWT_SECRET` in production `.env`** — currently regenerated per boot, so
+1. **Return feed can be permanently lost on Node 22** — issue #16. A
+   participant can end up hearing silence for the whole session. Narrowed to a
+   startup race: consistent on Node 22, consistent pass on 18/20, identical
+   browser. Signalling delivery and transceiver collapse are already ruled out
+   or fixed; the open lead is impolite peers ignoring a *renegotiation* offer
+   with no retry (`connection-manager.js:295-310`). CI runs that test with
+   `continue-on-error` until this lands — remove the flag with the fix.
+2. **`JWT_SECRET` in production `.env`** — currently regenerated per boot, so
    room tokens die on every restart.
+3. **Decide on lockfiles** — `package-lock.json` is gitignored, which is a
+   library convention and arguably wrong for a deployable app. `npm ci` cannot
+   be used anywhere until that changes.
 4. **Resume podcast Tasks 4-8** — click-to-cut on transcript, per-segment
    recording, ID3 tags, chapter markers, multi-track to final export
 

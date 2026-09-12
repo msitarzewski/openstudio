@@ -81,7 +81,7 @@ affected, so one side always worked.
 - `createPeerConnection()` reuses an existing connection (`rtc-manager.js:169`),
   so renegotiation does not tear down peer state.
 
-### STILL FAILING IN CI — now narrowed to Node 22 only
+### STILL FAILING IN CI — narrowed to Node 22, tracked in issue #16
 
 After the transceiver fix the picture sharpened considerably. Node 18 and 20
 pass **consistently**; Node 22 fails **consistently** (verified twice on the
