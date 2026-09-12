@@ -500,10 +500,10 @@ For full WebRTC audio validation with real microphones and speakers:
 **Prerequisites:**
 ```bash
 # Terminal 1: Signaling server (already running on port 3000)
-# If not: cd /home/michael/Documents/openstudio && node server/server.js
+# If not: cd ~/openstudio && node server/server.js
 
 # Terminal 2: Web server
-cd /home/michael/Documents/openstudio/web
+cd ~/openstudio/web
 python3 -m http.server 8086
 ```
 
