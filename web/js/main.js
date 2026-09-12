@@ -615,7 +615,14 @@ class OpenStudioApp {
     this.signaling.addEventListener('error', (event) => {
       const { message } = event.detail;
       console.error(`[App] Signaling error: ${message}`);
-      alert(`Error: ${message}`);
+
+      // Do NOT alert here. The signalling client already reconnects on its own
+      // with exponential backoff and never gives up, so a dropped socket heals
+      // itself -- a modal interrupts the user over a condition that is already
+      // being fixed. Worse, alert() blocks the event loop, delaying the very
+      // reconnect that resolves it, and one outage can queue several dialogs.
+      // The status pill is the right place for this.
+      this.setStatus('connecting', 'Reconnecting…');
     });
   }
 
