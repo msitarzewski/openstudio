@@ -4,9 +4,9 @@ A zero‑dependency, open-source, self-hostable virtual radio studio. No SaaS re
 
 ## Quick start (v0.3-dev — Post Power Move)
 ```bash
-# 1) clone and init submodules (whisper.cpp)
+# 1) clone (whisper.cpp is NOT a submodule — ./setup-ai.sh fetches it)
 git clone https://github.com/msitarzewski/openstudio.git
-cd openstudio && git submodule update --init
+cd openstudio
 
 # 2) copy and edit your station manifest
 cp station-manifest.sample.json station-manifest.json

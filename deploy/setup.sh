@@ -59,7 +59,9 @@ else
 fi
 
 info "[4/7] dependencies"
-sudo -u "$SERVICE_USER" bash -c "cd '$INSTALL_DIR/server' && npm ci --omit=dev"
+# npm install, not npm ci: package-lock.json is gitignored in this repo, and
+# `npm ci` hard-fails with EUSAGE when no lockfile is present.
+sudo -u "$SERVICE_USER" bash -c "cd '$INSTALL_DIR/server' && npm install --omit=dev"
 
 info "[5/7] station manifest"
 if [ -f "$INSTALL_DIR/station-manifest.json" ]; then

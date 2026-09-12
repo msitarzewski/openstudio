@@ -197,7 +197,7 @@ Station A ── DHT gossip ──→ Station B → C → D ...
 
 **Implementation**:
 - `POST /api/upload` — Binary-safe multipart file upload (Buffer parsing)
-- `whisper.cpp` submodule — On-device speech-to-text, no cloud dependency
+- `whisper.cpp` (untracked local checkout, fetched by `./setup-ai.sh`) — On-device speech-to-text, no cloud dependency
 - Audio cleaning pipeline (`audio-cleaner.js`):
   - Noise reduction pass
   - Loudness normalization (EBU R128-style)

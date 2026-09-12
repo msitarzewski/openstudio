@@ -24,3 +24,30 @@
 - **PR #15 (open)** — CI flakiness. See
   [260912_ci_flakiness.md](./260912_ci_flakiness.md). Two test bugs fixed; a
   real product bug uncovered and still open.
+
+### 2026-09-12: Repo sweep — three latent breakages
+- **`deploy/setup.sh` could never run.** PR #14 changed it to `npm ci`, but
+  `package-lock.json` is gitignored (`.gitignore:6`) and no lockfile is tracked,
+  so a fresh clone died with `npm error code EUSAGE`. Reverted to
+  `npm install --omit=dev`. **Open question for the project:** an application
+  normally *should* commit its lockfiles for reproducible installs; the ignore
+  rule is a library convention. Left as-is rather than reversing a deliberate
+  choice.
+- **Four env vars were undocumented** in `.env.example` — `PORT`,
+  `ALLOWED_ORIGINS`, `ICECAST_MOUNT`, `ICECAST_USER`. The important one is
+  `ALLOWED_ORIGINS`: when unset or empty **every origin is permitted**
+  (`server/server.js:53`), which is fine locally and wrong in production. All
+  four now documented with their real defaults.
+- **Docs still told people to init a submodule that no longer exists.** PR #13
+  untracked the `whisper.cpp` gitlink, but `memory-bank/README.md`,
+  `techContext.md`, `progress.md`, `activeContext.md` and `systemPatterns.md`
+  still instructed `git submodule update --init`, which silently does nothing.
+  All corrected to point at `./setup-ai.sh`. The 2026-05 task log keeps the old
+  wording deliberately — it is a historical record.
+
+### 2026-09-12: Blocking alert() on signalling drops
+`main.js` raised a modal on every WebSocket error, but `signaling-client.js`
+already reconnects with exponential backoff and never gives up. So the dialog
+interrupted the user over a self-healing condition, `alert()` blocked the event
+loop that drives the reconnect, and one outage could queue several dialogs.
+Now sets the status pill to "Reconnecting…" instead.
