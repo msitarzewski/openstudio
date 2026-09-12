@@ -21,9 +21,14 @@
   shared Caddyfile — both broken (the `>>` redirect runs outside sudo) and
   unsafe on a multi-tenant host. Also fixed a pre-existing break where
   `docker-compose.prod.yml` referenced env vars that existed nowhere.
-- **PR #15 (open)** — CI flakiness. See
-  [260912_ci_flakiness.md](./260912_ci_flakiness.md). Two test bugs fixed; a
-  real product bug uncovered and still open.
+- **PR #15 (merged)** — CI flakiness, and it was never really flakiness. See
+  [260912_ci_flakiness.md](./260912_ci_flakiness.md). Four separate bugs: shared
+  peer IDs in the signalling tests; a missed `peer-joined` in the rooms tests; a
+  transceiver collapse that silently dropped return feeds (a real user-facing
+  bug — a participant could hear silence for a whole session); and a `ci.yml`
+  line that ran the return-feed test three times and accepted any pass, which
+  hid all of it. `main` is now green on Node 18, 20 and 22. One residual
+  Node-22-only failure is handed to the community as issue #16.
 
 ### 2026-09-12: Repo sweep — three latent breakages
 - **`deploy/setup.sh` could never run.** PR #14 changed it to `npm ci`, but

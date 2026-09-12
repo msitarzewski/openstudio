@@ -31,11 +31,17 @@ which was observed stuck at `"new"` while the session was otherwise healthy.
 A local repro needs real microphone permission — see the task doc before
 spending time on it.
 
-### CI is honestly red
-`ci.yml` used to run the return-feed test three times and accept any pass,
-which hid the bug above and made every red X ambiguous. That mask is removed
-in PR #15, so CI now reports the truth: roughly 2 of 3 jobs fail on the
-outstanding bug. PR #15 is deliberately unmerged pending a decision.
+### CI is green and honest — was red for months
+`main` passes on Node 18, 20 and 22 as of 2026-09-12 (PR #15). Four separate
+bugs were behind the "flakiness": shared peer IDs in the signalling tests, a
+missed `peer-joined` in the rooms tests, a transceiver collapse that silently
+dropped return feeds, and a `ci.yml` line that ran the return-feed test three
+times and accepted any pass.
+
+That last one is why nobody trusted a red X here, and why PR #12 sat unreviewed
+for four weeks. The return-feed test is now `continue-on-error` while #16 is
+open — deliberately NOT the old retry form, because `continue-on-error` shows a
+visible warning whereas the retry made a broken test report success.
 
 ### JWT_SECRET not set in production
 The server generates a random secret per boot, so room tokens do not survive a

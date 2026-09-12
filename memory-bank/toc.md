@@ -32,7 +32,7 @@
 ### Release 0.3.0 ✅ (2026-05-25) — Version bump, self-hosted fonts, header status fix
 ### Release 0.3.1 ✅ (2026-05-25) — MP3 fix, zip bundle endpoint, configurable LLM, README rewrite
 ### Release 0.3.2 ✅ (2026-05-25) — Capability gating + cloud LLM support
-### Unreleased (2026-09-12) — setup-ai.sh (#12/#13), repo hygiene (#14), CI flakiness (#15, open)
+### Unreleased (2026-09-12) — setup-ai.sh (#12/#13), repo hygiene (#14), CI flakiness + return-feed transceiver fix (#15); open: issue #16
 
 ## Task Directories
 
