@@ -66,3 +66,7 @@ memory-bank/epoch/*
 !memory-bank/epoch/.gitkeep
 models/*.bin
 whisper.cpp/
+
+# Operator-local deploy scripts — these hardcode host names, paths, and ports
+# specific to one person's infrastructure. Keep them out of a public repo.
+deploy.sh
