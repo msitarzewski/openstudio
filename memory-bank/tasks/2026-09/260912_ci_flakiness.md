@@ -81,7 +81,29 @@ affected, so one side always worked.
 - `createPeerConnection()` reuses an existing connection (`rtc-manager.js:169`),
   so renegotiation does not tear down peer state.
 
-### STILL FAILING IN CI — likely a second, distinct issue
+### STILL FAILING IN CI — now narrowed to Node 22 only
+
+After the transceiver fix the picture sharpened considerably. Node 18 and 20
+pass **consistently**; Node 22 fails **consistently** (verified twice on the
+same commit). It is no longer random — it is version-specific, which is far
+more tractable than what came before.
+
+Playwright pins its own chromium, so the browser is identical across the three
+jobs. The difference is host timing: Node 22 is faster, which shifts the
+window in which the second peer renegotiates relative to the first peer
+finishing setup. That points at a startup race rather than anything in the
+media path.
+
+Before the transceiver fix, failures moved unpredictably between Node versions
+and between the server and Playwright steps. Now:
+
+| commit | 18 | 20 | 22 |
+|---|---|---|---|
+| before transceiver fix | fail | pass | fail |
+| after, run 1 | pass | pass | fail |
+| after, run 2 (rerun) | pass | pass | fail |
+
+### The original framing, kept for context
 With the transceiver fix in place and verified locally, `test-return-feed.mjs`
 still fails on some CI jobs with the same `count: 0`. In those runs the sender
 logs a sent offer and the receiver logs **nothing at all** — not even the
