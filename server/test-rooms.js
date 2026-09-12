@@ -17,6 +17,25 @@ import WebSocket from 'ws';
 const SERVER_URL = 'ws://localhost:6736';
 const TIMEOUT = 5000; // 5 second timeout per test
 
+// ws.close() only *starts* the closing handshake, so a test could finish while
+// the server still held its peers. Waiting for CLOSED keeps state from leaking
+// between tests.
+function closeAll(...sockets) {
+  return Promise.all(sockets.map((ws) => new Promise((resolve) => {
+    if (!ws || ws.readyState === WebSocket.CLOSED) {
+      resolve();
+      return;
+    }
+    const done = setTimeout(resolve, TIMEOUT);
+    ws.once('close', () => {
+      clearTimeout(done);
+      resolve();
+    });
+    ws.close();
+  })));
+}
+
+
 // Test results
 const results = {
   passed: 0,
@@ -161,7 +180,7 @@ async function testCreateRoom() {
     throw new Error('Invalid room ID format (expected UUID)');
   }
 
-  ws.close();
+  await closeAll(ws);
 }
 
 // Test 2: Join room
@@ -215,8 +234,8 @@ async function testJoinRoom() {
     throw new Error('Peer joined event has wrong role');
   }
 
-  host.close();
-  caller.close();
+  await closeAll(host);
+  await closeAll(caller);
 }
 
 // Test 3: Multiple participants join
@@ -266,9 +285,9 @@ async function testMultipleParticipants() {
     throw new Error('Caller1 did not receive correct peer-joined');
   }
 
-  host.close();
-  caller1.close();
-  caller2.close();
+  await closeAll(host);
+  await closeAll(caller1);
+  await closeAll(caller2);
 }
 
 // Test 4: Participant disconnect triggers peer-left
@@ -300,7 +319,7 @@ async function testParticipantDisconnect() {
   const peerLeftPromise = waitForMessage(host, 'peer-left');
 
   // Caller disconnects
-  caller.close();
+  await closeAll(caller);
 
   // Host should receive peer-left
   const peerLeft = await peerLeftPromise;
@@ -308,7 +327,7 @@ async function testParticipantDisconnect() {
     throw new Error('Peer left event has wrong peerId');
   }
 
-  host.close();
+  await closeAll(host);
 }
 
 // Test 5: Last participant leaves - room should be deleted
@@ -324,7 +343,7 @@ async function testLastParticipantLeaves() {
   const roomId = createResponse.roomId;
 
   // Disconnect (last participant leaves)
-  ws.close();
+  await closeAll(ws);
 
   // Wait a bit for cleanup
   await new Promise(resolve => setTimeout(resolve, 100));
@@ -342,7 +361,7 @@ async function testLastParticipantLeaves() {
     throw new Error('Expected error about room not existing');
   }
 
-  newWs.close();
+  await closeAll(newWs);
 }
 
 // Test 6: Join non-existent room
@@ -359,7 +378,7 @@ async function testJoinNonExistentRoom() {
     throw new Error('Expected error about room not existing');
   }
 
-  ws.close();
+  await closeAll(ws);
 }
 
 // Test 7: Each create-room gets unique ID
@@ -383,8 +402,8 @@ async function testUniqueRoomIds() {
     throw new Error('Room IDs should be unique');
   }
 
-  host1.close();
-  host2.close();
+  await closeAll(host1);
+  await closeAll(host2);
 }
 
 // Test 8: Peer already in room cannot join another
@@ -426,9 +445,9 @@ async function testCannotJoinMultipleRooms() {
     throw new Error('Expected error about already being in a room');
   }
 
-  host1.close();
-  host2.close();
-  caller.close();
+  await closeAll(host1);
+  await closeAll(host2);
+  await closeAll(caller);
 }
 
 // Test 9: Cannot create/join room without registering
@@ -444,7 +463,7 @@ async function testMustRegisterFirst() {
     throw new Error('Expected error about needing to register');
   }
 
-  ws.close();
+  await closeAll(ws);
 }
 
 // ============================================================================
