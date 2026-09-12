@@ -11,6 +11,9 @@ MODEL_DIR="models"
 MODEL_FILE="$MODEL_DIR/ggml-medium.bin"
 WHISPER_REPO="https://github.com/ggerganov/whisper.cpp.git"
 MODEL_URL="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin"
+# ggml-medium.bin is ~1.5 GB; anything under 1 GB is a truncated transfer.
+# Overridable so tests can exercise the truncation path without moving a real GB.
+MODEL_MIN_BYTES="${MODEL_MIN_BYTES:-1000000000}"
 
 info() { printf '%s\n' "$*"; }
 ok() { printf 'OK: %s\n' "$*"; }
@@ -36,9 +39,9 @@ download_file() {
   local output="$2"
 
   if command -v curl >/dev/null 2>&1; then
-    curl -L --fail --silent --show-error "$url" -o "$output"
+    curl -L --fail --progress-bar --show-error "$url" -o "$output"
   elif command -v wget >/dev/null 2>&1; then
-    wget -q "$url" -O "$output"
+    wget --show-progress -q "$url" -O "$output"
   else
     fail "Need curl or wget to download the Whisper model"
   fi
@@ -52,11 +55,19 @@ ensure_env_file() {
   fi
 }
 
+# Read a single key out of .env without sourcing it. Sourcing runs the file as
+# shell, so a secret containing $, spaces, or ; either mangles the value, aborts
+# under `set -u`, or executes. We only need the three LLM_* keys.
+read_env_value() {
+  local key="$1"
+  [ -f "$ENV_FILE" ] || return 0
+  sed -n "s/^[[:space:]]*${key}=//p" "$ENV_FILE" | tail -n 1
+}
+
 load_env() {
-  set -a
-  # shellcheck disable=SC1091
-  . "./$ENV_FILE"
-  set +a
+  LLM_BASE_URL="$(read_env_value LLM_BASE_URL)"
+  LLM_MODEL="$(read_env_value LLM_MODEL)"
+  LLM_API_KEY="$(read_env_value LLM_API_KEY)"
 }
 
 set_env_value() {
@@ -107,11 +118,6 @@ ensure_whisper_cpp() {
   elif [ "$has_build_files" -eq 1 ]; then
     ok "Found whisper.cpp"
   fi
-
-  if [ -x "$WHISPER_BIN" ]; then
-    ok "whisper.cpp already built"
-    return
-  fi
 }
 
 build_whisper_cpp() {
@@ -145,17 +151,44 @@ build_whisper_cpp() {
   ok "Built whisper.cpp"
 }
 
+file_size() {
+  wc -c < "$1" | tr -d '[:space:]'
+}
+
 ensure_model() {
   mkdir -p "$MODEL_DIR"
 
+  local partial="$MODEL_FILE.part"
+
   if [ -f "$MODEL_FILE" ]; then
-    ok "Whisper model already present"
-    return
+    if [ "$(file_size "$MODEL_FILE")" -lt "$MODEL_MIN_BYTES" ]; then
+      warn "Existing model is only $(file_size "$MODEL_FILE") bytes — truncated, re-downloading"
+      rm -f "$MODEL_FILE"
+    else
+      ok "Whisper model already present"
+      return
+    fi
   fi
 
-  info "Downloading Whisper model..."
-  download_file "$MODEL_URL" "$MODEL_FILE"
-  [ -f "$MODEL_FILE" ] || fail "Model download failed"
+  # Download to .part and rename only on success. Writing straight to the final
+  # path means an interrupted transfer leaves a truncated file that every later
+  # run accepts as valid -- and capabilities.js detects the model with a bare
+  # existsSync, so the UI would un-gate Transcribe over a corrupt model.
+  rm -f "$partial"
+  info "Downloading Whisper model (~1.5 GB, this takes a while)..."
+  if ! download_file "$MODEL_URL" "$partial"; then
+    rm -f "$partial"
+    fail "Model download failed. Re-run ./setup-ai.sh to retry."
+  fi
+
+  if [ ! -f "$partial" ] || [ "$(file_size "$partial")" -lt "$MODEL_MIN_BYTES" ]; then
+    local got="0"
+    [ -f "$partial" ] && got="$(file_size "$partial")"
+    rm -f "$partial"
+    fail "Model download truncated (got ${got} bytes, expected at least ${MODEL_MIN_BYTES}). Re-run ./setup-ai.sh to retry."
+  fi
+
+  mv "$partial" "$MODEL_FILE"
   ok "Downloaded Whisper model"
 }
 
@@ -256,12 +289,16 @@ main() {
   require_cmd git
   require_cmd awk
 
-  if ! command -v ffmpeg >/dev/null 2>&1; then
-    fail "ffmpeg is required. Install it first (brew install ffmpeg or apt install ffmpeg)."
-  fi
+  # ffmpeg/ffprobe are needed by the cleaning and export pipeline at runtime, but
+  # not to clone whisper.cpp, build it, or fetch the model. Don't block the whole
+  # bootstrap on them -- warn and let the user finish the parts that do work.
+  local missing_ffmpeg=0
+  command -v ffmpeg >/dev/null 2>&1 || missing_ffmpeg=1
+  command -v ffprobe >/dev/null 2>&1 || missing_ffmpeg=1
 
-  if ! command -v ffprobe >/dev/null 2>&1; then
-    fail "ffprobe is required. Install it with ffmpeg before continuing."
+  if [ "$missing_ffmpeg" -eq 1 ]; then
+    warn "ffmpeg/ffprobe not found. Transcribe and export stay gated until you install them:"
+    warn "  macOS: brew install ffmpeg    Debian/Ubuntu: sudo apt install ffmpeg"
   fi
 
   ensure_env_file
