@@ -127,8 +127,8 @@
 - /memory-bank/ARCHITECTURE.md - Mermaid diagram of system flow
 - /memory-bank/PRD.md - Product requirements and roadmap
 - /memory-bank/SIGNAL_FLOW.md - Audio routing technical details
-- /home/michael/.claude/CLAUDE.md - Memory Bank instructions and multi-agent workflow
-- /home/michael/Documents/openstudio/claucde.md - Project-specific claude.md
+- ~/.claude/CLAUDE.md - Memory Bank instructions and multi-agent workflow
+- ~/openstudio/claucde.md - Project-specific claude.md
 
 **Related Tasks**: None (first task)
 

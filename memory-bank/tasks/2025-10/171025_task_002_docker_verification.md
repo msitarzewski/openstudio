@@ -213,7 +213,7 @@ coverage
 ### Acceptance Criteria Validation
 
 ✅ **docker-compose.yml exists and is valid**
-- File created: /home/michael/Documents/openstudio/docker-compose.yml (1136 bytes)
+- File created: ~/openstudio/docker-compose.yml (1136 bytes)
 - Valid YAML syntax confirmed
 - Three services defined: icecast, coturn, signaling
 

@@ -61,7 +61,7 @@ curl http://localhost:8086
 
 ```bash
 # Start all services
-cd /home/michael/Documents/openstudio
+cd ~/openstudio
 sudo docker compose up -d
 
 # Verify all running
@@ -576,7 +576,7 @@ At the end of testing, verify all criteria are met:
 
 ### Start Infrastructure
 ```bash
-cd /home/michael/Documents/openstudio
+cd ~/openstudio
 sudo docker compose up -d
 ```
 
@@ -597,7 +597,7 @@ sudo docker compose logs -f coturn
 
 ### Start Web Client
 ```bash
-cd /home/michael/Documents/openstudio/web
+cd ~/openstudio/web
 python3 -m http.server 8086
 ```
 
