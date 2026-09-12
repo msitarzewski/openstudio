@@ -22,6 +22,16 @@ import { IcecastStreamer } from './icecast-streamer.js';
 import { RecordingManager } from './recording-manager.js';
 import { openCapabilityModal, wireCloseHandlers } from './capability-modal.js';
 
+// How long to keep waiting for a peer's mix-minus bus after the stagger delay
+// before giving up on sending them a return feed (20 x 500ms = 10s of grace).
+const MIX_MINUS_POLL_MS = 500;
+const MIX_MINUS_MAX_ATTEMPTS = 20;
+
+// How long to keep waiting for a peer's RTCPeerConnection to actually reach
+// "connected" before abandoning their return feed (30 x 500ms = 15s).
+const RETURN_FEED_RETRY_MS = 500;
+const RETURN_FEED_MAX_ATTEMPTS = 30;
+
 class OpenStudioApp {
   constructor() {
     // Generate unique peer ID
@@ -35,6 +45,7 @@ class OpenStudioApp {
     this.volumeMeter = null; // Will be initialized after audio graph
     this.connectionManager = null; // Will be initialized after RTC
     this.returnFeedManager = new ReturnFeedManager();
+    this.returnFeedRetries = new Map();   // peerId -> retry count while awaiting "connected"
     this.muteManager = null; // Will be initialized after audio graph
     this.icecastStreamer = new IcecastStreamer(); // Icecast streaming
     this.recordingManager = new RecordingManager();
@@ -604,7 +615,14 @@ class OpenStudioApp {
     this.signaling.addEventListener('error', (event) => {
       const { message } = event.detail;
       console.error(`[App] Signaling error: ${message}`);
-      alert(`Error: ${message}`);
+
+      // Do NOT alert here. The signalling client already reconnects on its own
+      // with exponential backoff and never gives up, so a dropped socket heals
+      // itself -- a modal interrupts the user over a condition that is already
+      // being fixed. Worse, alert() blocks the event loop, delaying the very
+      // reconnect that resolves it, and one outage can queue several dialogs.
+      // The status pill is the right place for this.
+      this.setStatus('connecting', 'Reconnecting…');
     });
   }
 
@@ -795,19 +813,39 @@ class OpenStudioApp {
 
           console.log(`[App] Will create return feed for ${remotePeerId} (${isPolite ? 'polite' : 'impolite'}) in ${delay}ms`);
 
-          setTimeout(() => {
-            const mixMinusStream = this.audioGraph.getMixMinusStream(remotePeerId);
-            if (mixMinusStream) {
-              console.log(`[App] Mix-minus stream created for ${remotePeerId}, marking return feed as pending`);
-              this.pendingReturnFeeds.set(remotePeerId, true);
-
-              // Check if connection is already in "connected" state
-              // If so, send the return feed immediately
-              this.trySendPendingReturnFeed(remotePeerId);
-            } else {
-              console.warn(`[App] No mix-minus stream available for ${remotePeerId}`);
+          // The mix-minus bus is built asynchronously, so it may not exist yet when
+          // the stagger delay expires. This used to be a single check that logged a
+          // warning and gave up, which meant the return feed was never created at
+          // all -- the peer silently heard nothing for the rest of the session.
+          // Poll instead, bounded, and fail loudly if it genuinely never appears.
+          const awaitMixMinus = (peerId, attemptsLeft) => {
+            // Peer left while we were waiting -- stop quietly. Check the
+            // connections map directly; getConnectionState() synthesises a
+            // default object and so is never falsy.
+            if (!this.connectionManager.connections.has(peerId)) {
+              return;
             }
-          }, delay); // Staggered delay to avoid renegotiation collisions
+
+            if (this.audioGraph.getMixMinusStream(peerId)) {
+              console.log(`[App] Mix-minus stream ready for ${peerId}, marking return feed as pending`);
+              this.pendingReturnFeeds.set(peerId, true);
+
+              // If the connection is already "connected", this sends immediately;
+              // otherwise the connection-state-changed handler retries it later.
+              this.trySendPendingReturnFeed(peerId);
+              return;
+            }
+
+            if (attemptsLeft <= 0) {
+              console.error(`[App] Mix-minus stream for ${peerId} never appeared; no return feed will be sent`);
+              return;
+            }
+
+            setTimeout(() => awaitMixMinus(peerId, attemptsLeft - 1), MIX_MINUS_POLL_MS);
+          };
+
+          // Staggered delay to avoid renegotiation collisions, then poll.
+          setTimeout(() => awaitMixMinus(remotePeerId, MIX_MINUS_MAX_ATTEMPTS), delay);
         } catch (error) {
           console.error(`[App] Failed to add ${remotePeerId} to audio graph:`, error);
         }
@@ -896,9 +934,28 @@ class OpenStudioApp {
     const rtcState = pc?.connectionState;
 
     if (!pc || rtcState !== 'connected') {
-      console.log(`[App] Connection not ready for ${remotePeerId} (RTC state: ${rtcState}), keeping return feed pending`);
-      return; // Keep in pendingReturnFeeds, will retry when connection becomes "connected"
+      // Do NOT rely solely on the connection-state-changed handler to retry this.
+      // That event is edge-triggered, and the connection frequently reaches
+      // "connected" BEFORE the mix-minus bus is ready -- so by the time the feed
+      // is marked pending the edge has already passed and nothing ever fires
+      // again. The feed then stays pending forever and the peer hears silence.
+      // Poll instead, so the pending state heals itself either way.
+      const attempts = (this.returnFeedRetries.get(remotePeerId) || 0) + 1;
+
+      if (attempts > RETURN_FEED_MAX_ATTEMPTS) {
+        console.error(`[App] Connection for ${remotePeerId} never reached "connected" (last RTC state: ${rtcState}); giving up on return feed`);
+        this.pendingReturnFeeds.delete(remotePeerId);
+        this.returnFeedRetries.delete(remotePeerId);
+        return;
+      }
+
+      this.returnFeedRetries.set(remotePeerId, attempts);
+      console.log(`[App] Connection not ready for ${remotePeerId} (RTC state: ${rtcState}), retrying return feed (${attempts}/${RETURN_FEED_MAX_ATTEMPTS})`);
+      setTimeout(() => this.trySendPendingReturnFeed(remotePeerId), RETURN_FEED_RETRY_MS);
+      return;
     }
+
+    this.returnFeedRetries.delete(remotePeerId);
 
     // Get the mix-minus stream
     const mixMinusStream = this.audioGraph.getMixMinusStream(remotePeerId);

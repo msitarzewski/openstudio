@@ -69,9 +69,17 @@
 ## What's Next
 
 ### Immediate
-1. **Deploy v0.3.2 to production** — `openstudio.zerologic.com` (Power Move + v0.3.0 + v0.3.1 + v0.3.2 not yet live)
-2. **AI setup script** (`setup-ai.sh`) — automate whisper.cpp clone, build, and model download; with capability gating now in place, a single script + a page refresh would light up Transcribe + Show Notes in one shot
-3. **Resume podcast Tasks 4-8** — click-to-cut on transcript, per-segment recording, ID3 tags, chapter markers, multi-track to final export
+1. **Return feed can be permanently lost** — a renegotiation offer sometimes
+   never reaches the peer, who then hears silence for the whole session.
+   User-facing. Two contributing bugs already fixed in PR #15; the offer loss
+   itself is open. See `tasks/2026-09/260912_ci_flakiness.md`.
+2. **Decide on PR #15** — it removes the CI mask that hid the bug above, so CI
+   is now honestly red. Merge requires fixing the bug or deliberately
+   restoring the mask.
+3. **`JWT_SECRET` in production `.env`** — currently regenerated per boot, so
+   room tokens die on every restart.
+4. **Resume podcast Tasks 4-8** — click-to-cut on transcript, per-segment
+   recording, ID3 tags, chapter markers, multi-track to final export
 
 ### Short Term
 1. **favicon.ico** — silence the lone 404 noted during v0.3.0 verification
@@ -95,7 +103,9 @@
 - LLM endpoint via `LLM_BASE_URL` / `LLM_MODEL` env vars; default `http://localhost:1234/v1` / `qwen3.5-35b` (matches LM Studio's standard port). Operators on non-default host/port override via `.env`. Graceful fallback when unreachable.
 - `LLM_API_KEY` env var (v0.3.2) enables cloud OpenAI-compatible providers (OpenAI, Together, Groq, plus Anthropic via litellm/anthropic-openai-compat shim). Local providers (LM Studio, Ollama, llama.cpp server) leave it blank.
 - whisper.cpp models stored in `models/` directory (auto-download from HuggingFace on first transcribe, ~1.5 GB for `ggml-medium.bin`)
-- whisper.cpp is a gitlink without `.gitmodules` config — clone setup is manual, not via `git submodule update`
+- whisper.cpp is NOT tracked by git at all (the gitlink was removed in PR #13; the
+  directory is gitignored). `./setup-ai.sh` clones and builds it. Do not run
+  `git submodule update` — there is nothing for it to do.
 - ffmpeg pipeline: silence detect → filler splice → concat segments → two-pass loudnorm to -16 LUFS → optional MP3 transcode (`libmp3lame -qscale:a 2`)
 - Self-hosted fonts use variable woff2 (latin subset only); non-Latin glyphs fall back to system fonts
 - `archiver` is now an explicit `server/package.json` dep — a fresh clone needs `cd server && npm install` before the signaling server can boot

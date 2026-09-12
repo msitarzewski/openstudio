@@ -399,10 +399,22 @@ export class RTCManager extends EventTarget {
     const returnFeedTrack = tracks[0];
     console.log(`[RTC] Return feed track: ${returnFeedTrack.id}, kind: ${returnFeedTrack.kind}`);
 
-    // Add track to peer connection
-    // This will trigger the 'negotiationneeded' event which handles creating and sending the offer
-    pc.addTrack(returnFeedTrack, mixMinusStream);
-    console.log(`[RTC] Return feed track added (negotiationneeded event will fire)`);
+    // Use addTransceiver(sendonly), NOT addTrack.
+    //
+    // addTrack reuses any existing compatible transceiver whose sender has no
+    // track -- including the recvonly transceiver created when the *other* peer
+    // added THEIR return feed. Both return feeds then collapse onto one m-line,
+    // and when that m-line is renegotiated only one direction survives: the peer
+    // that answers last silently loses its sender and the other side hears
+    // nothing for the rest of the session.
+    //
+    // A dedicated sendonly transceiver guarantees the outgoing return feed gets
+    // its own m-line, so the two directions can never contend for one.
+    pc.addTransceiver(returnFeedTrack, {
+      direction: 'sendonly',
+      streams: [mixMinusStream]
+    });
+    console.log(`[RTC] Return feed track added on its own transceiver (negotiationneeded event will fire)`);
   }
 
   /**

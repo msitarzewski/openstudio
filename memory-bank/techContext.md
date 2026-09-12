@@ -36,7 +36,7 @@
 
 ### Post-Production Tools (Power Move — Added ~2026-05, hardened in v0.3.1)
 
-**Whisper.cpp**: Git gitlink for on-device speech transcription (no cloud API, privacy-preserving). Manual clone + build — the gitlink does not have a corresponding `.gitmodules` entry, so `git submodule update` will not work. See README's Optional AI Tooling section for setup.
+**Whisper.cpp**: On-device speech transcription (no cloud API, privacy-preserving). NOT tracked by git — the gitlink was removed in PR #13 and `whisper.cpp/` is gitignored. `./setup-ai.sh` clones and builds it. `git submodule` commands do nothing.
 **ffmpeg + ffprobe**: Audio processing — silence detection, loudness normalization, silence/filler splice, optional MP3 transcode (`libmp3lame -qscale:a 2`). Required on `$PATH` for transcription, cleaning, and MP3 export.
 **LLM** (optional, for show notes): any OpenAI-compatible chat completions API — LM Studio, Ollama with the OpenAI shim, vLLM, llama.cpp server. Configured via `LLM_BASE_URL` and `LLM_MODEL` env vars (defaults: `http://localhost:1234/v1`, `qwen3.5-35b`). Graceful fallback to transcript-derived title/summary if unreachable.
 **Audio Pipeline**: Upload → Transcribe → Clean → Export (WAV / WebM / MP3)
@@ -196,7 +196,7 @@
 - Node.js 18+ (LTS)
 - Docker + Docker Compose
 - ffmpeg (audio processing for Power Move cleaning pipeline)
-- whisper.cpp submodule (`git submodule update --init`)
+- whisper.cpp local checkout (`./setup-ai.sh`)
 
 ### Optional Tools
 
@@ -205,8 +205,8 @@
 
 ### Development Workflow
 
-1. Clone repository (includes whisper.cpp submodule)
-2. `git submodule update --init` (fetches whisper.cpp)
+1. Clone repository (whisper.cpp is NOT included — it is untracked)
+2. `./setup-ai.sh` (clones + builds whisper.cpp, downloads the model, configures the LLM)
 3. `npm install` (installs server deps + ffmpeg/whisper integrated into pipeline)
 4. `npm start` → studio at http://localhost:6736
 
@@ -247,7 +247,7 @@
 
 ### Power Move ✅ (Merged PR #8, ~2026-05)
 
-- Whisper.cpp transcription pipeline (whisper.cpp submodule, on-device)
+- Whisper.cpp transcription pipeline (untracked local checkout, on-device)
 - Audio cleaning engine: noise reduction + loudness normalization
 - Filler/silence detection for splice points (ffmpeg-based)
 - Clean/Raw export modes in recording deck

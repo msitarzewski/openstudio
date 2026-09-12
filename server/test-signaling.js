@@ -10,6 +10,7 @@
  */
 
 import WebSocket from 'ws';
+import { randomUUID } from 'node:crypto';
 
 const SERVER_URL = 'ws://localhost:6736';
 const TIMEOUT = 5000; // 5 second timeout per test
@@ -20,6 +21,32 @@ const results = {
   failed: 0,
   tests: []
 };
+
+// Every test gets fresh peer IDs. Tests used to share a fixed pair, so a test
+// could try to register an ID while the previous test's socket was still being
+// torn down server-side -- the server correctly answered "already registered"
+// and the test timed out waiting for "registered". Unique IDs remove the
+// collision entirely rather than relying on cleanup winning the race.
+function newPeerId() {
+  return randomUUID();
+}
+
+// ws.close() only *starts* the closing handshake. Waiting for the socket to
+// actually reach CLOSED keeps sockets from piling up across tests.
+function closeAll(...sockets) {
+  return Promise.all(sockets.map((ws) => new Promise((resolve) => {
+    if (!ws || ws.readyState === WebSocket.CLOSED) {
+      resolve();
+      return;
+    }
+    const done = setTimeout(resolve, TIMEOUT);   // never hang teardown
+    ws.once('close', () => {
+      clearTimeout(done);
+      resolve();
+    });
+    ws.close();
+  })));
+}
 
 // Utility: Create WebSocket connection and wait for it to be ready
 async function createConnection() {
@@ -128,23 +155,25 @@ async function runTest(name, testFn) {
 
 // Test 1: Peer registration
 async function testPeerRegistration() {
+  const id = newPeerId();
   const ws = await createConnection();
 
   // Register peer
   const response = await sendAndWaitFor(ws, {
     type: 'register',
-    peerId: '11111111-1111-4111-8111-111111111111'
+    peerId: id
   }, 'registered');
 
-  if (response.peerId !== '11111111-1111-4111-8111-111111111111') {
+  if (response.peerId !== id) {
     throw new Error('Peer ID mismatch in response');
   }
 
-  ws.close();
+  await closeAll(ws);
 }
 
 // Test 2: Duplicate peer ID rejection
 async function testDuplicatePeerIdRejection() {
+  const id = newPeerId();
   const [ws1, ws2] = await Promise.all([
     createConnection(),
     createConnection()
@@ -153,25 +182,26 @@ async function testDuplicatePeerIdRejection() {
   // Register first peer
   await sendAndWaitFor(ws1, {
     type: 'register',
-    peerId: '22222222-2222-4222-8222-222222222222'
+    peerId: id
   }, 'registered');
 
   // Try to register second peer with same ID
   const errorResponse = await sendAndWaitFor(ws2, {
     type: 'register',
-    peerId: '22222222-2222-4222-8222-222222222222'
+    peerId: id
   }, 'error');
 
   if (!errorResponse.message.includes('already registered')) {
     throw new Error('Expected error message about duplicate peer ID');
   }
 
-  ws1.close();
-  ws2.close();
+  await closeAll(ws1, ws2);
 }
 
 // Test 3: Offer relay from peer A to peer B
 async function testOfferRelay() {
+  const idA = newPeerId();
+  const idB = newPeerId();
   const [peerA, peerB] = await Promise.all([
     createConnection(),
     createConnection()
@@ -179,15 +209,15 @@ async function testOfferRelay() {
 
   // Register both peers
   await Promise.all([
-    sendAndWaitFor(peerA, { type: 'register', peerId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }, 'registered'),
-    sendAndWaitFor(peerB, { type: 'register', peerId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }, 'registered')
+    sendAndWaitFor(peerA, { type: 'register', peerId: idA }, 'registered'),
+    sendAndWaitFor(peerB, { type: 'register', peerId: idB }, 'registered')
   ]);
 
   // Send offer from A to B (peerB should receive it)
   const offerMessage = {
     type: 'offer',
-    from: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-    to: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    from: idA,
+    to: idB,
     sdp: 'v=0\r\no=- 123456 2 IN IP4 127.0.0.1\r\n...'
   };
 
@@ -197,22 +227,23 @@ async function testOfferRelay() {
   const receivedOffer = await receivedOfferPromise;
 
   // Verify peer B received the exact offer
-  if (receivedOffer.from !== 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') {
+  if (receivedOffer.from !== idA) {
     throw new Error('Offer "from" field mismatch');
   }
-  if (receivedOffer.to !== 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') {
+  if (receivedOffer.to !== idB) {
     throw new Error('Offer "to" field mismatch');
   }
   if (receivedOffer.sdp !== offerMessage.sdp) {
     throw new Error('Offer SDP mismatch');
   }
 
-  peerA.close();
-  peerB.close();
+  await closeAll(peerA, peerB);
 }
 
 // Test 4: Answer relay from peer B to peer A
 async function testAnswerRelay() {
+  const idA = newPeerId();
+  const idB = newPeerId();
   const [peerA, peerB] = await Promise.all([
     createConnection(),
     createConnection()
@@ -220,15 +251,15 @@ async function testAnswerRelay() {
 
   // Register both peers
   await Promise.all([
-    sendAndWaitFor(peerA, { type: 'register', peerId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }, 'registered'),
-    sendAndWaitFor(peerB, { type: 'register', peerId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }, 'registered')
+    sendAndWaitFor(peerA, { type: 'register', peerId: idA }, 'registered'),
+    sendAndWaitFor(peerB, { type: 'register', peerId: idB }, 'registered')
   ]);
 
   // Send answer from B to A (peerA should receive it)
   const answerMessage = {
     type: 'answer',
-    from: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-    to: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    from: idB,
+    to: idA,
     sdp: 'v=0\r\no=- 789012 2 IN IP4 127.0.0.1\r\n...'
   };
 
@@ -238,22 +269,23 @@ async function testAnswerRelay() {
   const receivedAnswer = await receivedAnswerPromise;
 
   // Verify peer A received the exact answer
-  if (receivedAnswer.from !== 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') {
+  if (receivedAnswer.from !== idB) {
     throw new Error('Answer "from" field mismatch');
   }
-  if (receivedAnswer.to !== 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') {
+  if (receivedAnswer.to !== idA) {
     throw new Error('Answer "to" field mismatch');
   }
   if (receivedAnswer.sdp !== answerMessage.sdp) {
     throw new Error('Answer SDP mismatch');
   }
 
-  peerA.close();
-  peerB.close();
+  await closeAll(peerA, peerB);
 }
 
 // Test 5: ICE candidate relay
 async function testIceCandidateRelay() {
+  const idA = newPeerId();
+  const idB = newPeerId();
   const [peerA, peerB] = await Promise.all([
     createConnection(),
     createConnection()
@@ -261,15 +293,15 @@ async function testIceCandidateRelay() {
 
   // Register both peers
   await Promise.all([
-    sendAndWaitFor(peerA, { type: 'register', peerId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }, 'registered'),
-    sendAndWaitFor(peerB, { type: 'register', peerId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }, 'registered')
+    sendAndWaitFor(peerA, { type: 'register', peerId: idA }, 'registered'),
+    sendAndWaitFor(peerB, { type: 'register', peerId: idB }, 'registered')
   ]);
 
   // Send ICE candidate from A to B (peerB should receive it)
   const candidateMessage = {
     type: 'ice-candidate',
-    from: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-    to: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    from: idA,
+    to: idB,
     candidate: {
       candidate: 'candidate:1 1 UDP 2130706431 192.168.1.100 54321 typ host',
       sdpMLineIndex: 0,
@@ -283,29 +315,30 @@ async function testIceCandidateRelay() {
   const receivedCandidate = await receivedCandidatePromise;
 
   // Verify peer B received the candidate
-  if (receivedCandidate.from !== 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') {
+  if (receivedCandidate.from !== idA) {
     throw new Error('Candidate "from" field mismatch');
   }
-  if (receivedCandidate.to !== 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') {
+  if (receivedCandidate.to !== idB) {
     throw new Error('Candidate "to" field mismatch');
   }
   if (JSON.stringify(receivedCandidate.candidate) !== JSON.stringify(candidateMessage.candidate)) {
     throw new Error('Candidate data mismatch');
   }
 
-  peerA.close();
-  peerB.close();
+  await closeAll(peerA, peerB);
 }
 
 // Test 6: Unregistered peer cannot send offer
 async function testUnregisteredPeerRejection() {
+  const idA = newPeerId();
+  const idB = newPeerId();
   const ws = await createConnection();
 
   // Try to send offer without registering
   const errorResponse = await sendAndWaitFor(ws, {
     type: 'offer',
-    from: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-    to: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    from: idA,
+    to: idB,
     sdp: 'v=0...'
   }, 'error');
 
@@ -313,20 +346,21 @@ async function testUnregisteredPeerRejection() {
     throw new Error('Expected error about peer not being registered');
   }
 
-  ws.close();
+  await closeAll(ws);
 }
 
 // Test 7: Target peer not found
 async function testTargetPeerNotFound() {
+  const idA = newPeerId();
   const peerA = await createConnection();
 
   // Register peer A
-  await sendAndWaitFor(peerA, { type: 'register', peerId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }, 'registered');
+  await sendAndWaitFor(peerA, { type: 'register', peerId: idA }, 'registered');
 
   // Send offer to non-existent peer
   const errorResponse = await sendAndWaitFor(peerA, {
     type: 'offer',
-    from: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    from: idA,
     to: 'non-existent-peer',
     sdp: 'v=0...'
   }, 'error');
@@ -335,20 +369,22 @@ async function testTargetPeerNotFound() {
     throw new Error('Expected error about target peer not connected');
   }
 
-  peerA.close();
+  await closeAll(peerA);
 }
 
 // Test 8: Spoofed "from" field rejection
 async function testSpoofedFromRejection() {
+  const idA = newPeerId();
+  const idB = newPeerId();
   const peerA = await createConnection();
 
   // Register peer A
-  await sendAndWaitFor(peerA, { type: 'register', peerId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }, 'registered');
+  await sendAndWaitFor(peerA, { type: 'register', peerId: idA }, 'registered');
 
   // Try to send offer with spoofed "from" field
   const errorResponse = await sendAndWaitFor(peerA, {
     type: 'offer',
-    from: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', // Spoofed!
+    from: idB, // Spoofed!
     to: 'peer-c',
     sdp: 'v=0...'
   }, 'error');
@@ -357,21 +393,23 @@ async function testSpoofedFromRejection() {
     throw new Error('Expected error about "from" field not matching peer ID');
   }
 
-  peerA.close();
+  await closeAll(peerA);
 }
 
 // Test 9: Malformed message (missing required fields)
 async function testMalformedMessage() {
+  const idA = newPeerId();
+  const idB = newPeerId();
   const ws = await createConnection();
 
   // Register peer
-  await sendAndWaitFor(ws, { type: 'register', peerId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }, 'registered');
+  await sendAndWaitFor(ws, { type: 'register', peerId: idA }, 'registered');
 
   // Send malformed offer (missing sdp)
   const errorResponse = await sendAndWaitFor(ws, {
     type: 'offer',
-    from: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-    to: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+    from: idA,
+    to: idB
     // Missing: sdp
   }, 'error');
 
@@ -379,7 +417,7 @@ async function testMalformedMessage() {
     throw new Error('Expected error about missing sdp field');
   }
 
-  ws.close();
+  await closeAll(ws);
 }
 
 // ============================================================================

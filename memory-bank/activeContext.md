@@ -1,16 +1,47 @@
 # Active Context: OpenStudio
 
-**Last Updated**: 2026-05-25 (v0.3.2 cut — capability gating + cloud LLM support)
+**Last Updated**: 2026-09-12
 
 ## Current Phase
 
-**Release**: 0.3.2 (committed today) — capability-gated AI UX + OpenAI-compatible cloud provider support
+**Release**: 0.3.2 shipped; `main` carries unreleased work (PRs #12–#14)
 **Branch**: `main`
-**Status**: v0.3.0, v0.3.1, and v0.3.2 all shipped. AI features (Transcribe, Show Notes, MP3 export) now self-document — when prereqs are missing, the UI surfaces a modal with exact install commands instead of failing on click. Cloud LLM providers (OpenAI, Together, Groq, Anthropic-via-shim) work via `LLM_API_KEY`; local providers still work with no env change. README documents per-provider setup.
-**Focus**: Deploy v0.3.2 to openstudio.zerologic.com, then resume podcast Tasks 4-8 (click-to-cut on transcript, per-segment recording, ID3 tag export, chapter markers, multi-track to final export)
+**Status**: Production is **current** as of 2026-09-12 — it had been 8 commits
+behind, with Power Move and v0.3.0–v0.3.2 never deployed. Prod also **moved
+hosts**; the old deployment notes were wrong. See the reference memory for the
+live topology and `tasks/2026-09/README.md` for the full arc.
+**Focus**: One open product bug (below), then podcast Tasks 4–8.
+
+## Open Issues (2026-09-12)
+
+### Return feed can be permanently lost — OPEN, user-facing
+One peer can end up never hearing another for the whole session. Two
+contributing bugs are fixed in PR #15 (a one-shot mix-minus check that gave up
+permanently, and a retry waiting on an edge event that had already fired).
+
+The earlier theory that the renegotiation offer was **lost in transit is
+disproven** — a Chrome DevTools session confirmed the receiver both dispatches
+the offer and enters `handleOffer`. Signalling is not the problem.
+
+Two real defects remain as suspects, neither confirmed: the polite peer's glare
+branch only *logs* a rollback it never performs (`connection-manager.js:303`),
+and `trySendPendingReturnFeed()` gates on `pc.connectionState === 'connected'`,
+which was observed stuck at `"new"` while the session was otherwise healthy.
+
+A local repro needs real microphone permission — see the task doc before
+spending time on it.
+
+### CI is honestly red
+`ci.yml` used to run the return-feed test three times and accept any pass,
+which hid the bug above and made every red X ambiguous. That mask is removed
+in PR #15, so CI now reports the truth: roughly 2 of 3 jobs fail on the
+outstanding bug. PR #15 is deliberately unmerged pending a decision.
+
+### JWT_SECRET not set in production
+The server generates a random secret per boot, so room tokens do not survive a
+restart. One line in the production `.env`.
 
 ## Recent Updates (2026-05-25)
-
 ### v0.3.2 Release ✅
 - **`GET /api/capabilities` endpoint** — new `server/lib/capabilities.js` probes ffmpeg, ffprobe, the whisper.cpp binary, the Whisper model file, and the configured LLM endpoint; in-memory 60 s cache so the endpoint is cheap to hit on every page load
 - **Frontend capability gating** — `web/js/capability-modal.js` reads `/api/capabilities` on load and disables Transcribe / Show Notes / MP3 format option when their prereqs are missing. Clicking a gated control opens a modal with the exact install commands. Modal DOM in `web/index.html`, styling in `web/css/studio.css`.
@@ -162,6 +193,6 @@ Client (browser) ──────────────── Node.js Server
 - `GET /api/capabilities` is the single source of truth for AI feature availability; backend probes filesystem + env, caches result for 60 s, frontend renders gated state from the snapshot. No live LLM network probe — we report `configured`/`authenticated`, not `reachable`.
 - `LLM_API_KEY` env var (new in v0.3.2) is optional; when set, show-notes generator sends `Authorization: Bearer <key>`. Required for OpenAI/Together/Groq; leave blank for LM Studio/Ollama/llama.cpp server.
 - LLM endpoint via `LLM_BASE_URL` / `LLM_MODEL` env vars; default `http://localhost:1234/v1` (LM Studio's standard port). Operators running their LLM on a non-default host/port override via `.env`. If the LLM is unreachable, show-notes falls back to a transcript-derived title and summary.
-- whisper.cpp is a gitlink without `.gitmodules` config — submodule update commands will fail; clone of the whisper.cpp tree must be set up manually (instructions now in README's Optional AI Tooling section)
+- whisper.cpp is NOT tracked by git (gitlink removed in PR #13, directory gitignored); `./setup-ai.sh` clones and builds it
 - `archiver` is declared in `server/package.json` but a fresh clone needs `cd server && npm install` before the signaling server can boot (otherwise: `Cannot find package 'archiver'`)
 - Multipart parser pattern: when no per-part `Content-Length` is present, take `Math.min(nextRegularBoundary, endBoundary)` and trim trailing CRLF; the original `handleExportClean` lacked the end-boundary check, which silently broke MP3 export detection
