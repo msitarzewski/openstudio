@@ -176,7 +176,7 @@ async function runTest() {
     await peerA.page.goto(WEB_SERVER_URL);
 
     console.log('[A] Waiting for connection...');
-    const aConnected = await waitForStatus(peerA.page, 'Connected');
+    const aConnected = await waitForStatus(peerA.page, '已连接');
     if (!aConnected) {
       throw new Error('A failed to connect to signaling server');
     }
@@ -204,7 +204,7 @@ async function runTest() {
     await peerB.page.goto(`${WEB_SERVER_URL}#${roomId}`);
 
     console.log('[B] Waiting for connection...');
-    const bConnected = await waitForStatus(peerB.page, 'Connected');
+    const bConnected = await waitForStatus(peerB.page, '已连接');
     if (!bConnected) {
       throw new Error('B failed to connect to signaling server');
     }

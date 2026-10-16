@@ -77,8 +77,8 @@
   --meter-ghost:     rgba(255,255,255,0.03);
 
   /* TYPOGRAPHY */
-  --font-display: 'Space Grotesk', system-ui, sans-serif;
-  --font-body:    'Inter', system-ui, sans-serif;
+  --font-display: 'Space Grotesk', system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-body:    'Inter', system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --font-mono:    'JetBrains Mono', monospace;
 
   --text-xs: 0.6875rem;
@@ -319,7 +319,7 @@ main {
 
 /* Empty state */
 #participants:empty::after {
-  content: 'The frequency is clear.';
+  content: '频率清晰。';
   grid-column: 1 / -1;
   text-align: center;
   font-family: var(--font-display);

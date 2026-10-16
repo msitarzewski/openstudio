@@ -73,7 +73,7 @@ export class IcecastStreamer extends EventTarget {
 
     this.encoder.addEventListener('error', (event) => {
       console.error('[IcecastStreamer] Encoder error:', event.detail);
-      this.handleError('Encoder error: ' + event.detail.message);
+      this.handleError('编码器错误：' + event.detail.message);
     });
   }
 
@@ -90,7 +90,7 @@ export class IcecastStreamer extends EventTarget {
 
     console.log('[IcecastStreamer] Starting stream to Icecast...');
     this.dispatchEvent(new CustomEvent('status-change', {
-      detail: { status: 'connecting', message: 'Connecting to Icecast...' }
+      detail: { status: 'connecting', message: '正在连接 Icecast…' }
     }));
 
     try {
@@ -114,12 +114,12 @@ export class IcecastStreamer extends EventTarget {
 
       console.log('[IcecastStreamer] Stream started successfully');
       this.dispatchEvent(new CustomEvent('status-change', {
-        detail: { status: 'streaming', message: 'Streaming to Icecast' }
+        detail: { status: 'streaming', message: '正在向 Icecast 推流' }
       }));
 
     } catch (error) {
       console.error('[IcecastStreamer] Failed to start stream:', error);
-      this.handleError('Failed to connect to Icecast: ' + error.message);
+      this.handleError('连接 Icecast 失败：' + error.message);
     }
   }
 
@@ -163,7 +163,7 @@ export class IcecastStreamer extends EventTarget {
    */
   async connectWithWebSocket() {
     if (!this.signalingWebSocket) {
-      throw new Error('No signaling WebSocket available for streaming');
+      throw new Error('没有可用于推流的信令 WebSocket');
     }
 
     console.log('[IcecastStreamer] Initializing WebSocket streaming');
@@ -218,7 +218,7 @@ export class IcecastStreamer extends EventTarget {
 
     } catch (error) {
       console.error('[IcecastStreamer] Failed to handle chunk:', error);
-      this.handleError('Failed to handle chunk');
+      this.handleError('处理音频数据失败');
     }
   }
 
@@ -283,7 +283,7 @@ export class IcecastStreamer extends EventTarget {
 
     console.log('[IcecastStreamer] Stream stopped');
     this.dispatchEvent(new CustomEvent('status-change', {
-      detail: { status: 'stopped', message: 'Streaming stopped' }
+      detail: { status: 'stopped', message: '推流已停止' }
     }));
   }
 
@@ -311,7 +311,7 @@ export class IcecastStreamer extends EventTarget {
       this.dispatchEvent(new CustomEvent('status-change', {
         detail: {
           status: 'reconnecting',
-          message: `Connection lost. Reconnecting in ${delay / 1000}s... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+          message: `连接中断，${delay / 1000} 秒后重连…（${this.reconnectAttempts}/${this.maxReconnectAttempts}）`
         }
       }));
 
@@ -326,7 +326,7 @@ export class IcecastStreamer extends EventTarget {
       this.dispatchEvent(new CustomEvent('status-change', {
         detail: {
           status: 'error',
-          message: 'Failed to connect to Icecast. Max retry attempts reached.'
+          message: '连接 Icecast 失败，已达最大重试次数。'
         }
       }));
     }
@@ -347,7 +347,7 @@ export class IcecastStreamer extends EventTarget {
 
     } catch (error) {
       console.error('[IcecastStreamer] Reconnection failed:', error);
-      this.handleError('Reconnection failed');
+      this.handleError('重连失败');
     }
   }
 

@@ -116,7 +116,7 @@ async function runTest() {
 
     // Wait for connection to signaling server
     console.log('[A] Waiting for connection...');
-    const aConnected = await waitForStatus(peerA.page, 'Connected');
+    const aConnected = await waitForStatus(peerA.page, '已连接');
     if (!aConnected) {
       throw new Error('A failed to connect to signaling server');
     }
@@ -174,7 +174,7 @@ async function runTest() {
 
     // Wait for connection
     console.log('[B] Waiting for connection...');
-    const bConnected = await waitForStatus(peerB.page, 'Connected');
+    const bConnected = await waitForStatus(peerB.page, '已连接');
     if (!bConnected) {
       throw new Error('B failed to connect to signaling server');
     }
@@ -213,7 +213,7 @@ async function runTest() {
 
     // Wait for connection
     console.log('[C] Waiting for connection...');
-    const cConnected = await waitForStatus(peerC.page, 'Connected');
+    const cConnected = await waitForStatus(peerC.page, '已连接');
     if (!cConnected) {
       throw new Error('C failed to connect to signaling server');
     }

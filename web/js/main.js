@@ -120,8 +120,8 @@ class OpenStudioApp {
 
     // Update CTA if joining an existing room
     if (this.roomIdFromUrl) {
-      this.startSessionButton.textContent = 'Join Broadcast';
-      this.endSessionButton.textContent = 'Leave Broadcast';
+      this.startSessionButton.textContent = '加入广播';
+      this.endSessionButton.textContent = '离开广播';
     }
 
     // If device selector exists, listen for changes
@@ -205,7 +205,7 @@ class OpenStudioApp {
         .catch((err) => console.warn('[App] Capability load failed:', err));
     } catch (error) {
       console.error('[App] Initialization failed:', error);
-      this.setStatus('disconnected', 'Initialization failed');
+      this.setStatus('disconnected', '初始化失败');
     }
   }
 
@@ -244,7 +244,7 @@ class OpenStudioApp {
     if (this.transcribeBtn && features.transcribe && !features.transcribe.available) {
       this.transcribeBtn.classList.add('disabled-by-capability');
       this.transcribeBtn.setAttribute('aria-disabled', 'true');
-      this.transcribeBtn.setAttribute('title', 'Click for setup instructions');
+      this.transcribeBtn.setAttribute('title', '点击查看配置说明');
       // Append info icon (idempotent).
       if (!this.transcribeBtn.querySelector('.capability-info-icon')) {
         const icon = document.createElement('span');
@@ -259,7 +259,7 @@ class OpenStudioApp {
     const mp3Option = document.querySelector('#output-format option[value="mp3"]');
     if (mp3Option && features.mp3Export && !features.mp3Export.available) {
       mp3Option.disabled = true;
-      mp3Option.textContent = 'MP3 (requires ffmpeg)';
+      mp3Option.textContent = 'MP3（需要 ffmpeg）';
     }
   }
 
@@ -300,7 +300,7 @@ class OpenStudioApp {
       const modelPresent = !!(caps.model && caps.model.available);
       const sizeHint = caps.model && caps.model.sizeHint ? ` (${caps.model.sizeHint})` : '';
       out.push({
-        name: `Whisper model${sizeHint}`,
+        name: `Whisper 模型${sizeHint}`,
         present: modelPresent,
         install: './setup-ai.sh   # downloads the medium Whisper model into models/',
       });
@@ -311,7 +311,7 @@ class OpenStudioApp {
     if (featureName === 'showNotes' && caps.llm) {
       const llmReady = !!(caps.llm.configured && caps.llm.authenticated !== false);
       out.push({
-        name: `LLM polish (optional) — ${caps.llm.provider || 'OpenAI-compatible'}`,
+        name: `LLM 润色（可选）— ${caps.llm.provider || 'OpenAI-compatible'}`,
         present: llmReady,
         install: './setup-ai.sh   # choose an LLM provider and write it into .env',
       });
@@ -350,7 +350,7 @@ class OpenStudioApp {
 
       if (audioInputs.length === 0) {
         const opt = document.createElement('option');
-        opt.textContent = 'No microphones found';
+        opt.textContent = '未找到麦克风';
         this.micSelect.appendChild(opt);
         return;
       }
@@ -381,7 +381,7 @@ class OpenStudioApp {
     } catch (error) {
       console.error('[App] Failed to enumerate devices:', error);
       const opt = document.createElement('option');
-      opt.textContent = 'Unable to list microphones';
+      opt.textContent = '无法列出麦克风';
       this.micSelect.appendChild(opt);
     }
   }
@@ -426,7 +426,7 @@ class OpenStudioApp {
         console.log('[App] Microphone track replaced successfully');
       } catch (error) {
         console.error('[App] Failed to switch microphone:', error);
-        alert(`Failed to switch to ${this.micSelect.options[this.micSelect.selectedIndex]?.text}. Make sure the device is available.`);
+        alert(`切换到 ${this.micSelect.options[this.micSelect.selectedIndex]?.text} 失败，请确认设备可用。`);
       }
     }
   }
@@ -436,16 +436,16 @@ class OpenStudioApp {
    */
   setupSignalingListeners() {
     this.signaling.addEventListener('connected', () => {
-      this.setStatus('connecting', 'Connecting...');
+      this.setStatus('connecting', '连接中…');
     });
 
     this.signaling.addEventListener('registered', () => {
-      this.setStatus('connected', 'Connected');
+      this.setStatus('connected', '已连接');
       this.startSessionButton.disabled = false;
     });
 
     this.signaling.addEventListener('disconnected', () => {
-      this.setStatus('disconnected', 'Disconnected');
+      this.setStatus('disconnected', '未连接');
       this.startSessionButton.disabled = true;
       this.endSessionButton.disabled = true;
     });
@@ -466,7 +466,7 @@ class OpenStudioApp {
       window.location.hash = roomId;
 
       // Update UI
-      this.setStatus('connected', `Room: ${roomId.substring(0, 8)}...`);
+      this.setStatus('connected', `房间：${roomId.substring(0, 8)}…`);
       this.startSessionButton.disabled = true;
       this.endSessionButton.disabled = false;
       this.toggleMuteButton.disabled = false;
@@ -516,7 +516,7 @@ class OpenStudioApp {
       this.currentRole = role || 'guest'; // Use role from server, fallback to guest
 
       // Update UI
-      this.setStatus('connected', `Room: ${roomId.substring(0, 8)}...`);
+      this.setStatus('connected', `房间：${roomId.substring(0, 8)}…`);
       this.startSessionButton.disabled = true;
       this.endSessionButton.disabled = false;
       this.toggleMuteButton.disabled = false;
@@ -622,7 +622,7 @@ class OpenStudioApp {
       // being fixed. Worse, alert() blocks the event loop, delaying the very
       // reconnect that resolves it, and one outage can queue several dialogs.
       // The status pill is the right place for this.
-      this.setStatus('connecting', 'Reconnecting…');
+      this.setStatus('connecting', '重新连接中…');
     });
   }
 
@@ -633,11 +633,11 @@ class OpenStudioApp {
    * @returns {string}
    */
   getRoleDisplayName(role, isSelf) {
-    const suffix = isSelf ? ' (You)' : '';
+    const suffix = isSelf ? '（你）' : '';
     switch (role) {
-      case 'host': return `Host${suffix}`;
-      case 'ops': return `Engineer${suffix}`;
-      default: return isSelf ? 'You' : 'Caller';
+      case 'host': return `主播${suffix}`;
+      case 'ops': return `工程师${suffix}`;
+      default: return isSelf ? '你' : '连线嘉宾';
     }
   }
 
@@ -677,7 +677,7 @@ class OpenStudioApp {
       console.log(`[App] Streaming status: ${status} - ${message}`);
 
       // Update streaming status UI
-      this.streamingStatusElement.textContent = status === 'streaming' ? 'TRANSMITTING' : message;
+      this.streamingStatusElement.textContent = status === 'streaming' ? '传输中' : message;
       this.streamingStatusElement.className = `streaming-status ${status}`;
 
       // Update button states based on status
@@ -884,7 +884,7 @@ class OpenStudioApp {
     this.connectionManager.addEventListener('connection-failed', (event) => {
       const { remotePeerId, reason } = event.detail;
       console.error(`[App] Connection permanently failed for ${remotePeerId}: ${reason}`);
-      alert(`Failed to connect to participant ${remotePeerId.substring(0, 8)}: ${reason}`);
+      alert(`连接参与者 ${remotePeerId.substring(0, 8)} 失败：${reason}`);
     });
   }
 
@@ -1122,7 +1122,7 @@ class OpenStudioApp {
       console.log('[App] AudioContext resumed');
     } catch (error) {
       console.error('[App] Failed to resume AudioContext:', error);
-      alert('Failed to start audio system. Please try again.');
+      alert('音频系统启动失败，请重试。');
       return;
     }
 
@@ -1150,7 +1150,7 @@ class OpenStudioApp {
       this.signaling.createOrJoinRoom(this.roomIdFromUrl, role, inviteToken);
     } else {
       // No room ID in URL - prompt user
-      const confirmCreate = confirm('Create a new room? Click OK to create, or Cancel to join an existing room.');
+      const confirmCreate = confirm('创建新房间？点击“确定”创建，或点击“取消”加入已有房间。');
 
       if (confirmCreate) {
         // Create new room as host
@@ -1158,7 +1158,7 @@ class OpenStudioApp {
         this.signaling.createOrJoinRoom(null, 'host'); // null = generate new UUID
       } else {
         // Prompt for room ID
-        const roomId = prompt('Enter room ID to join:');
+        const roomId = prompt('输入要加入的房间 ID：');
         if (roomId) {
           console.log(`[App] Joining room: ${roomId} as guest`);
           this.signaling.createOrJoinRoom(roomId, 'guest');
@@ -1246,12 +1246,12 @@ class OpenStudioApp {
     this.endSessionButton.disabled = true;
     this.toggleMuteButton.disabled = true;
     this.toggleMuteButton.classList.remove('muted');
-    this.toggleMuteButton.textContent = 'Mute';
+    this.toggleMuteButton.textContent = '静音';
     this.startStreamingButton.disabled = true;
     this.stopStreamingButton.disabled = true;
     this.startStreamingButton.style.display = 'inline-block';
     this.stopStreamingButton.style.display = 'none';
-    this.streamingStatusElement.textContent = 'Not Streaming';
+    this.streamingStatusElement.textContent = '未推流';
     this.streamingStatusElement.className = 'streaming-status';
     this.startRecordingButton.disabled = true;
     this.startRecordingButton.classList.remove('recording');
@@ -1271,8 +1271,8 @@ class OpenStudioApp {
     this.exportBtn.disabled = true;
     if (this.sessionInfoElement) this.sessionInfoElement.textContent = '';
     window.location.hash = '';
-    this.startSessionButton.textContent = 'Start Broadcast';
-    this.endSessionButton.textContent = 'End Broadcast';
+    this.startSessionButton.textContent = '开始广播';
+    this.endSessionButton.textContent = '结束广播';
 
     // Reconnect to signaling
     this.signaling.connect();
@@ -1294,11 +1294,11 @@ class OpenStudioApp {
     audioTrack.enabled = !audioTrack.enabled;
 
     if (audioTrack.enabled) {
-      this.toggleMuteButton.textContent = 'Mute';
+      this.toggleMuteButton.textContent = '静音';
       this.toggleMuteButton.classList.remove('muted');
       console.log('[App] Unmuted microphone');
     } else {
-      this.toggleMuteButton.textContent = 'Unmute';
+      this.toggleMuteButton.textContent = '取消静音';
       this.toggleMuteButton.classList.add('muted');
       console.log('[App] Muted microphone');
     }
@@ -1312,7 +1312,7 @@ class OpenStudioApp {
 
     // Only host can stream
     if (this.currentRole !== 'host') {
-      alert('Only the host can start streaming.');
+      alert('只有主播可以开始推流。');
       return;
     }
 
@@ -1322,7 +1322,7 @@ class OpenStudioApp {
 
     if (!mediaStream) {
       console.error('[App] No program bus MediaStream available');
-      alert('Program bus not ready. Please try again.');
+      alert('节目总线未就绪，请重试。');
       return;
     }
 
@@ -1341,7 +1341,7 @@ class OpenStudioApp {
       await this.icecastStreamer.start(mediaStream, this.signaling.getWebSocket());
     } catch (error) {
       console.error('[App] Failed to start streaming:', error);
-      alert(`Failed to start streaming: ${error.message}`);
+      alert(`开始推流失败：${error.message}`);
       this.startStreamingButton.disabled = false;
     }
   }
@@ -1427,12 +1427,12 @@ class OpenStudioApp {
     this.downloadRecordingsButton.disabled = false;
 
     const heading = document.createElement('h4');
-    heading.textContent = 'Recorded Tracks';
+    heading.textContent = '已录制音轨';
     this.recordingTracksDiv.appendChild(heading);
 
     // Program mix
     if (recordings.program) {
-      this.addTrackDownloadItem('Program Mix', recordings.program, 'mix');
+      this.addTrackDownloadItem('节目混音', recordings.program, 'mix');
     }
 
     // Individual tracks
@@ -1474,11 +1474,11 @@ class OpenStudioApp {
 
     const downloadBtn = document.createElement('button');
     downloadBtn.className = 'recording-track-download';
-    downloadBtn.textContent = 'Download';
+    downloadBtn.textContent = '下载';
     downloadBtn.addEventListener('click', () => {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const ext = this.recordingManager.getFileExtension();
-      const safeName = name.replace(/[^a-zA-Z0-9-_]/g, '_');
+      const safeName = name.replace(/[^a-zA-Z0-9-_\u4e00-\u9fa5]/g, '_');
       this.recordingManager.downloadTrack(blob, `openstudio-${safeName}-${timestamp}.${ext}`);
     });
 
@@ -1504,7 +1504,7 @@ class OpenStudioApp {
       // Download raw audio immediately
       this.exportStatus.style.display = 'flex';
       this.exportStatus.className = 'export-status success';
-      this.exportStatus.innerHTML = '✓ Ready';
+      this.exportStatus.innerHTML = '✓ 就绪';
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const ext = this.recordingManager.getFileExtension();
@@ -1513,7 +1513,7 @@ class OpenStudioApp {
       // Send to /api/export/clean
       this.exportStatus.style.display = 'flex';
       this.exportStatus.className = 'export-status processing';
-      this.exportStatus.innerHTML = '<span class="export-spinner"></span> Cleaning audio...';
+      this.exportStatus.innerHTML = '<span class="export-spinner"></span> 正在净化音频…';
 
       try {
         const options = {
@@ -1574,7 +1574,7 @@ class OpenStudioApp {
     if (this.capabilities && !this.capabilities.features?.transcribe?.available) {
       openCapabilityModal({
         feature: 'transcribe',
-        title: 'Transcription Requires Setup',
+        title: '转写功能需要配置',
         requirements: this._buildRequirements('transcribe'),
       });
       return;
@@ -1585,7 +1585,7 @@ class OpenStudioApp {
     this.transcribeBtn.disabled = true;
     this.transcribeStatus.style.display = 'flex';
     this.transcribeStatus.className = 'export-status processing';
-    this.transcribeStatus.innerHTML = '<span class="export-spinner"></span> Transcribing...';
+    this.transcribeStatus.innerHTML = '<span class="export-spinner"></span> 正在转写…';
     this.showNotesPanel.style.display = 'none';
 
     try {
@@ -1594,7 +1594,7 @@ class OpenStudioApp {
       
       // Step 2: Generate show notes from transcript
       const segments = transcription.segments || [];
-      this.transcribeStatus.innerHTML = '<span class="export-spinner"></span> Generating show notes...';
+      this.transcribeStatus.innerHTML = '<span class="export-spinner"></span> 正在生成节目笔记…';
 
       const response = await fetch('/api/export/show-notes', {
         method: 'POST',
@@ -1604,14 +1604,14 @@ class OpenStudioApp {
 
       if (!response.ok) {
         const errText = await response.text().catch(() => '');
-        throw new Error(`Show notes generation failed (${response.status}): ${errText}`);
+        throw new Error(`生成节目笔记失败（${response.status}）：${errText}`);
       }
 
       const showNotes = await response.json();
 
       // Step 3: Display show notes in UI
       this.episodeTitleInput.value = showNotes.title || '';
-      this.episodeSummary.value = showNotes.summary || 'No summary generated.';
+      this.episodeSummary.value = showNotes.summary || '未生成摘要。';
 
       // Render segment markers
       this.segmentList.innerHTML = '';
@@ -1645,7 +1645,7 @@ class OpenStudioApp {
    * Copy show notes to clipboard as formatted text
    */
   handleCopyShowNotes() {
-    const title = this.episodeTitleInput.value || 'Untitled Episode';
+    const title = this.episodeTitleInput.value || '未命名节目';
     const summary = this.episodeSummary.value;
 
     // Build segments list
@@ -1662,7 +1662,7 @@ class OpenStudioApp {
 
 ${summary}
 
-## Segments
+## 分段
 
 ${segmentsText}`;
 
@@ -1670,7 +1670,7 @@ ${segmentsText}`;
       if (this.showNotesStatus) {
         this.showNotesStatus.style.display = 'flex';
         this.showNotesStatus.className = 'export-status success';
-        this.showNotesStatus.innerHTML = '✓ Copied!';
+        this.showNotesStatus.innerHTML = '✓ 已复制';
         setTimeout(() => {
           this.showNotesStatus.style.display = 'none';
         }, 2000);
@@ -1679,7 +1679,7 @@ ${segmentsText}`;
       if (this.showNotesStatus) {
         this.showNotesStatus.style.display = 'flex';
         this.showNotesStatus.className = 'export-status error';
-        this.showNotesStatus.innerHTML = '✗ Copy failed';
+        this.showNotesStatus.innerHTML = '✗ 复制失败';
       }
     });
   }
@@ -1688,7 +1688,7 @@ ${segmentsText}`;
    * Download show notes as a Markdown file
    */
   handleDownloadShowNotes() {
-    const title = this.episodeTitleInput.value || 'untitled-episode';
+    const title = this.episodeTitleInput.value || '未命名节目';
     const summary = this.episodeSummary.value;
 
     // Build segments list
@@ -1705,12 +1705,12 @@ ${segmentsText}`;
 
 ${summary}
 
-## Segments
+## 分段
 
 ${segmentsText}`;
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const filename = `${title.replace(/[^a-zA-Z0-9-_]/g, '_').toLowerCase()}-${timestamp}.md`;
+    const filename = `${title.replace(/[^a-zA-Z0-9-_\u4e00-\u9fa5]/g, '_').toLowerCase()}-${timestamp}.md`;
 
     const blob = new Blob([showNotes], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -1728,7 +1728,7 @@ ${segmentsText}`;
    */
   getParticipantNames() {
     const names = new Map();
-    names.set(this.peerId, 'host');
+    names.set(this.peerId, '主播');
     for (const [peerId, data] of this.participants) {
       names.set(peerId, data.name);
     }
@@ -1759,7 +1759,7 @@ ${segmentsText}`;
     // Check permissions
     if (!isSelf && !canMuteOthers) {
       console.warn(`[App] Guest cannot mute other participants`);
-      alert('Only hosts and ops can mute other participants.');
+      alert('只有主播和工程师可以静音其他参与者。');
       return;
     }
 
@@ -1779,7 +1779,7 @@ ${segmentsText}`;
     if (!success) {
       console.warn(`[App] Mute action blocked for ${peerId} (conflict with ${muteState.authority} authority)`);
       // Show user feedback that action was blocked
-      alert('Cannot override host/ops mute. Please ask them to unmute you.');
+      alert('无法取消主播或工程师的静音，请联系他们为你解除。');
     } else {
       console.log(`[App] ${newMutedState ? 'Muted' : 'Unmuted'} participant: ${peerId} (authority: ${authority})`);
     }
@@ -1811,17 +1811,17 @@ ${segmentsText}`;
     if (muteState.muted) {
       card.classList.add('is-muted');
       if (muteState.authority === 'producer') {
-        muteButton.textContent = 'MUTED (HOST)';
+        muteButton.textContent = '已静音（主播）';
         muteButton.classList.add('producer-muted');
       } else {
-        muteButton.textContent = 'MUTED';
+        muteButton.textContent = '已静音';
         muteButton.classList.add('self-muted');
       }
       if (gainSlider) {
         gainSlider.disabled = true;
       }
     } else {
-      muteButton.textContent = 'UNMUTED';
+      muteButton.textContent = '未静音';
       if (gainSlider) {
         gainSlider.disabled = false;
       }
@@ -1923,8 +1923,8 @@ ${segmentsText}`;
 
     const roleEl = document.createElement('div');
     roleEl.className = `participant-role role-${role}`;
-    roleEl.textContent = role === 'host' ? 'HOST' :
-                          role === 'ops' ? 'ENGINEER' : 'CALLER';
+    roleEl.textContent = role === 'host' ? '主播' :
+                          role === 'ops' ? '工程师' : '连线嘉宾';
 
     // Per-participant level meter
     const levelMeterCanvas = document.createElement('canvas');
@@ -1942,7 +1942,7 @@ ${segmentsText}`;
       // Mute button
       const muteButton = document.createElement('button');
       muteButton.className = 'mute-button';
-      muteButton.textContent = 'UNMUTED';
+      muteButton.textContent = '未静音';
       muteButton.addEventListener('click', () => this.handleParticipantMute(peerId));
 
       // Gain control container
@@ -1980,7 +1980,7 @@ ${segmentsText}`;
       // Mute button for self-mute
       const muteButton = document.createElement('button');
       muteButton.className = 'mute-button';
-      muteButton.textContent = 'UNMUTED';
+      muteButton.textContent = '未静音';
       muteButton.addEventListener('click', () => this.handleParticipantMute(peerId));
 
       controlsEl.appendChild(muteButton);
@@ -1994,7 +1994,7 @@ ${segmentsText}`;
 
     const statusEl = document.createElement('div');
     statusEl.className = 'participant-status';
-    statusEl.innerHTML = '<span class="icon">&#9679;</span><span>Ready</span>';
+    statusEl.innerHTML = '<span class="icon">&#9679;</span><span>就绪</span>';
 
     card.appendChild(statusEl);
 
@@ -2165,11 +2165,11 @@ ${segmentsText}`;
     }
 
     if (state === 'connected') {
-      statusEl.textContent = 'Connected';
+      statusEl.textContent = '已连接';
     } else if (state === 'connecting' || state === 'waiting') {
-      statusEl.textContent = 'Connecting...';
+      statusEl.textContent = '连接中…';
     } else if (state === 'failed' || state === 'failed-permanent' || state === 'disconnected') {
-      statusEl.textContent = 'Disconnected';
+      statusEl.textContent = '未连接';
     }
   }
 

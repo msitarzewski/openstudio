@@ -108,7 +108,7 @@ async function runTest() {
 
     // Wait for connection to signaling server
     console.log('[Host] Waiting for connection to signaling server...');
-    const hostConnected = await waitForStatus(hostBrowser.page, 'Connected');
+    const hostConnected = await waitForStatus(hostBrowser.page, '已连接');
     if (!hostConnected) {
       throw new Error('Host failed to connect to signaling server');
     }
@@ -163,7 +163,7 @@ async function runTest() {
 
     // Wait for connection
     console.log('[Caller] Waiting for connection to signaling server...');
-    const callerConnected = await waitForStatus(callerBrowser.page, 'Connected');
+    const callerConnected = await waitForStatus(callerBrowser.page, '已连接');
     if (!callerConnected) {
       throw new Error('Caller failed to connect to signaling server');
     }
@@ -222,8 +222,8 @@ async function runTest() {
     console.log(`[Caller] Participant statuses: ${JSON.stringify(callerParticipantStatus)}`);
 
     // Check if at least one connection shows "Connected"
-    const hasConnectedPeer = hostParticipantStatus.some(s => s.includes('Connected')) ||
-                              callerParticipantStatus.some(s => s.includes('Connected'));
+    const hasConnectedPeer = hostParticipantStatus.some(s => s.includes('已连接')) ||
+                              callerParticipantStatus.some(s => s.includes('已连接'));
 
     if (hasConnectedPeer) {
       console.log('✅ WebRTC peer connection established\n');
@@ -252,10 +252,10 @@ async function runTest() {
       '#toggle-mute',
       btn => btn.textContent
     );
-    if (muteButtonText !== 'Unmute') {
-      throw new Error(`Expected "Unmute", got "${muteButtonText}"`);
+    if (muteButtonText !== '取消静音') {
+      throw new Error(`Expected "取消静音", got "${muteButtonText}"`);
     }
-    console.log('✅ Mute toggle working (text changed to "Unmute")');
+    console.log('✅ Mute toggle working (text changed to "取消静音")');
 
     // Click unmute
     await hostBrowser.page.click('#toggle-mute');
@@ -265,10 +265,10 @@ async function runTest() {
       '#toggle-mute',
       btn => btn.textContent
     );
-    if (unmuteButtonText !== 'Mute') {
-      throw new Error(`Expected "Mute", got "${unmuteButtonText}"`);
+    if (unmuteButtonText !== '静音') {
+      throw new Error(`Expected "静音", got "${unmuteButtonText}"`);
     }
-    console.log('✅ Unmute toggle working (text changed to "Mute")\n');
+    console.log('✅ Unmute toggle working (text changed to "静音")\n');
 
     // ===== Test 5: End Session =====
     console.log('--- Test 5: End Session ---');

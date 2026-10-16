@@ -371,8 +371,8 @@ export class ConnectionManager extends EventTarget {
       console.error(`[ConnectionManager] Max retry attempts reached for ${remotePeerId}, giving up`);
       this.setConnectionState(remotePeerId, { status: 'failed-permanent' });
 
-      this.dispatchEvent(new CustomEvent('connection-failed', {
-        detail: { remotePeerId, reason: 'Max retries exceeded' }
+this.dispatchEvent(new CustomEvent('connection-failed', {
+        detail: { remotePeerId, reason: '重试次数已达上限' }
       }));
       return;
     }

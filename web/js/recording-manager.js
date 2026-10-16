@@ -226,7 +226,7 @@ export class RecordingManager extends EventTarget {
     // Download individual tracks
     for (const [peerId, blob] of recordings.tracks) {
       const name = peerNames?.get(peerId) || peerId.substring(0, 8);
-      const safeName = name.replace(/[^a-zA-Z0-9-_]/g, '_');
+      const safeName = name.replace(/[^a-zA-Z0-9-_\u4e00-\u9fa5]/g, '_');
       this.downloadTrack(blob, `openstudio-${safeName}-${timestamp}.${ext}`);
     }
   }
@@ -249,7 +249,7 @@ export class RecordingManager extends EventTarget {
 
       for (const [peerId, blob] of recordings.tracks) {
         const name = peerNames?.get(peerId) || peerId.substring(0, 8);
-        const safeName = name.replace(/[^a-zA-Z0-9-_]/g, '_');
+        const safeName = name.replace(/[^a-zA-Z0-9-_\u4e00-\u9fa5]/g, '_');
         formData.append('audio', blob, `openstudio-${safeName}-${timestamp}.${ext}`);
       }
 
@@ -364,7 +364,7 @@ export class RecordingManager extends EventTarget {
 
     if (!response.ok) {
       const errText = await response.text().catch(() => '');
-      throw new Error(`Export failed (${response.status}): ${errText}`);
+      throw new Error(`导出失败（${response.status}）：${errText}`);
     }
 
     return await response.blob();
@@ -387,7 +387,7 @@ export class RecordingManager extends EventTarget {
 
     if (!response.ok) {
       const errText = await response.text().catch(() => '');
-      throw new Error(`Transcription failed (${response.status}): ${errText}`);
+      throw new Error(`转写失败（${response.status}）：${errText}`);
     }
 
     return await response.json();

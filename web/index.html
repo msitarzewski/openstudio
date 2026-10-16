@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="OpenStudio - Decentralized broadcast studio for podcasters">
+  <meta name="description" content="OpenStudio - 面向播客的分布式广播工作室">
   <meta name="author" content="OpenStudio Contributors">
-  <title>OpenStudio - Web Studio</title>
+  <title>OpenStudio - 网页工作室</title>
 
   <!-- Styles (fonts self-hosted via @font-face in studio.css) -->
   <link rel="stylesheet" href="css/reset.css">
@@ -20,7 +20,7 @@
     <h1>OPEN<span class="wordmark-accent">STUDIO</span></h1>
     <small class="tagline">talk hard.</small>
     <div class="header-right">
-      <div id="status">Disconnected</div>
+      <div id="status">未连接</div>
       <span id="session-info" class="session-info"></span>
     </div>
   </header>
@@ -34,7 +34,7 @@
 
     <!-- Program Bus / Signal Output -->
     <section id="program-bus-section" class="signal-output">
-      <div class="meter-label">SIGNAL OUTPUT</div>
+      <div class="meter-label">信号输出</div>
       <div class="meter-container">
         <canvas id="waveform-display" class="waveform-canvas" height="48"></canvas>
         <canvas id="volume-meter" width="600" height="24"></canvas>
@@ -43,13 +43,13 @@
 
     <!-- Transport Controls -->
     <section id="controls" class="transport">
-      <button id="start-session" class="btn-broadcast">Start Broadcast</button>
-      <button id="toggle-mute" class="btn-ghost" disabled>Mute</button>
-      <button id="start-recording" class="btn-ghost btn-record" disabled>Record</button>
-      <button id="stop-recording" class="btn-ghost" disabled style="display: none;">Stop Recording</button>
-      <button id="start-streaming" class="btn-ghost btn-stream" disabled>Stream</button>
-      <button id="stop-streaming" class="btn-ghost" disabled style="display: none;">Stop Streaming</button>
-      <button id="end-session" class="btn-end" disabled>End Broadcast</button>
+      <button id="start-session" class="btn-broadcast">开始广播</button>
+      <button id="toggle-mute" class="btn-ghost" disabled>静音</button>
+      <button id="start-recording" class="btn-ghost btn-record" disabled>录音</button>
+      <button id="stop-recording" class="btn-ghost" disabled style="display: none;">停止录音</button>
+      <button id="start-streaming" class="btn-ghost btn-stream" disabled>推流</button>
+      <button id="stop-streaming" class="btn-ghost" disabled style="display: none;">停止推流</button>
+      <button id="end-session" class="btn-end" disabled>结束广播</button>
     </section>
 
     <!-- Deck: Recording Panel -->
@@ -57,14 +57,14 @@
       <div class="deck-header" data-deck="recording">
         <div class="deck-summary">
           <div class="recording-indicator" id="recording-indicator"></div>
-          <span class="deck-label">REC</span>
+          <span class="deck-label">录音</span>
           <span id="recording-timer" class="recording-timer">00:00:00</span>
         </div>
-        <button class="deck-toggle" aria-label="Toggle recording panel">&#9660;</button>
+        <button class="deck-toggle" aria-label="展开或收起录音面板">&#9660;</button>
       </div>
       <div class="deck-body" id="recording-deck-body">
         <div class="recording-controls">
-          <button id="download-recordings" disabled style="display: none;">Download All</button>
+          <button id="download-recordings" disabled style="display: none;">全部下载</button>
         </div>
         <div id="recording-tracks" class="recording-tracks" style="display: none;">
           <!-- Track download list appears here after recording stops -->
@@ -72,24 +72,24 @@
 
         <!-- Export options (shown after recording stops) -->
         <div id="export-panel" class="export-panel" style="display: none;">
-          <div class="export-title">Export As</div>
+          <div class="export-title">导出格式</div>
           <div class="export-mode-toggle">
-            <button id="export-raw" class="export-mode-btn active" data-mode="raw">Raw</button>
-            <button id="export-clean" class="export-mode-btn" data-mode="clean">Clean</button>
+            <button id="export-raw" class="export-mode-btn active" data-mode="raw">原始</button>
+            <button id="export-clean" class="export-mode-btn" data-mode="clean">净化</button>
           </div>
 
           <!-- Clean options (collapsible) -->
           <div id="clean-options" class="clean-options-collapsible" style="display: none;">
             <div class="clean-option-row">
-              <label for="filler-sensitivity">Filler Sensitivity</label>
+              <label for="filler-sensitivity">语气词灵敏度</label>
               <select id="filler-sensitivity">
-                <option value="low">Low</option>
-                <option value="medium" selected>Medium</option>
-                <option value="high">High</option>
+                <option value="low">低</option>
+                <option value="medium" selected>中</option>
+                <option value="high">高</option>
               </select>
             </div>
             <div class="clean-option-row">
-              <label for="silence-threshold">Silence Threshold</label>
+              <label for="silence-threshold">静音阈值</label>
               <select id="silence-threshold">
                 <option value="-40">-40 dB</option>
                 <option value="-50" selected>-50 dB</option>
@@ -97,57 +97,57 @@
               </select>
             </div>
             <div class="clean-option-row">
-              <label for="output-format">Output Format</label>
+              <label for="output-format">输出格式</label>
               <select id="output-format">
                 <option value="webm">WebM (Opus)</option>
                 <option value="wav" selected>WAV</option>
-                <option value="mp3">MP3 (Podcast)</option>
+                <option value="mp3">MP3（播客）</option>
               </select>
             </div>
           </div>
 
           <!-- Export action -->
           <div class="export-actions">
-            <button id="export-btn" class="btn-export" disabled>Export</button>
+            <button id="export-btn" class="btn-export" disabled>导出</button>
             <div id="export-status" class="export-status" style="display: none;"></div>
-            <button id="download-cleaned" class="btn-download-cleaned" style="display: none;">Download</button>
+            <button id="download-cleaned" class="btn-download-cleaned" style="display: none;">下载</button>
           </div>
 
           <!-- Transcription & Show Notes -->
-          <div class="export-divider">— or —</div>
+          <div class="export-divider">— 或 —</div>
 
           <!-- Transcribe button (per track) -->
           <div id="transcribe-section" class="transcribe-section" style="display: none;">
-            <div class="transcribe-title">Post-Production</div>
-            <button id="transcribe-btn" class="btn-transcribe">Transcribe Recording</button>
+            <div class="transcribe-title">后期制作</div>
+            <button id="transcribe-btn" class="btn-transcribe">转写录音</button>
             <div id="transcribe-status" class="export-status" style="display: none;"></div>
 
             <!-- Show Notes panel (shown after transcription) -->
             <div id="show-notes-panel" class="show-notes-panel" style="display: none;">
-              <div class="show-notes-title">Generated Show Notes</div>
+              <div class="show-notes-title">生成的节目笔记</div>
 
               <!-- Episode title (editable) -->
               <div class="show-notes-field">
-                <label>Episode Title</label>
-                <input type="text" id="episode-title-input" placeholder="Episode title..." />
+                <label>节目标题</label>
+                <input type="text" id="episode-title-input" placeholder="输入节目标题…" />
               </div>
 
               <!-- Summary -->
               <div class="show-notes-field">
-                <label>Summary</label>
+                <label>摘要</label>
                 <textarea id="episode-summary" class="show-notes-textarea" readonly></textarea>
               </div>
 
               <!-- Segment markers -->
               <div class="show-notes-field">
-                <label>Segments</label>
+                <label>分段</label>
                 <div id="segment-list" class="segment-list"></div>
               </div>
 
               <!-- Actions -->
               <div class="show-notes-actions">
-                <button id="copy-show-notes" class="btn-secondary">Copy to Clipboard</button>
-                <button id="download-show-notes" class="btn-secondary">Download .md</button>
+                <button id="copy-show-notes" class="btn-secondary">复制到剪贴板</button>
+                <button id="download-show-notes" class="btn-secondary">下载 .md</button>
                 <span id="show-notes-status" class="export-status" style="display: none;"></span>
               </div>
             </div>
@@ -160,15 +160,15 @@
     <section id="input-section" class="deck-panel">
       <div class="deck-header" data-deck="input">
         <div class="deck-summary">
-          <span class="deck-label">INPUT</span>
+          <span class="deck-label">输入</span>
         </div>
-        <button class="deck-toggle" aria-label="Toggle input panel">&#9654;</button>
+        <button class="deck-toggle" aria-label="展开或收起输入面板">&#9654;</button>
       </div>
       <div class="deck-body" id="input-deck-body">
         <div class="streaming-config">
-          <label for="mic-select">Microphone:</label>
+          <label for="mic-select">麦克风：</label>
           <select id="mic-select">
-            <option value="" data-loading>Scanning devices...</option>
+            <option value="" data-loading>正在扫描设备…</option>
           </select>
         </div>
       </div>
@@ -178,15 +178,15 @@
     <section id="streaming-section" class="deck-panel">
       <div class="deck-header" data-deck="streaming">
         <div class="deck-summary">
-          <span class="deck-label">TRANSMIT</span>
-          <span id="streaming-status" class="streaming-status">Not Streaming</span>
+          <span class="deck-label">传输</span>
+          <span id="streaming-status" class="streaming-status">未推流</span>
         </div>
-        <button class="deck-toggle" aria-label="Toggle streaming panel">&#9660;</button>
+        <button class="deck-toggle" aria-label="展开或收起传输面板">&#9660;</button>
       </div>
       <div class="deck-body" id="streaming-deck-body">
         <div class="streaming-controls">
           <div class="streaming-config">
-            <label for="bitrate-select">Bitrate:</label>
+            <label for="bitrate-select">码率：</label>
             <select id="bitrate-select">
               <option value="48000">48 kbps</option>
               <option value="96000">96 kbps</option>
@@ -196,7 +196,7 @@
           </div>
         </div>
         <div id="streaming-info" class="streaming-info">
-          <div class="streaming-url">Stream URL: <a href="/stream/live.opus" target="_blank" id="stream-url">/stream/live.opus</a></div>
+          <div class="streaming-url">推流地址：<a href="/stream/live.opus" target="_blank" id="stream-url">/stream/live.opus</a></div>
         </div>
       </div>
     </section>
@@ -205,15 +205,15 @@
     <dialog id="capability-modal" class="capability-modal" aria-labelledby="capability-modal-title">
       <div class="capability-modal-content">
         <header class="capability-modal-header">
-          <h2 id="capability-modal-title">Feature Requires Setup</h2>
-          <button class="capability-modal-close" aria-label="Close" data-close-modal>&times;</button>
+          <h2 id="capability-modal-title">功能需要配置</h2>
+          <button class="capability-modal-close" aria-label="关闭" data-close-modal>&times;</button>
         </header>
         <div class="capability-modal-body" id="capability-modal-body">
           <!-- Populated by JS -->
         </div>
         <footer class="capability-modal-footer">
-          <a href="https://github.com/msitarzewski/openstudio#optional-ai-tooling" target="_blank" rel="noopener" class="capability-modal-docs">Full setup docs →</a>
-          <button class="capability-modal-ok" data-close-modal>Got it</button>
+          <a href="https://github.com/msitarzewski/openstudio#optional-ai-tooling" target="_blank" rel="noopener" class="capability-modal-docs">完整配置文档 →</a>
+          <button class="capability-modal-ok" data-close-modal>知道了</button>
         </footer>
       </div>
     </dialog>

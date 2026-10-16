@@ -50,7 +50,7 @@ function renderRequirement(req) {
       <div class="capability-req-head">
         <span class="${statusClass}" aria-hidden="true">${icon}</span>
         <span class="capability-req-name">${escapeHtml(req.name)}</span>
-        <span class="capability-req-state">${req.present ? 'installed' : 'missing'}</span>
+        <span class="capability-req-state">${req.present ? '已安装' : '未安装'}</span>
       </div>
       ${installBlock}
     </div>
@@ -75,16 +75,16 @@ export function openCapabilityModal({ feature, title, requirements, intro }) {
 
   const titleEl = document.getElementById(TITLE_ID);
   const bodyEl = document.getElementById(BODY_ID);
-  if (titleEl) titleEl.textContent = title || 'Feature Requires Setup';
+  if (titleEl) titleEl.textContent = title || '功能需要配置';
 
   const introHtml = intro
     ? `<p class="capability-intro">${escapeHtml(intro)}</p>`
-    : `<p class="capability-intro">This feature needs the following on the host running OpenStudio. Install what's missing and reload the page.</p>`;
+    : `<p class="capability-intro">此功能需要运行 OpenStudio 的主机具备以下组件。安装缺失的组件后刷新页面。</p>`;
 
   const list = Array.isArray(requirements) ? requirements : [];
   const listHtml = list.length
     ? `<div class="capability-req-list">${list.map(renderRequirement).join('')}</div>`
-    : '<p class="capability-intro">No requirement detail available.</p>';
+    : '<p class="capability-intro">暂无组件详情。</p>';
 
   if (bodyEl) {
     bodyEl.innerHTML = introHtml + listHtml;
